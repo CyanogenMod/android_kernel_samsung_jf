@@ -1,0 +1,24 @@
+The Badass CPU Governor
+
+This governor is intended to have good responsiveness while maintaining
+good battery life.
+
+This does it in two ways:
+	- 2 and 3 phase Algorithms (requires Board File hooks)
+	- GPU Control Algorithm (requires GPU Driver hooks)
+
+To be the most effective, it must be tuned.
+
+To tune the 2 and 3 phase freqs:
+	- The 2 Phase Freq is about 66% of the Max CPU Clock
+	- The 3 Phase Freq is about 75% of the Max CPU Clock
+
+To tune the GPU Control Algorithm:
+	- The Semi Busy Threshold is about 95-100% of the Max GPU Clock
+	- The Semi Busy Clear Threshold is about 66% of the Max GPU Clock
+	- The Busy Threshold is about about 263-266% of the Max GPU Clock
+	- The Busy Clear Threshold is about 1s about 188% of the Max GPU Clock
+
+IMPORTANT: Not tuning the 2 and 3 phase freqs can cause huge lag, and
+           not tuning the GPU Control Algorithm can cause very noticable
+           micro lag while using the phone.
