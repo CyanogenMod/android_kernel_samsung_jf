@@ -580,6 +580,52 @@ error:
 	for (i = 0; i < MDSS_MAX_CLK; i++) {
 		if (mdss_res->mdp_clk[i])
 			clk_put(mdss_res->mdp_clk[i]);
+}
+
+static int mdss_iommu_fault_handler(struct iommu_domain *domain,
+		struct device *dev, unsigned long iova, int flags, void *token)
+{
+	pr_err("MDP IOMMU page fault: iova 0x%lx\n", iova);
+	return 0;
+}
+
+int mdss_iommu_attach(struct mdss_data_type *mdata)
+{
+	struct iommu_domain *domain;
+	struct mdss_iommu_map_type *iomap;
+	int i;
+
+	if (mdata->iommu_attached) {
+		pr_warn("mdp iommu already attached\n");
+		return 0;
+	}
+
+	for (i = 0; i < MDSS_IOMMU_MAX_DOMAIN; i++) {
+		iomap = mdata->iommu_map + i;
+
+		domain = msm_get_iommu_domain(iomap->domain_idx);
+		if (!domain) {
+			WARN(1, "could not attach iommu client %s to ctx %s\n",
+				iomap->client_name, iomap->ctx_name);
+			continue;
+		}
+		iommu_attach_device(domain, iomap->ctx);
+	}
+
+	mdata->iommu_attached = true;
+
+	return 0;
+}
+
+int mdss_iommu_dettach(struct mdss_data_type *mdata)
+{
+	struct iommu_domain *domain;
+	struct mdss_iommu_map_type *iomap;
+	int i;
+
+	if (!mdata->iommu_attached) {
+		pr_warn("mdp iommu already dettached\n");
+		return 0;
 	}
 	if (mdss_res->fs)
 		regulator_put(mdss_res->fs);
@@ -594,6 +640,35 @@ static struct msm_panel_common_pdata *mdss_mdp_populate_pdata(
 	struct device *dev)
 {
 	struct msm_panel_common_pdata *pdata;
+	struct msm_iova_layout layout;
+	struct iommu_domain *domain;
+	struct mdss_iommu_map_type *iomap;
+	int i;
+
+	if (mdata->iommu_map) {
+		pr_warn("iommu already initialized\n");
+		return 0;
+	}
+
+	for (i = 0; i < MDSS_IOMMU_MAX_DOMAIN; i++) {
+		iomap = &mdss_iommu_map[i];
+
+		layout.client_name = iomap->client_name;
+		layout.partitions = iomap->partitions;
+		layout.npartitions = iomap->npartitions;
+		layout.is_secure = (i == MDSS_IOMMU_DOMAIN_SECURE);
+
+		iomap->domain_idx = msm_register_domain(&layout);
+		if (IS_ERR_VALUE(iomap->domain_idx))
+			return -EINVAL;
+
+		domain = msm_get_iommu_domain(iomap->domain_idx);
+		if (!domain) {
+			pr_err("unable to get iommu domain(%d)\n",
+				iomap->domain_idx);
+			return -EINVAL;
+		}
+		iommu_set_fault_handler(domain, mdss_iommu_fault_handler, NULL);
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
