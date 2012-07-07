@@ -4,6 +4,13 @@
 
 #include <asm/kexec.h>
 
+#ifdef CONFIG_KEXEC_HARDBOOT
+#include <asm/memory.h>
+#if defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_APQ8064)
+#include <mach/msm_iomap.h>
+#endif
+#endif
+
 	.globl relocate_new_kernel
 relocate_new_kernel:
 
@@ -52,6 +59,12 @@ relocate_new_kernel:
 	b 0b
 
 2:
+#ifdef CONFIG_KEXEC_HARDBOOT
+	ldr	r0, kexec_hardboot
+	teq	r0, #0
+	bne	hardboot
+#endif
+
 	/* Jump to relocated kernel */
 	mov lr,r1
 	mov r0,#0
@@ -59,6 +72,40 @@ relocate_new_kernel:
 	ldr r2,kexec_boot_atags
  ARM(	mov pc, lr	)
  THUMB(	bx lr		)
+
+#ifdef CONFIG_KEXEC_HARDBOOT
+hardboot:
+	/* Stash boot arguments in hardboot page:
+	 *  0: KEXEC_HB_PAGE_MAGIC
+	 *  4: kexec_start_address
+	 *  8: kexec_mach_type
+	 * 12: kexec_boot_atags */
+	ldr	r0, =KEXEC_HB_PAGE_ADDR
+	str	r1, [r0, #4]
+	ldr	r1, kexec_mach_type
+	str	r1, [r0, #8]
+	ldr	r1, kexec_boot_atags
+	str	r1, [r0, #12]
+	ldr	r1, =KEXEC_HB_PAGE_MAGIC
+	str	r1, [r0]
+
+#if defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_APQ8064)
+#if defined(CONFIG_ARCH_APQ8064)
+#define MSM_TLMM_PHYS APQ8064_TLMM_PHYS
+#elif defined(CONFIG_ARCH_MSM8960)
+#define MSM_TLMM_PHYS MSM8960_TLMM_PHYS
+#endif
+	/* Hard reset via PMIC, decompressor jumps to kernel. */
+	ldr	r0, =MSM_TLMM_PHYS
+	mov	r1, #0
+	str	r1, [r0, #0x820]  @ PSHOLD_CTL_SU
+loop:	b	loop
+#else
+#error "No reboot method defined for hardboot."
+#endif
+
+	.ltorg
+#endif
 
 	.align
 
@@ -78,6 +125,12 @@ kexec_mach_type:
 	.globl kexec_boot_atags
 kexec_boot_atags:
 	.long	0x0
+
+#ifdef CONFIG_KEXEC_HARDBOOT
+	.globl kexec_hardboot
+kexec_hardboot:
+	.long	0x0
+#endif
 
 relocate_new_kernel_end:
 
