@@ -21,6 +21,8 @@ unsigned int __machine_arch_type;
 #include <linux/compiler.h>	/* for inline */
 #include <linux/types.h>
 #include <linux/linkage.h>
+#include <asm/setup.h>
+#include <asm/string.h>
 
 static void putstr(const char *ptr);
 extern void error(char *x);
@@ -151,4 +153,26 @@ decompress_kernel(unsigned long output_start, unsigned long free_mem_ptr_p,
 		error("decompressor returned an error");
 	else
 		putstr(" done, booting the kernel.\n");
+}
+
+const struct tag *copy_atags(struct tag *dest, const struct tag *src,
+                             size_t max)
+{
+	struct tag *tag;
+	size_t      size;
+
+	/* Find the last tag (ATAG_NONE). */
+	for_each_tag(tag, (struct tag *)src)
+		continue;
+
+	/* Include the last tag in copy. */
+	size = (char *)tag - (char *)src + sizeof(struct tag_header);
+
+	/* If there's not enough room, just use original and hope it works. */
+	if (size > max)
+		return src;
+
+	memcpy(dest, src, size);
+
+	return dest;
 }
