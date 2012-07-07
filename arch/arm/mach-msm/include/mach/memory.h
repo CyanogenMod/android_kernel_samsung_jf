@@ -19,6 +19,9 @@
 
 /* physical offset of RAM */
 #define PLAT_PHYS_OFFSET UL(CONFIG_PHYS_OFFSET)
+#ifdef CONFIG_HAVE_END_MEM
+#define END_MEM          UL(CONFIG_END_MEM)
+#endif
 
 #define MAX_PHYSMEM_BITS 32
 #define SECTION_SIZE_BITS 28
