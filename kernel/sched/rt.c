@@ -444,21 +444,6 @@ static void sched_rt_rq_dequeue(struct rt_rq *rt_rq)
 		dequeue_rt_entity(rt_se);
 }
 
-int unthrottle_rt_rq(struct rq *rq)
-{
-	/* if requested from the migration task we will
-	 * unthrottle the rt rq.
-	 */
-	if (rq->rt.rt_throttled
-		&& current->sched_class == &stop_sched_class) {
-		rq->rt.rt_throttled = 0;
-		printk_sched("sched: RT unthrottled for migration\n");
-		return 1;
-	}
-
-	return 0;
-}
-
 static inline int rt_rq_throttled(struct rt_rq *rt_rq)
 {
 	return rt_rq->rt_throttled && !rt_rq->rt_nr_boosted;
@@ -700,6 +685,7 @@ balanced:
 		 * runtime - in which case borrowing doesn't make sense.
 		 */
 		rt_rq->rt_runtime = RUNTIME_INF;
+		rt_rq->rt_throttled = 0;
 		raw_spin_unlock(&rt_rq->rt_runtime_lock);
 		raw_spin_unlock(&rt_b->rt_runtime_lock);
 	}
