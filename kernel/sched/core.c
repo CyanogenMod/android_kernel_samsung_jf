@@ -5213,19 +5213,6 @@ static void migrate_tasks(unsigned int dead_cpu)
 	 */
 	rq->stop = NULL;
 
-	/* Ensure any throttled groups are reachable by pick_next_task */
-	unthrottle_offline_cfs_rqs(rq);
-
-	/* if there is one or more rt threads on the rq and if throttled,
-	 * we will deadlock in below loop. rt sched hrtimer have to run to
-	 * unthrottle the rt rq but irq is disabled in this context. Thus,
-	 * pick_next_task will not pick the rt task even if it is on the
-	 * runqueue. rq->nr_running never gets down to 1 and we will
-	 * loop forever here.
-	 * So we forcefully unthrottle the rt rq.
-	 */
-	unthrottle_rt_rq(rq);
-
 	for ( ; ; ) {
 		/*
 		 * There's this thread running, bail when that's the only
