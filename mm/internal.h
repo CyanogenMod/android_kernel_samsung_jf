@@ -127,6 +127,7 @@ struct compact_control {
 	int migratetype;		/* MOVABLE, RECLAIMABLE etc */
 	struct zone *zone;
 	bool *contended;		/* True if a lock was contended */
+	struct page **page;		/* Page captured of requested size */
 };
 
 unsigned long
