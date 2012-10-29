@@ -13,8 +13,9 @@
 	qcom,kgsl-3d0@fdb00000 {
 		label = "kgsl-3d0";
 		compatible = "qcom,kgsl-3d0", "qcom,kgsl-3d";
-		reg = <0xfdb00000 0x20000>;
-		reg-names = "kgsl_3d0_reg_memory";
+		reg = <0xfdb00000 0x10000
+		       0xfdb20000 0x10000>;
+		reg-names = "kgsl_3d0_reg_memory" , "kgsl_3d0_shader_memory";
 		interrupts = <0 33 0>;
 		interrupt-names = "kgsl_3d0_irq";
 		qcom,id = <0>;
@@ -24,7 +25,7 @@
 		qcom,initial-pwrlevel = <1>;
 
 		qcom,idle-timeout = <83>; //<HZ/12>
-		qcom,nap-allowed = <1>;
+		qcom,strtstp-sleepwake;
 		qcom,clk-map = <0x00000016>; //KGSL_CLK_CORE | KGSL_CLK_IFACE | KGSL_CLK_MEM_IFACE
 
 		/* Bus Scale Settings */
