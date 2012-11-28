@@ -1895,7 +1895,6 @@ config ENABLE_DMM
 
 config DONT_MAP_HOLE_AFTER_MEMBANK0
 	def_bool n
-	depends on SPARSEMEM
 
 config HOLES_IN_ZONE
 	def_bool n
