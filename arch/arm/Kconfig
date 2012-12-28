@@ -1511,6 +1511,7 @@ config ARM_ERRATA_775420
 endmenu
 
 source "arch/arm/common/Kconfig"
+source "arch/arm/hotplug/Kconfig"
 
 menu "Bus support"
 
