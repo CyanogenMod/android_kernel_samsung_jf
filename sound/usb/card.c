@@ -722,7 +722,8 @@ static int __init snd_usb_audio_init(void)
 		printk(KERN_WARNING "invalid nrpacks value.\n");
 		return -EINVAL;
 	}
-	usbaudiosdev = kzalloc(sizeof(usbaudiosdev), GFP_KERNEL);
+
+	usbaudiosdev = kzalloc(sizeof(*usbaudiosdev), GFP_KERNEL);
 	usbaudiosdev->name = "usb_audio";
 
 	err = switch_dev_register(usbaudiosdev);
