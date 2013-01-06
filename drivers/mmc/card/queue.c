@@ -74,46 +74,54 @@ static int mmc_queue_thread(void *d)
 		if (req && IS_RT_CLASS_REQ(req))
 			    mmc_set_nopacked_period(mq, HZ);
 		mq->mqrq_cur->req = req;
+		if (!req && mq->mqrq_prev->req &&
+			!(mq->mqrq_prev->req->cmd_flags & REQ_SANITIZE) &&
+			!(mq->mqrq_prev->req->cmd_flags & REQ_FLUSH) &&
+			!(mq->mqrq_prev->req->cmd_flags & REQ_DISCARD))
+			card->host->context_info.is_waiting_last_req = true;
+
 		spin_unlock_irq(q->queue_lock);
 
 		if (req || mq->mqrq_prev->req) {
-			/*
-			 * If this is the first request, BKOPs might be in
-			 * progress and needs to be stopped before issuing the
-			 * request
-			 */
-			if (card->ext_csd.bkops_en &&
-			    card->bkops_info.started_delayed_bkops) {
-				card->bkops_info.started_delayed_bkops = false;
-				mmc_stop_bkops(card);
-			}
-
 			set_current_state(TASK_RUNNING);
 			mq->issue_fn(mq, req);
 			if (mq->flags & MMC_QUEUE_NEW_REQUEST) {
 				mq->flags &= ~MMC_QUEUE_NEW_REQUEST;
 				continue; /* fetch again */
+			} else if ((mq->flags & MMC_QUEUE_URGENT_REQUEST) &&
+				   (mq->mqrq_cur->req &&
+				!(mq->mqrq_cur->req->cmd_flags & REQ_URGENT))) {
+				/*
+				 * clean current request when urgent request
+				 * processing in progress and current request is
+				 * not urgent (all existing requests completed
+				 * or reinserted to the block layer
+				 */
+				mq->mqrq_cur->brq.mrq.data = NULL;
+				mq->mqrq_cur->req = NULL;
 			}
-
-			/*
-			 * Current request becomes previous request
-			 * and vice versa.
-			 */
-			mq->mqrq_prev->brq.mrq.data = NULL;
-			mq->mqrq_prev->req = NULL;
-			tmp = mq->mqrq_prev;
-			mq->mqrq_prev = mq->mqrq_cur;
-			mq->mqrq_cur = tmp;
 		} else {
 			if (kthread_should_stop()) {
 				set_current_state(TASK_RUNNING);
 				break;
 			}
 			mmc_start_delayed_bkops(card);
+			mq->card->host->context_info.is_urgent = false;
 			up(&mq->thread_sem);
 			schedule();
 			down(&mq->thread_sem);
 		}
+
+		/*
+		 * Current request becomes previous request
+		 * and vice versa.
+		 */
+		mq->mqrq_prev->brq.mrq.data = NULL;
+		mq->mqrq_prev->req = NULL;
+		tmp = mq->mqrq_prev;
+		mq->mqrq_prev = mq->mqrq_cur;
+		mq->mqrq_cur = tmp;
+
 	} while (1);
 	up(&mq->thread_sem);
 
@@ -165,6 +173,47 @@ static void mmc_request(struct request_queue *q)
 		spin_unlock_irqrestore(&cntx->lock, flags);
 	} else if (!mq->mqrq_cur->req && !mq->mqrq_prev->req)
 		wake_up_process(mq->thread);
+}
+
+/*
+ * mmc_urgent_request() - Urgent MMC request handler.
+ * @q: request queue.
+ *
+ * This is called when block layer has urgent request for delivery.  When mmc
+ * context is waiting for the current request to complete, it will be awaken,
+ * current request may be interrupted and re-inserted back to block device
+ * request queue.  The next fetched request should be urgent request, this
+ * will be ensured by block i/o scheduler.
+ */
+static void mmc_urgent_request(struct request_queue *q)
+{
+	unsigned long flags;
+	struct mmc_queue *mq = q->queuedata;
+	struct mmc_context_info *cntx;
+
+	if (!mq) {
+		mmc_request(q);
+		return;
+	}
+	cntx = &mq->card->host->context_info;
+
+	/* critical section with mmc_wait_data_done() */
+	spin_lock_irqsave(&cntx->lock, flags);
+
+	/* do stop flow only when mmc thread is waiting for done */
+	if (mq->mqrq_cur->req || mq->mqrq_prev->req) {
+		/*
+		 * Urgent request must be executed alone
+		 * so disable the write packing
+		 */
+		mmc_blk_disable_wr_packing(mq);
+		cntx->is_urgent = true;
+		spin_unlock_irqrestore(&cntx->lock, flags);
+		wake_up_interruptible(&cntx->wait);
+	} else {
+		spin_unlock_irqrestore(&cntx->lock, flags);
+		mmc_request(q);
+	}
 }
 
 static struct scatterlist *mmc_alloc_sg(int sg_len, int *err)
@@ -233,6 +282,11 @@ int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card,
 	mq->queue = blk_init_queue(mmc_request, lock);
 	if (!mq->queue)
 		return -ENOMEM;
+
+	if ((host->caps2 & MMC_CAP2_STOP_REQUEST) &&
+			host->ops->stop_request &&
+			mq->card->ext_csd.hpi)
+		blk_urgent_request(mq->queue, mmc_urgent_request);
 
 	memset(&mq->mqrq_cur, 0, sizeof(mq->mqrq_cur));
 	memset(&mq->mqrq_prev, 0, sizeof(mq->mqrq_prev));
