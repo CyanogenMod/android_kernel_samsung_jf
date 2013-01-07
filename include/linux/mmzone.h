@@ -386,6 +386,7 @@ struct zone {
 	 * process to make sure that the system is not starved.
 	 */
 	unsigned long		min_cma_pages;
+	bool			cma_alloc;
 #endif
 	struct free_area	free_area[MAX_ORDER];
 
