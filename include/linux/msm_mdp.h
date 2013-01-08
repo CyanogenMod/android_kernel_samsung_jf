@@ -75,6 +75,7 @@
 						struct mdp_display_commit)
 #define MSMFB_WRITEBACK_SET_MIRRORING_HINT _IOW(MSMFB_IOCTL_MAGIC, 165, \
 						unsigned int)
+#define MSMFB_METADATA_GET  _IOW(MSMFB_IOCTL_MAGIC, 166, struct msmfb_metadata)
 
 #define FB_TYPE_3D_PANEL 0x10101010
 #define MDP_IMGTYPE2_START 0x10000
@@ -504,9 +505,11 @@ struct msmfb_mdp_pp {
 		struct mdp_bl_scale_data bl_scale_data;
 	} data;
 };
+
 enum {
 	metadata_op_none,
 	metadata_op_base_blend,
+	metadata_op_frame_rate,
 	metadata_op_max
 };
 
@@ -519,9 +522,9 @@ struct msmfb_metadata {
 	uint32_t flags;
 	union {
 		struct mdp_blend_cfg blend_cfg;
+		uint32_t panel_frame_rate;
 	} data;
 };
-
 
 #define MDP_MAX_FENCE_FD	10
 #define MDP_BUF_SYNC_FLAG_WAIT	1
