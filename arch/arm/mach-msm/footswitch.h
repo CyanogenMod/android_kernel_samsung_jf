@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,7 +28,8 @@
 #define FS_VFE		8
 #define FS_VPE		9
 #define FS_VCAP		10
-#define MAX_FS		11
+#define FS_GFX3D_8064	11
+#define MAX_FS		12
 
 struct fs_clk_data {
 	const char *name;
@@ -41,6 +42,7 @@ struct fs_clk_data {
 struct fs_driver_data {
 	int bus_port0, bus_port1;
 	struct fs_clk_data *clks;
+	unsigned long reset_delay_us;
 };
 
 #define FS_GENERIC(_drv_name, _id, _name, _dev_id, _data) \
