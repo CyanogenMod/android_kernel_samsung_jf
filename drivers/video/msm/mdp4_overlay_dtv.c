@@ -661,6 +661,7 @@ int mdp4_dtv_on(struct platform_device *pdev)
 		return -EINVAL;
 
 	vctrl->dev = mfd->fbi->dev;
+	vctrl->vsync_irq_enabled = 0;
 
 	mdp_footswitch_ctrl(TRUE);
 	/* Mdp clock enable */
