@@ -787,7 +787,7 @@ static int __cpuinit pmu_cpu_notify(struct notifier_block *b,
 			 */
 			if (cpu_pmu &&
 				cpu_pmu->plat_device->dev.platform_data) {
-				irq = platform_get_irq(cpu_pmu->plat_device, 1);
+				irq = platform_get_irq(cpu_pmu->plat_device, 0);
 				smp_call_function_single((int)hcpu,
 						disable_irq_callback, &irq, 1);
 			}
@@ -800,7 +800,7 @@ static int __cpuinit pmu_cpu_notify(struct notifier_block *b,
 			 */
 			if (cpu_pmu &&
 				cpu_pmu->plat_device->dev.platform_data) {
-				irq = platform_get_irq(cpu_pmu->plat_device, 1);
+				irq = platform_get_irq(cpu_pmu->plat_device, 0);
 				smp_call_function_single((int)hcpu,
 						enable_irq_callback, &irq, 1);
 			}
