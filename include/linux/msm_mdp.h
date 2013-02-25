@@ -562,7 +562,7 @@ struct mdp_mixer_info {
 	int z_order;
 };
 
-#define MAX_PIPE_PER_MIXER 5 //ss fix 4-> 5.  this value should be (MDP4_MIXER_STAGE_MAX-MDP4_MIXER_STAGE_BASE)
+#define MAX_PIPE_PER_MIXER  5
 
 struct msmfb_mixer_info_req {
 	int mixer_num;
