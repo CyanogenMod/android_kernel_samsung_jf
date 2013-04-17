@@ -1788,6 +1788,8 @@ static struct gpiomux_setting mdm2ap_status_gpio_run_cfg = {
 static struct mdm_platform_data mdm_platform_data = {
 	.mdm_version = "3.0",
 	.ramdump_delay_ms = 2000,
+	  /* delay between two PS_HOLDs */
+	.ps_hold_delay_ms = 500,
 	.early_power_on = 1,
 	.sfr_query = 1,
 	.vddmin_resource = &mdm_vddmin_rscs,
