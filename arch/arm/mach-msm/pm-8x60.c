@@ -11,6 +11,7 @@
  *
  */
 
+#include <linux/dma-mapping.h>
 #include <linux/debugfs.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -1304,6 +1305,7 @@ static int __init msm_pm_setup_saved_state(void)
 	pmd_t *pmd;
 	unsigned long pmdval;
 	unsigned long exit_phys;
+	dma_addr_t temp_phys;
 
 	/* Page table for cores to come back up safely. */
 	pc_pgd = pgd_alloc(&init_mm);
@@ -1319,20 +1321,21 @@ static int __init msm_pm_setup_saved_state(void)
 	pmd[0] = __pmd(pmdval);
 	pmd[1] = __pmd(pmdval + (1 << (PGDIR_SHIFT - 1)));
 
-	msm_saved_state_phys =
-		allocate_contiguous_ebi_nomap(CPU_SAVED_STATE_SIZE *
-					      num_possible_cpus(), 4);
-	if (!msm_saved_state_phys) {
-		pgd_free(&init_mm, pc_pgd);
+	msm_saved_state = dma_zalloc_coherent(NULL, CPU_SAVED_STATE_SIZE *
+						num_possible_cpus(),
+						&temp_phys, 0);
+
+	if (!msm_saved_state)
 		return -ENOMEM;
-	}
-	msm_saved_state = ioremap_nocache(msm_saved_state_phys,
-					  CPU_SAVED_STATE_SIZE *
-					  num_possible_cpus());
-	if (!msm_saved_state) {
-		pgd_free(&init_mm, pc_pgd);
-		return -ENOMEM;
-	}
+
+	/*
+	 * Explicitly cast here since msm_saved_state_phys is defined
+	 * in assembly and we want to avoid any kind of truncation
+	 * or endian problems.
+	 */
+	msm_saved_state_phys = (unsigned long)temp_phys;
+
+
 	/* It is remotely possible that the code in msm_pm_collapse_exit()
 	 * which turns on the MMU with this mapping is in the
 	 * next even-numbered megabyte beyond the
@@ -1347,7 +1350,7 @@ static int __init msm_pm_setup_saved_state(void)
 
 	return 0;
 }
-core_initcall(msm_pm_setup_saved_state);
+arch_initcall(msm_pm_setup_saved_state);
 
 static const struct platform_suspend_ops msm_pm_ops = {
 	.prepare_late = msm_pm_prepare_late,
