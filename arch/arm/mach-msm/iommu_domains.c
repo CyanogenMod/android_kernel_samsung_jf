@@ -17,6 +17,11 @@
 #include <linux/platform_device.h>
 #include <linux/rbtree.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_device.h>
+#include <linux/idr.h>
 #include <asm/sizes.h>
 #include <asm/page.h>
 #include <mach/iommu.h>
@@ -32,9 +37,14 @@ struct msm_iova_data {
 	int domain_num;
 };
 
+struct msm_iommu_data_entry {
+	struct list_head list;
+	void *data;
+};
+
 static struct rb_root domain_root;
 DEFINE_MUTEX(domain_mutex);
-static atomic_t domain_nums = ATOMIC_INIT(-1);
+static DEFINE_IDA(domain_nums);
 
 int msm_use_iommu()
 {
@@ -263,6 +273,27 @@ static int add_domain(struct msm_iova_data *node)
 	return 0;
 }
 
+static int remove_domain(struct iommu_domain *domain)
+{
+	struct rb_root *root = &domain_root;
+	struct rb_node *n;
+	struct msm_iova_data *node;
+	int ret = -EINVAL;
+
+	mutex_lock(&domain_mutex);
+
+	for (n = rb_first(root); n; n = rb_next(n)) {
+		node = rb_entry(n, struct msm_iova_data, node);
+		if (node->domain == domain) {
+			rb_erase(&node->node, &domain_root);
+			ret = 0;
+			break;
+		}
+	}
+	mutex_unlock(&domain_mutex);
+	return ret;
+}
+
 struct iommu_domain *msm_get_iommu_domain(int domain_num)
 {
 	struct msm_iova_data *data;
@@ -273,6 +304,27 @@ struct iommu_domain *msm_get_iommu_domain(int domain_num)
 		return data->domain;
 	else
 		return NULL;
+}
+
+static struct msm_iova_data *msm_domain_to_iova_data(struct iommu_domain
+						     const *domain)
+{
+	struct rb_root *root = &domain_root;
+	struct rb_node *n;
+	struct msm_iova_data *node;
+	struct msm_iova_data *iova_data = ERR_PTR(-EINVAL);
+
+	mutex_lock(&domain_mutex);
+
+	for (n = rb_first(root); n; n = rb_next(n)) {
+		node = rb_entry(n, struct msm_iova_data, node);
+		if (node->domain == domain) {
+			iova_data = node;
+			break;
+		}
+	}
+	mutex_unlock(&domain_mutex);
+	return iova_data;
 }
 
 int msm_allocate_iova_address(unsigned int iommu_domain,
@@ -360,11 +412,11 @@ int msm_register_domain(struct msm_iova_layout *layout)
 	if (!data)
 		return -ENOMEM;
 
-	pools = kmalloc(sizeof(struct mem_pool) * layout->npartitions,
+	pools = kzalloc(sizeof(struct mem_pool) * layout->npartitions,
 			GFP_KERNEL);
 
 	if (!pools)
-		goto out;
+		goto free_data;
 
 	for (i = 0; i < layout->npartitions; i++) {
 		if (layout->partitions[i].size == 0)
@@ -398,22 +450,230 @@ int msm_register_domain(struct msm_iova_layout *layout)
 
 	data->pools = pools;
 	data->npools = layout->npartitions;
-	data->domain_num = atomic_inc_return(&domain_nums);
-	data->domain = iommu_domain_alloc(&platform_bus_type,
-					  layout->domain_flags);
+	data->domain_num = ida_simple_get(&domain_nums, 0, 0, GFP_KERNEL);
+	if (data->domain_num < 0)
+		goto free_pools;
+
+	data->domain = iommu_domain_alloc(bus, layout->domain_flags);
+	if (!data->domain)
+		goto free_domain_num;
+
+	msm_iommu_set_client_name(data->domain, layout->client_name);
 
 	add_domain(data);
 
 	return data->domain_num;
 
-out:
+free_domain_num:
+	ida_simple_remove(&domain_nums, data->domain_num);
+
+free_pools:
+	for (i = 0; i < layout->npartitions; i++) {
+		if (pools[i].gpool)
+			gen_pool_destroy(pools[i].gpool);
+	}
+	kfree(pools);
+free_data:
 	kfree(data);
 
 	return -EINVAL;
 }
 EXPORT_SYMBOL(msm_register_domain);
 
-static int __init iommu_domain_probe(struct platform_device *pdev)
+int msm_unregister_domain(struct iommu_domain *domain)
+{
+	unsigned int i;
+	struct msm_iova_data *data = msm_domain_to_iova_data(domain);
+
+	if (IS_ERR_OR_NULL(data)) {
+		pr_err("%s: Could not find iova_data\n", __func__);
+		return -EINVAL;
+	}
+
+	if (remove_domain(data->domain)) {
+		pr_err("%s: Domain not found. Failed to remove domain\n",
+			__func__);
+	}
+
+	iommu_domain_free(domain);
+
+	ida_simple_remove(&domain_nums, data->domain_num);
+
+	for (i = 0; i < data->npools; ++i)
+		gen_pool_destroy(data->pools[i].gpool);
+
+	kfree(data->pools);
+	kfree(data);
+	return 0;
+}
+EXPORT_SYMBOL(msm_unregister_domain);
+
+static int find_and_add_contexts(struct iommu_group *group,
+				 const struct device_node *node,
+				 unsigned int num_contexts)
+{
+	unsigned int i;
+	struct device *ctx;
+	const char *name;
+	struct device_node *ctx_node;
+	int ret_val = 0;
+
+	for (i = 0; i < num_contexts; ++i) {
+		ctx_node = of_parse_phandle((struct device_node *) node,
+					    "qcom,iommu-contexts", i);
+		if (!ctx_node) {
+			pr_err("Unable to parse phandle #%u\n", i);
+			ret_val = -EINVAL;
+			goto out;
+		}
+		if (of_property_read_string(ctx_node, "label", &name)) {
+			pr_err("Could not find label property\n");
+			ret_val = -EINVAL;
+			goto out;
+		}
+		ctx = msm_iommu_get_ctx(name);
+		if (!ctx) {
+			pr_err("Unable to find context %s\n", name);
+			ret_val = -EINVAL;
+			goto out;
+		}
+		iommu_group_add_device(group, ctx);
+	}
+out:
+	return ret_val;
+}
+
+static int create_and_add_domain(struct iommu_group *group,
+				 struct device_node const *node,
+				 char const *name)
+{
+	unsigned int ret_val = 0;
+	unsigned int i, j;
+	struct msm_iova_layout l;
+	struct msm_iova_partition *part = 0;
+	struct iommu_domain *domain = 0;
+	unsigned int *addr_array;
+	unsigned int array_size;
+	int domain_no;
+	int secure_domain;
+	int l2_redirect;
+
+	if (of_get_property(node, "qcom,virtual-addr-pool", &array_size)) {
+		l.npartitions = array_size / sizeof(unsigned int) / 2;
+		part = kmalloc(
+			sizeof(struct msm_iova_partition) * l.npartitions,
+			       GFP_KERNEL);
+		if (!part) {
+			pr_err("%s: could not allocate space for partition",
+				__func__);
+			ret_val = -ENOMEM;
+			goto out;
+		}
+		addr_array = kmalloc(array_size, GFP_KERNEL);
+		if (!addr_array) {
+			pr_err("%s: could not allocate space for partition",
+				__func__);
+			ret_val = -ENOMEM;
+			goto free_mem;
+		}
+
+		ret_val = of_property_read_u32_array(node,
+					"qcom,virtual-addr-pool",
+					addr_array,
+					array_size/sizeof(unsigned int));
+		if (ret_val) {
+			ret_val = -EINVAL;
+			goto free_mem;
+		}
+
+		for (i = 0, j = 0; j < l.npartitions * 2; i++, j += 2) {
+			part[i].start = addr_array[j];
+			part[i].size = addr_array[j+1];
+		}
+	} else {
+		l.npartitions = 1;
+		part = kmalloc(
+			sizeof(struct msm_iova_partition) * l.npartitions,
+			       GFP_KERNEL);
+		if (!part) {
+			pr_err("%s: could not allocate space for partition",
+				__func__);
+			ret_val = -ENOMEM;
+			goto out;
+		}
+		part[0].start = 0x0;
+		part[0].size = 0xFFFFFFFF;
+	}
+
+	l.client_name = name;
+	l.partitions = part;
+
+	secure_domain = of_property_read_bool(node, "qcom,secure-domain");
+	l.is_secure = (secure_domain) ? MSM_IOMMU_DOMAIN_SECURE : 0;
+
+	l2_redirect = of_property_read_bool(node, "qcom,l2-redirect");
+	l.domain_flags = (l2_redirect) ? MSM_IOMMU_DOMAIN_PT_CACHEABLE : 0;
+
+	domain_no = msm_register_domain(&l);
+	if (domain_no >= 0)
+		domain = msm_get_iommu_domain(domain_no);
+	else
+		ret_val = domain_no;
+
+	iommu_group_set_iommudata(group, domain, NULL);
+
+free_mem:
+	kfree(part);
+out:
+	return ret_val;
+}
+
+static int iommu_domain_parse_dt(const struct device_node *dt_node)
+{
+	struct device_node *node;
+	int sz;
+	unsigned int num_contexts;
+	int ret_val = 0;
+	struct iommu_group *group = 0;
+	const char *name;
+
+	for_each_child_of_node(dt_node, node) {
+		group = iommu_group_alloc();
+		if (IS_ERR(group)) {
+			ret_val = PTR_ERR(group);
+			goto out;
+		}
+		if (of_property_read_string(node, "label", &name)) {
+			ret_val = -EINVAL;
+			goto free_group;
+		}
+		iommu_group_set_name(group, name);
+
+		if (!of_get_property(node, "qcom,iommu-contexts", &sz)) {
+			pr_err("Could not find qcom,iommu-contexts property\n");
+			ret_val = -EINVAL;
+			goto free_group;
+		}
+		num_contexts = sz / sizeof(unsigned int);
+
+		ret_val = find_and_add_contexts(group, node, num_contexts);
+		if (ret_val) {
+			ret_val = -EINVAL;
+			goto free_group;
+		}
+		ret_val = create_and_add_domain(group, node, name);
+		if (ret_val) {
+			ret_val = -EINVAL;
+			goto free_group;
+		}
+	}
+free_group:
+	/* No iommu_group_free() function */
+out:
+	return ret_val;
+}
+
+static int iommu_domain_probe(struct platform_device *pdev)
 {
 	struct iommu_domains_pdata *p  = pdev->dev.platform_data;
 	int i, j;
