@@ -1,0 +1,9 @@
+#
+# IR_LED
+#
+config IRDA_MC96
+	bool "IRDA driver"
+	depends on I2C
+	default n
+	help
+		Say Y here to enable the driver for IRDA drvier.

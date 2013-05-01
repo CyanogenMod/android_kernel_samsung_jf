@@ -1,0 +1,23 @@
+checkpower is a loadable kernel module to get notifications of early
+suspend and late resume events.
+
+TO BUILD THE MODULE
+    make TARGET=your_target_platform
+    [*] your_target_platform could be d2att or d2vzw for example.
+    
+TO CLEAN THE MODULE
+    make clean TARGET=your_target_platform 
+    [*] your_target_platform could be d2att or d2vzw for example.
+
+TO INSTALL THE MODULE
+    adb push ./checkpower.ko /data/local/tmp
+    adb shell
+    insmod /data/local/tmp/checkpower.ko
+
+TROUBLESHOOTING
+    1. Building Error
+        Error: "Kernel configuration is invalid"
+        Solution:
+            cp /path/to/somedefconfig .config ; yes "" | make oldconfig
+            make prepare && make scripts
+            [*] somedefconfig could be m2_att_eng_defconfig for example.

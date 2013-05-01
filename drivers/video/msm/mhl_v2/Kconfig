@@ -1,0 +1,51 @@
+# mhl drivers configuration
+#
+
+menu "Mhl(sii8240) device support"
+
+config VIDEO_MHL_V2
+	bool "Samsung Mobile HD Link Interface"
+	depends on MSM_VIDC && ARCH_MSM
+	default n
+	---help---
+	Support for MHL version2 chipset driver. This is a new version of
+	mhl which has the required functionality to support mhl 2.0 spec
+	required.
+	Say Y here if this support mhl_version2
+
+config SAMSUNG_MHL_8240
+	bool "Enable Sii8240 MHL Chip Driver"
+	default n
+	---help---
+	support Sii8240 MHL Chip Driver. This is a new version of
+	MHL2.0 which has the required functionality to support the features
+	required for apq8064 and other chipset.
+	Say Y here if this is MHL_8240 specific function.
+
+config SAMSUNG_USE_11PIN_CONNECTOR
+	bool "11pin micro-usb connector support"
+	default n
+	---help---
+	use 11pin micro usb connector instead of 5pin
+	mhl version 2 uses 11pin instead of 5pin.
+	this is only for samsung device.
+	Say Y here if device is requred only 11pin dongle.
+
+config SAMSUNG_SMARTDOCK
+	bool "smartdock support"
+	default n
+	---help---
+	If device supports smartdock, this feature should be Y here.
+	Smartdock which has the required functionality to support
+	the features required for MUIC driver and other driver.
+	Smartdock is working on same as mhl attch sequence.
+
+config MHL_NEW_CBUS_MSC_CMD
+	bool "Read DCAP for distinguish TA and USB"
+	default n
+	---help---
+	If device support mhl version2, this feature should be Y here.
+	To distinguish TA and USB charger, mhl_version2 support new msc cmd
+	different from mhl_v1.
+
+endmenu
