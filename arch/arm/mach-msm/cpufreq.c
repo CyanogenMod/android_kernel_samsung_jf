@@ -51,7 +51,11 @@ static DEFINE_PER_CPU(struct cpu_freq, cpu_freq_info);
 
 
 #ifdef CONFIG_SEC_DVFS
+#ifdef CONFIG_SEC_DVFS_BOOSTER
 static unsigned int upper_limit_freq = 1566000;
+#else
+static unsigned int upper_limit_freq = 1890000;
+#endif
 static unsigned int lower_limit_freq;
 static unsigned int cpuinfo_max_freq;
 static unsigned int cpuinfo_min_freq;

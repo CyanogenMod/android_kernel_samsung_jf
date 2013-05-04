@@ -706,13 +706,14 @@ static int fwu_do_reflash(void)
 {
 	int retval;
 
+#ifdef TSP_BOOSTER
 	retval = set_freq_limit(DVFS_TOUCH_ID,
 				MIN_TOUCH_LIMIT);
 	if (retval < 0)
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 			"%s: dvfs failed at fw update.\n",
 			__func__);
-
+#endif
 	retval = fwu_enter_flash_prog();
 	if (retval < 0)
 		return retval;
@@ -1056,7 +1057,9 @@ done:
 	if (fw_entry)
 		release_firmware(fw_entry);
 out:
+#ifdef TSP_BOOSTER
 	retval = set_freq_limit(DVFS_TOUCH_ID, -1);
+#endif
 	if (retval < 0)
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 			"%s: in fw update, failed booster stop.\n",
