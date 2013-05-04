@@ -88,7 +88,7 @@ static int rmnet_usb_suspend(struct usb_interface *iface, pm_message_t message)
 	struct usbnet		*unet;
 	struct rmnet_ctrl_dev	*dev;
 
-	pr_info("%s", __func__);
+	pr_debug("%s", __func__);
 
 	unet = usb_get_intfdata(iface);
 
@@ -111,14 +111,14 @@ static int rmnet_usb_resume(struct usb_interface *iface)
 	struct usbnet		*unet;
 	struct rmnet_ctrl_dev	*dev;
 
-	pr_info("%s", __func__);
+	pr_debug("%s", __func__);
 	unet = usb_get_intfdata(iface);
 
 	dev = (struct rmnet_ctrl_dev *)unet->data[1];
 
 	usbnet_resume(iface);
 	if (work_busy(&dev->get_encap_work)) {
-		pr_info("%s ret", __func__);
+		pr_debug("%s ret", __func__);
 		return 0;
 	}
 	retval = rmnet_usb_ctrl_start_rx(dev);

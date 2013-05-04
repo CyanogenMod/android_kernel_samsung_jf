@@ -192,7 +192,7 @@ static void notification_available_cb(struct urb *urb)
 	case 0:
 	/*if non zero lenght of data received while unlink*/
 	case -ENOENT:
-		pr_info("[NACB:%d]<", iface_num);
+		pr_debug("[NACB:%d]<", iface_num);
 		/*success*/
 		break;
 
@@ -336,7 +336,7 @@ resubmit_int_urb:
 			dev_err(dev->devicep, "%s: Error re-submitting Int URB %d\n",
 					__func__, status);
 		}
-		pr_info("[CHKRA:%d]>", iface_num);
+		pr_debug("[CHKRA:%d]>", iface_num);
 	}
 }
 
@@ -354,7 +354,7 @@ int rmnet_usb_ctrl_start_rx(struct rmnet_ctrl_dev *dev)
 		dev_err(dev->devicep, "%s Intr submit %d\n", __func__,
 				retval);
 	} else
-		pr_info("[CHKRA:%d]>", iface_num);
+		pr_debug("[CHKRA:%d]>", iface_num);
 
 	return retval;
 }
