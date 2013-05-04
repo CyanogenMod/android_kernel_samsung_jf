@@ -52,7 +52,7 @@
 #include "timer.h"
 #include "pm-boot.h"
 #include <mach/event_timer.h>
-#if CONFIG_SEC_DEBUG
+#ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
 #include <linux/regulator/consumer.h>

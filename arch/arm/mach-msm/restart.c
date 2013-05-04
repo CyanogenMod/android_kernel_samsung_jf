@@ -379,7 +379,7 @@ static int __init msm_pmic_restart_init(void)
 
 #ifdef CONFIG_MACH_JF_VZW
 	return 0;
-#else
+#elif defined(CONFIG_SEC_DEBUG)
 	if (kernel_sec_get_debug_level() != KERNEL_SEC_DEBUG_LEVEL_LOW)
 		return 0;
 #endif
