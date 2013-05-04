@@ -738,7 +738,6 @@ static int fwu_do_reflash(void)
 			"%s: dvfs failed at fw update.\n",
 			__func__);
 #endif
-
 	retval = fwu_enter_flash_prog();
 	if (retval < 0)
 		return retval;
@@ -1114,6 +1113,7 @@ done:
 out:
 #ifdef TSP_BOOSTER
 	retval = set_freq_limit(DVFS_TOUCH_ID, -1);
+#endif
 	if (retval < 0)
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 			"%s: in fw update, failed booster stop.\n",
