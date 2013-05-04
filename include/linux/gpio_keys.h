@@ -1,8 +1,8 @@
 #ifndef _GPIO_KEYS_H
 #define _GPIO_KEYS_H
 
-#ifdef CONFIG_SEC_DVFS
 /* DVFS feature : HOME_KEY BOOSTER */
+#ifdef CONFIG_SEC_DVFS_BOOSTER
 #define KEY_BOOSTER
 #endif
 
