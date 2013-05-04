@@ -267,7 +267,7 @@ enum {
 #define MXT_REVISION_I	1	/* Support hovering */
 
 /************** Feature + **************/
-#ifdef CONFIG_SEC_DVFS
+#ifdef CONFIG_SEC_DVFS_BOOSTER
 #define TSP_BOOSTER				1
 #endif
 #define TSP_SEC_FACTORY			1

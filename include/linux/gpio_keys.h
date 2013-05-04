@@ -5,7 +5,6 @@
 /* DVFS feature : HOME_KEY BOOSTER */
 #define KEY_BOOSTER
 #endif
-
 #ifdef KEY_BOOSTER
 #include <linux/cpufreq.h>
 #define KEY_BOOSTER_OFF_TIME	300

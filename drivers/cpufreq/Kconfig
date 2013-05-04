@@ -211,6 +211,11 @@ config SEC_DVFS
 	default n
 	depends on CPU_FREQ
 
+config SEC_DVFS_BOOSTER
+    bool "DVFS input booster"
+    default y
+    depends on SEC_DVFS
+
 menu "x86 CPU frequency scaling drivers"
 depends on X86
 source "drivers/cpufreq/Kconfig.x86"
