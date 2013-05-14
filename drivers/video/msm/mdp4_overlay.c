@@ -3037,8 +3037,6 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	int yuvcount =0;
 	int src_h_total = 0;
 	int src_w_total = 0;
-	static u64 minimum_ab=0;
-	static u64 minimum_ib=0;
  
 	u32 cnt = 0;
 	int ret = -EINVAL;
@@ -3153,44 +3151,6 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	}
 #endif
 	
-	if(minimum_ab == 0 ||minimum_ib == 0){
-		minimum_ab = (1920*1080*4*60)>>16;
-		minimum_ab = (minimum_ab*MDP4_BW_AB_DEFAULT_FACTOR/100)<<16;
-		minimum_ib = (1920*1080*4*60)>>16;
-		minimum_ib = (minimum_ib*MDP4_BW_IB_DEFAULT_FACTOR/100)<<16;
-	}
-
-	/*
-	 * For small video + small rgb layers above them
-	 * offset some bw
-	 */
-	if((cnt>=3)&&(ab_quota_total<minimum_ab)&&yuvcount==1){
-		if((verysmallarea+yuvcount)==(cnt-1)){
-			ab_quota_total +=MDP_BUS_SCALE_AB_STEP;
-			ib_quota_total +=MDP_BUS_SCALE_AB_STEP;
-		}
-		else{
-			ab_quota_total= minimum_ab;
-			ib_quota_total= minimum_ib;
-		}
-	}
-
-	/*
-	 * For Small RGB layers without video layer offset some
-	 * bandwidth to prevent underruns
-	 */
-	if((cnt>=2) && (src_h_total * src_w_total < 1920*1080) 
-			&& (ab_quota_total<minimum_ab) && yuvcount == 0) {
-		u64 bw_extra =  (minimum_ab - ab_quota_total) >>  1 ;
-		int fact = ((int) (bw_extra>>16))/((int)(ab_quota_total>>16));
-
-		/* Do not increase bw for layers which require more than 3 folds */
-		if(fact <= 3) {
-			ab_quota_total += bw_extra;
-			ib_quota_total += bw_extra;
-		}
-	}
-
 	perf_req->mdp_ab_bw = roundup(ab_quota_total, MDP_BUS_SCALE_AB_STEP);
 	perf_req->mdp_ib_bw = roundup(ib_quota_total, MDP_BUS_SCALE_AB_STEP);
 
