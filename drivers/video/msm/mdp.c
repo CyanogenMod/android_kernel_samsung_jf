@@ -2348,6 +2348,9 @@ void mdp4_hw_init(void)
 }
 
 #endif
+
+static int mdp_bus_scale_restore_request(void);
+
 static int mdp_on(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -2360,6 +2363,7 @@ static int mdp_on(struct platform_device *pdev)
 	if (mdp_rev >= MDP_REV_40) {
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 		mdp_clk_ctrl(1);
+		mdp_bus_scale_restore_request();
 		mdp4_hw_init();
 		outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
 		if (mfd->panel.type == MIPI_CMD_PANEL) {

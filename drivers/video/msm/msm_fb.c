@@ -1089,7 +1089,7 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 	}
 	msm_fb_pan_idle(mfd);
 	if (mfd->op_enable == 0) {
-		if (blank_mode == FB_BLANK_UNBLANK)
+		if (blank_mode == FB_BLANK_UNBLANK) {
 			mfd->suspend.panel_power_on = TRUE;
 			/* if unblank is called when system is in suspend,
 			wait for the system to resume */

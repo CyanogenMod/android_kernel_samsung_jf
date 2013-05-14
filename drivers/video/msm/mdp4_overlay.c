@@ -3155,9 +3155,9 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	
 	if(minimum_ab == 0 ||minimum_ib == 0){
 		minimum_ab = (1920*1080*4*60)>>16;
-		minimum_ab = (minimum_ab*MDP4_BW_AB_FACTOR/100)<<16;
+		minimum_ab = (minimum_ab*MDP4_BW_AB_DEFAULT_FACTOR/100)<<16;
 		minimum_ib = (1920*1080*4*60)>>16;
-		minimum_ib = (minimum_ib*MDP4_BW_IB_FACTOR/100)<<16;
+		minimum_ib = (minimum_ib*MDP4_BW_IB_DEFAULT_FACTOR/100)<<16;
 	}
 
 	/*
@@ -3527,7 +3527,7 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		mdp4_calc_pipe_mdp_clk(mfd, pipe) == 0 &&
 		pipe->req_clk > mdp_max_clk)	{
 		if (req->id == MSMFB_NEW_REQUEST)
-			mdp4_overlay_pipe_free(pipe);
+			mdp4_overlay_pipe_free(pipe, 0);
 		mutex_unlock(&mfd->dma->ov_mutex);
 		return -EINVAL;
 	}
