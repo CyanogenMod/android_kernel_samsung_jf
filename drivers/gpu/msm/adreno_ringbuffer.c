@@ -583,6 +583,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		total_sizedwords += 7;
 
 	total_sizedwords += 2; /* scratchpad ts for fault tolerance */
+
 	if (context && context->flags & CTXT_FLAGS_PER_CONTEXT_TS &&
 			!(flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE)) {
 		total_sizedwords += 3; /* sop timestamp */
