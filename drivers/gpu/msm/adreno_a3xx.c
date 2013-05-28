@@ -2956,11 +2956,14 @@ static void a305_create_on_resume_ib(struct adreno_device *adreno_dev)
 	   ((cmds - (unsigned int *)adreno_dev->on_resume_cmd.hostptr) << 2);
 }
 
-static void a3xx_rb_init(struct adreno_device *adreno_dev,
+static int a3xx_rb_init(struct adreno_device *adreno_dev,
 			 struct adreno_ringbuffer *rb)
 {
 	unsigned int *cmds, cmds_gpu;
 	cmds = adreno_ringbuffer_allocspace(rb, NULL, 18);
+	if (cmds == NULL)
+		return -ENOMEM;
+
 	cmds_gpu = rb->buffer_desc.gpuaddr + sizeof(uint) * (rb->wptr - 18);
 
 	GSL_RB_WRITE(cmds, cmds_gpu, cp_type3_packet(CP_ME_INIT, 17));
@@ -2984,6 +2987,8 @@ static void a3xx_rb_init(struct adreno_device *adreno_dev,
 	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
 
 	adreno_ringbuffer_submit(rb);
+
+	return 0;
 }
 
 static void a3xx_err_callback(struct adreno_device *adreno_dev, int bit)
