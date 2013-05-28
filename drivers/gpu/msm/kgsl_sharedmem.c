@@ -568,7 +568,8 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	page_size = SZ_4K;
 #endif
 	/* update align flags for what we actually use */
-	kgsl_memdesc_set_align(memdesc, ilog2(page_size));
+	if (page_size != PAGE_SIZE)
+		kgsl_memdesc_set_align(memdesc, ilog2(page_size));
 
 	/*
 	 * There needs to be enough room in the sg structure to be able to
