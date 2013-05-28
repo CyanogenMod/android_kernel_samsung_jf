@@ -3016,7 +3016,6 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	if (result)
 		goto error_pwrctrl_close;
 
-	kgsl_cffdump_open(device->id);
 
 	setup_timer(&device->idle_timer, kgsl_timer, (unsigned long) device);
 	status = kgsl_create_device_workqueue(device);
@@ -3136,7 +3135,6 @@ void kgsl_device_platform_remove(struct kgsl_device *device)
 {
 	kgsl_device_snapshot_close(device);
 
-	kgsl_cffdump_close(device->id);
 	kgsl_pwrctrl_uninit_sysfs(device);
 
 	pm_qos_remove_request(&device->pm_qos_req_dma);
