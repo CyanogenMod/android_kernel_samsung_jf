@@ -1196,7 +1196,7 @@ static int msm_sec_sa_ep_get(struct snd_kcontrol *kcontrol,
 {
 	struct audio_client *ac;
 	mutex_lock(&routing_lock);
-	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX]);
+	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX].strm_id);
 	pr_info("%s: sa_ep  ret=%d score=%d", __func__, q6asm_get_sa_ep(ac), score);
 	ucontrol->value.integer.value[0] = score;
 	mutex_unlock(&routing_lock);
@@ -1217,7 +1217,7 @@ static int msm_sec_vsp_put(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	struct audio_client *ac;
 	mutex_lock(&routing_lock);
-	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX]);
+	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX].strm_id);
 	ret = q6asm_set_vsp(ac,(int*)ucontrol->value.integer.value);
 	mutex_unlock(&routing_lock);	
 	return ret;
@@ -1229,7 +1229,7 @@ static int msm_sec_sa_put(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	struct audio_client *ac;
 	mutex_lock(&routing_lock);
-	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX]);
+	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX].strm_id);
 	ret = q6asm_set_sa(ac,(int*)ucontrol->value.integer.value);
 	mutex_unlock(&routing_lock);	
 	return ret;
@@ -1241,7 +1241,7 @@ static int msm_sec_dha_put(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	struct audio_client *ac;
 	mutex_lock(&routing_lock);
-	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX]);
+	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX].strm_id);
 	ret = q6asm_set_dha(ac,(int*)ucontrol->value.integer.value);
 	mutex_unlock(&routing_lock);	
 	return ret;		
@@ -1253,7 +1253,7 @@ static int msm_sec_lrsm_put(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	struct audio_client *ac;
 	mutex_lock(&routing_lock);
-	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX]);
+	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX].strm_id);
 	ret = q6asm_set_lrsm(ac,(int*)ucontrol->value.integer.value);
 	mutex_unlock(&routing_lock);	
 	return ret;		
@@ -1265,7 +1265,7 @@ static int msm_sec_sa_ep_put(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	struct audio_client *ac;
 	mutex_lock(&routing_lock);
-	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX]);
+	ac = q6asm_get_audio_client(fe_dai_map[3][SESSION_TYPE_RX].strm_id);
 	ret = q6asm_set_sa_ep(ac,(int*)ucontrol->value.integer.value);
 	mutex_unlock(&routing_lock);	
 	return ret;	
