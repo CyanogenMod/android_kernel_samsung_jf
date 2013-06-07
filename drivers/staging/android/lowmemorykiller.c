@@ -50,7 +50,7 @@
 #include <linux/freezer.h>
 #include <asm/atomic.h>
 
-#define MIN_FREESWAP_PAGES 2048 /* 8MB */
+#define MIN_FREESWAP_PAGES 8192 /* 32MB */
 #define MIN_RECLAIM_PAGES 512  /* 2MB */
 #define MIN_CSWAP_INTERVAL (10*HZ)  /* 10 senconds */
 
@@ -393,6 +393,12 @@ inline void need_soft_reclaim(void)
 inline void cancel_soft_reclaim(void)
 {
 	atomic_set(&s_reclaim.need_to_reclaim, 0);
+}
+
+int get_soft_reclaim_status(void)
+{
+	int kcompcache_running = atomic_read(&s_reclaim.kcompcached_running);
+	return kcompcache_running;
 }
 
 static int soft_reclaim(void)
