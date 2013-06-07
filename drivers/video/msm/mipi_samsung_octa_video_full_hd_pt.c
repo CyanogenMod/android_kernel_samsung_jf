@@ -119,6 +119,16 @@ static char samsung_lpts_1[] = {
 	0x04,
 };
 
+static char samsung_lpts_2[] = {
+	0xB0,
+	0x02,
+};
+
+static char samsung_lpts_3[] = {
+	0xCB,
+	0x10,
+};
+
 static char samsung_display_contol[] = {
 	0xF2,
 	0x00, 0x06, 0x0A,
@@ -958,6 +968,10 @@ static struct dsi_cmd_desc samsung_on_cmds_revI[] = {
 		sizeof(samsung_lpts_0), samsung_lpts_0},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(samsung_lpts_1), samsung_lpts_1},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(samsung_lpts_2), samsung_lpts_2},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(samsung_lpts_3), samsung_lpts_3},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(samsung_display_contol), samsung_display_contol},
 

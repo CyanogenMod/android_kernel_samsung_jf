@@ -57,14 +57,16 @@
 
 #include <trace/events/vmscan.h>
 
+#ifdef CONFIG_ZRAM_FOR_ANDROID
+#include <linux/swap.h>
+
+#define MAX_SCAN_NO 2048
+#define SOFT_RECLAIM_ONETIME 1024
+#endif
+
 struct cgroup_subsys mem_cgroup_subsys __read_mostly;
 #define MEM_CGROUP_RECLAIM_RETRIES	5
 struct mem_cgroup *root_mem_cgroup __read_mostly;
-
-#ifdef CONFIG_ZRAM_FOR_ANDROID
-#define MAX_SCAN_NO 2048
-#endif
-
 
 #ifdef CONFIG_CGROUP_MEM_RES_CTLR_SWAP
 /* Turned on only when memory cgroup is enabled && really_do_swap_account = 1 */
@@ -1726,6 +1728,10 @@ static int mem_cgroup_soft_reclaim(struct mem_cgroup *root_memcg,
 		}
 		if (!mem_cgroup_reclaimable(victim, false))
 			continue;
+#ifdef CONFIG_ZRAM_FOR_ANDROID
+		if(nr_swap_pages <= SOFT_RECLAIM_ONETIME)
+			break;
+#endif
 		total += mem_cgroup_shrink_node_zone(victim, gfp_mask, false,
 						     zone, &nr_scanned);
 		*total_scanned += nr_scanned;
