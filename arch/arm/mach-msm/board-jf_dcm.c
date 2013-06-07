@@ -1917,6 +1917,46 @@ struct pm8xxx_mpp_config_data mpp4_cfg = {
 
 #define MPP_MCU_NRST PM8921_MPP_PM_TO_SYS(4)
 
+static void clear_ssp_gpio(void)
+{
+	struct pm_gpio ap_mcu_int_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio mcu_ap_int_2_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio mcu_ap_int_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	struct pm_gpio ap_mcu_nrst_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_DN,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+
+	pm8xxx_gpio_config(GPIO_AP_MCU_INT, &ap_mcu_int_cfg);
+	pm8xxx_gpio_config(GPIO_MCU_AP_INT, &mcu_ap_int_cfg);
+	pm8xxx_gpio_config(GPIO_MCU_AP_INT_2, &mcu_ap_int_2_cfg);
+	if (system_rev >= 5)
+		pm8xxx_gpio_config(GPIO_MCU_NRST, &ap_mcu_nrst_cfg);
+	mdelay(1);
+	pr_info("[SSP] %s done\n", __func__);
+}
+
 static int initialize_ssp_gpio(void)
 {
 	int err;
@@ -5535,6 +5575,7 @@ static void __init samsung_jf_init(void)
 	apq8064_init_cam();
 #endif
 #ifdef CONFIG_SENSORS_SSP
+	clear_ssp_gpio();
 	sensor_power_on_vdd(SNS_PWR_ON, SNS_PWR_ON);
 	initialize_ssp_gpio();
 #endif
