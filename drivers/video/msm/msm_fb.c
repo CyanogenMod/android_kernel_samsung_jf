@@ -138,7 +138,7 @@ struct dentry *msm_fb_debugfs_file[MSM_FB_MAX_DBGFS];
 static int bl_scale, bl_min_lvl;
 
 DEFINE_MUTEX(msm_fb_notify_update_sem);
-static DEFINE_MUTEX(power_state_chagne);
+DEFINE_MUTEX(power_state_chagne);
 
 void msmfb_no_update_notify_timer_cb(unsigned long data)
 {
@@ -1131,22 +1131,13 @@ static int msm_fb_mmap(struct fb_info *info, struct vm_area_struct * vma)
 	if (!start)
 		return -EINVAL;
 
+	if ((vma->vm_end <= vma->vm_start) || (off >= len) ||
+		((vma->vm_end - vma->vm_start) > (len - off)))
+		return -EINVAL;
 	msm_fb_pan_idle(mfd);
-	if (off >= len) {
-		/* memory mapped io */
-		off -= len;
-		if (info->var.accel_flags) {
-			mutex_unlock(&info->lock);
-			return -EINVAL;
-		}
-		start = info->fix.mmio_start;
-		len = PAGE_ALIGN((start & ~PAGE_MASK) + info->fix.mmio_len);
-	}
 
 	/* Set VM flags. */
 	start &= PAGE_MASK;
-	if ((vma->vm_end - vma->vm_start + off) > len)
-		return -EINVAL;
 	off += start;
 	vma->vm_pgoff = off >> PAGE_SHIFT;
 	/* This is an IO map - tell maydump to skip this VMA */
@@ -1400,7 +1391,9 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 
 	var->xres = panel_info->xres;
 	var->yres = panel_info->yres;
-#ifdef	CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT
+	
+#if defined	(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT) \
+	|| defined (CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
 	var->height = panel_info->height; /* height of picture in mm*/
 	var->width = panel_info->width; /* width of picture in mm*/
 #else

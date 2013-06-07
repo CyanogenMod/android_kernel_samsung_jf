@@ -388,6 +388,7 @@ struct ssp_data {
 	int fw_dl_state;
 #ifdef CONFIG_SENSORS_SSP_SHTC1
 	char *comp_engine_ver;
+	char *comp_engine_ver2;
 	struct mutex cp_temp_adc_lock;
 #endif
 };
