@@ -199,6 +199,33 @@ static ssize_t engine_version_store(struct device *dev,
 	return size;
 }
 
+static ssize_t engine_version2_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct ssp_data *data = dev_get_drvdata(dev);
+
+	pr_info("[SSP] %s - engine_ver2 = %s_%s\n",
+		__func__, MODEL_NAME, data->comp_engine_ver2);
+
+	return sprintf(buf, "%s_%s\n",
+		MODEL_NAME, data->comp_engine_ver2);
+}
+
+static ssize_t engine_version2_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct ssp_data *data = dev_get_drvdata(dev);
+
+	kfree(data->comp_engine_ver2);
+	data->comp_engine_ver2 =
+		    kzalloc(((strlen(buf)+1) * sizeof(char)), GFP_KERNEL);
+	strncpy(data->comp_engine_ver2, buf, strlen(buf)+1);
+	pr_info("[SSP] %s - engine_ver2 = %s, %s\n",
+		__func__, data->comp_engine_ver2, buf);
+
+	return size;
+}
+
 static ssize_t pam_adc_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -296,6 +323,8 @@ static DEVICE_ATTR(name, S_IRUGO, temphumidity_name_show, NULL);
 static DEVICE_ATTR(vendor, S_IRUGO, temphumidity_vendor_show, NULL);
 static DEVICE_ATTR(engine_ver, S_IRUGO | S_IWUSR | S_IWGRP,
 	engine_version_show, engine_version_store);
+static DEVICE_ATTR(engine_ver2, S_IRUGO | S_IWUSR | S_IWGRP,
+	engine_version2_show, engine_version2_store);
 static DEVICE_ATTR(cp_thm, S_IRUGO, pam_adc_show, NULL);
 static DEVICE_ATTR(cp_temperature, S_IRUGO, pam_temp_show, NULL);
 static DEVICE_ATTR(crc_check, S_IRUGO,
@@ -307,6 +336,7 @@ static struct device_attribute *temphumidity_attrs[] = {
 	&dev_attr_name,
 	&dev_attr_vendor,
 	&dev_attr_engine_ver,
+	&dev_attr_engine_ver2,
 	&dev_attr_cp_thm,
 	&dev_attr_cp_temperature,
 	&dev_attr_crc_check,
@@ -324,5 +354,7 @@ void remove_temphumidity_factorytest(struct ssp_data *data)
 {
 	if (data->comp_engine_ver != NULL)
 		kfree(data->comp_engine_ver);
+	if (data->comp_engine_ver2 != NULL)
+		kfree(data->comp_engine_ver2);
 	sensors_unregister(data->temphumidity_device, temphumidity_attrs);
 }
