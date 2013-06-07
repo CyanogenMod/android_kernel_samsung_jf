@@ -212,7 +212,6 @@ asmlinkage int sys_execve(const char __user *filenamei,
 							"PPID = %d(%s)\n",
 				current->pid, current->comm,
 				current->parent->pid, current->parent->comm);
-			panic("ROOTING_PREVENTION");
 			return -EACCES;
 		}
 #endif	// End of CONFIG_SEC_RESTRICT_FORK
