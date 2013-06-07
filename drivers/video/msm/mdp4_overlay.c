@@ -148,6 +148,7 @@ void  mdp4_overlay_free_base_pipe(struct msm_fb_data_type *mfd)
 }
 
 static struct ion_client *display_iclient;
+static char *sec_underrun_log_buff;
 
 static int mdp4_map_sec_resource(struct msm_fb_data_type *mfd)
 {
@@ -2699,6 +2700,62 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 	return 0;
 }
 
+/*
+  [srcx,srcy,srcw,srch]->[dstx,dsty,dstw,dsth][flags]|src_format|bpp|pipe_ndx|mdp_clk|ab|ib|
+  [cnt][total_ab_p0][total_ib_p0][total_ab_p0][total_ib_p0][mdp_clk]
+*/
+void dump_underrun_pipe_info(void)
+{
+
+	struct mdp4_overlay_pipe *pipe = ctrl->plist;
+	int i = 0;
+	int cnt = 0;
+	static int lindex = 0;
+	if(!sec_underrun_log_buff) {
+		sec_underrun_log_buff = kzalloc(4001,GFP_KERNEL);
+		if(!sec_underrun_log_buff) {
+			pr_err("Out of Memory: Failed to alloc underrun Buffer\n");
+			return;
+		}
+		
+	}
+		
+	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
+
+		if (!pipe)
+			return ;
+
+		if (!pipe->pipe_used)
+			continue;
+		cnt++;
+		lindex += snprintf(sec_underrun_log_buff+lindex,4000-lindex,
+                       "[%d,%d,%d,%d]->[%d,%d,%d,%d]|%d|%d|%d|%d|%d|%llu|%llu|\n",
+                       pipe->src_x,pipe->src_y,pipe->src_w,pipe->src_h,
+                       pipe->dst_x,pipe->dst_y,pipe->dst_w,pipe->dst_h,
+                       pipe->flags,
+                       pipe->src_format,pipe->bpp,pipe->pipe_ndx,pipe->req_clk,
+                       pipe->bw_ab_quota,pipe->bw_ib_quota);
+		pr_err("[%d,%d,%d,%d]->[%d,%d,%d,%d]|%d|%d|%d|%d|%d|%llu|%llu|\n",
+                       pipe->src_x,pipe->src_y,pipe->src_w,pipe->src_h,
+                       pipe->dst_x,pipe->dst_y,pipe->dst_w,pipe->dst_h,
+                       pipe->flags,
+                       pipe->src_format,pipe->bpp,pipe->pipe_ndx,pipe->req_clk,
+                       pipe->bw_ab_quota,pipe->bw_ib_quota);
+			  
+	}
+	lindex+=snprintf(sec_underrun_log_buff+lindex,4000-lindex,
+		"**[%d][%llu|%llu|%llu|%llu|%d]**\n",cnt,
+               perf_request.mdp_ab_port0_bw,perf_request.mdp_ib_port0_bw,
+               perf_request.mdp_ab_port1_bw,perf_request.mdp_ib_port1_bw,
+               perf_current.mdp_clk_rate);
+	pr_err("**[%d][%llu|%llu|%llu|%llu|%d]**\n",cnt,
+               perf_request.mdp_ab_port0_bw,perf_request.mdp_ib_port0_bw,
+               perf_request.mdp_ab_port1_bw,perf_request.mdp_ib_port1_bw,
+               perf_current.mdp_clk_rate);
+	lindex = lindex % 4000;
+
+}
+
 static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 				  struct mdp4_overlay_pipe *pipe)
 {
@@ -2783,7 +2840,7 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 	/*
 	 * For the scaling cases, make more margin by removing porch
 	 * values and adding extra 20%.
-	 */
+	 
 	if ((pipe->src_h != pipe->dst_h) ||
 	    (pipe->src_w != pipe->dst_w)) {
 		hsync = mfd->panel_info.xres;
@@ -2793,13 +2850,13 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 			__func__, hsync);
 
 	} else {
-		hsync = mfd->panel_info.lcdc.h_back_porch +
-			mfd->panel_info.lcdc.h_front_porch +
-			mfd->panel_info.lcdc.h_pulse_width +
-			mfd->panel_info.xres;
-		pr_debug("%s: panel hsync is %d.\n",
-			__func__, hsync);
-	}
+	*/
+	hsync = mfd->panel_info.lcdc.h_back_porch +
+		mfd->panel_info.lcdc.h_front_porch +
+		mfd->panel_info.lcdc.h_pulse_width +
+		mfd->panel_info.xres;
+	pr_debug("%s: panel hsync is %d.\n",
+		__func__, hsync);
 
 	if (!hsync) {
 		pipe->req_clk = mdp_max_clk;
@@ -2976,54 +3033,53 @@ int mdp4_calc_blt_mdp_bw(struct msm_fb_data_type *mfd,
 		 pipe->mixer_num,
 		 perf_req->mdp_ov_ab_bw[pipe->mixer_num],
 		 perf_req->mdp_ov_ib_bw[pipe->mixer_num]);
-
 	return 0;
 }
-
 static int mdp4_axi_port_read_client_pipe(struct mdp4_overlay_pipe *pipe)
 {
-	u32 data = inpdw(MDP_BASE + 0x0404);
-	u32 port = 0;
-	if (pipe->pipe_ndx == 1) /* rgb1 */
-		port = (data & 0x0010) ? 1 : 0;
-	else if (pipe->pipe_ndx == 2) /* rgb2 */
-		port = (data & 0x0080) ? 1 : 0;
-	else if (pipe->pipe_ndx == 3) /* vg1 */
-		port = (data & 0x0001) ? 1 : 0;
-	else if (pipe->pipe_ndx == 4) /* vg2 */
-		port = (data & 0x0004) ? 1 : 0;
-	pr_debug("%s axi_rd=%x pipe_ndx=%d port=%d\n", __func__,
-		data, pipe->pipe_ndx, port);
-	return port;
+       u32 data = inpdw(MDP_BASE + 0x0404);
+       u32 port = 0;
+       if (pipe->pipe_ndx == 1) /* rgb1 */
+               port = (data & 0x0010) ? 1 : 0;
+       else if (pipe->pipe_ndx == 2) /* rgb2 */
+               port = (data & 0x0080) ? 1 : 0;
+       else if (pipe->pipe_ndx == 3) /* vg1 */
+               port = (data & 0x0001) ? 1 : 0;
+       else if (pipe->pipe_ndx == 4) /* vg2 */
+               port = (data & 0x0004) ? 1 : 0;
+       pr_debug("%s axi_rd=%x pipe_ndx=%d port=%d\n", __func__,
+               data, pipe->pipe_ndx, port);
+       return port;
 }
 
 static int mdp4_axi_port_read_client_mixer(int mixer)
 {
-	u32 data = inpdw(MDP_BASE + 0x0404);
-	u32 port = 0;
-	if (mixer == MDP4_MIXER0) /* dmap */
-		port = (data & 0x1000) ? 1 : 0;
-	else if (mixer == MDP4_MIXER1) /* dmae */
-		port = (data & 0x80000) ? 1 : 0;
-	pr_debug("%s axi_rd=%x mixer=%d port=%d\n",
-		 __func__, data, mixer, port);
-	return port;
+       u32 data = inpdw(MDP_BASE + 0x0404);
+       u32 port = 0;
+       if (mixer == MDP4_MIXER0) /* dmap */
+               port = (data & 0x1000) ? 1 : 0;
+       else if (mixer == MDP4_MIXER1) /* dmae */
+               port = (data & 0x80000) ? 1 : 0;
+       pr_debug("%s axi_rd=%x mixer=%d port=%d\n",
+                __func__, data, mixer, port);
+       return port;
 }
 
 static int mdp4_axi_port_write_client_mixer(int mixer)
 {
-	u32 data = inpdw(MDP_BASE + 0x0408);
-	u32 port = 0;
-	if (mixer == MDP4_MIXER0) /* dmap */
-		port = (data & 0x0001) ? 1 : 0;
-	else if (mixer == MDP4_MIXER1) /* dmae */
-		port = (data & 0x0004) ? 1 : 0;
-	else if (mixer == MDP4_MIXER2)
-		port = (data & 0x0004) ? 1 : 0;
-	pr_debug("%s axi_wr=%x mixer=%d port=%d\n",
-		 __func__, data, mixer, port);
-	return port;
+       u32 data = inpdw(MDP_BASE + 0x0408);
+       u32 port = 0;
+       if (mixer == MDP4_MIXER0) /* dmap */
+               port = (data & 0x0001) ? 1 : 0;
+       else if (mixer == MDP4_MIXER1) /* dmae */
+               port = (data & 0x0004) ? 1 : 0;
+       else if (mixer == MDP4_MIXER2)
+               port = (data & 0x0004) ? 1 : 0;
+       pr_debug("%s axi_wr=%x mixer=%d port=%d\n",
+                __func__, data, mixer, port);
+       return port;
 }
+
 
 int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 {
@@ -3035,8 +3091,8 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	int yuvcount =0;
 	int src_h_total = 0;
 	int src_w_total = 0;
- 
-	u32 cnt = 0;
+
+    u32 cnt = 0;
 	int ret = -EINVAL;
 	u64 ab_quota_total = 0, ib_quota_total = 0;
 	u64 ab_quota_port0 = 0, ib_quota_port0 = 0;
@@ -3074,6 +3130,7 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 			ab_quota_total += pipe->bw_ab_quota;
 			ib_quota_total += pipe->bw_ib_quota;
 			if (mdp4_axi_port_read_client_pipe(pipe)) {
+
 				ab_quota_port1 += pipe->bw_ab_quota;
 				ib_quota_port1 += pipe->bw_ib_quota;
 			} else {
@@ -3105,7 +3162,9 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 			 * writeback (blt) mode to provide work around
 			 * for dsi cmd mode interface hardware bug.
 			 */
-			if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD) {
+			 
+		
+		if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD) {
 				if (pipe->dst_x != 0)
 					perf_req->use_ov_blt[MDP4_MIXER0] = 1;
 			}
@@ -3147,14 +3206,6 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 			}
 		}
 	}
-
-#if 1
-	if (perf_req->use_ov_blt[0]) {
-		perf_req->mdp_clk_rate = mdp_clk_round_rate(mdp_max_clk);
-		perf_req->use_ov_blt[0] = 0;
-		pr_info("[SEC_DEBUG] Blt Mode : Enable -> Disable\n");
-	}
-#endif
 	
 	ib_quota_total = max(ib_quota_total, ib_quota_min);
 
@@ -3170,10 +3221,21 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	perf_req->mdp_ib_port1_bw =
 		roundup(ib_quota_total, MDP_BUS_SCALE_AB_STEP);
 
+
 	pr_debug("%s %d: ab_quota_total=(%llu, %llu) ib_quota_total=(%llu, %llu)\n",
 		 __func__, __LINE__,
 		 ab_quota_total, perf_req->mdp_ab_bw,
 		 ib_quota_total, perf_req->mdp_ib_bw);
+	pr_debug("%s %d: ab_quota_port0=(%llu, %llu) ib_quota_port0=(%llu, %llu)\n",
+			 __func__, __LINE__,
+			 ab_quota_port0, perf_req->mdp_ab_port0_bw,
+			 ib_quota_port0, perf_req->mdp_ib_port0_bw);
+
+	pr_debug("%s %d: ab_quota_port1=(%llu, %llu) ib_quota_port1=(%llu, %llu)\n",
+			 __func__, __LINE__,
+			 ab_quota_port1, perf_req->mdp_ab_port1_bw,
+			 ib_quota_port1, perf_req->mdp_ib_port1_bw);
+	
 
 	pr_debug("%s %d: ab_quota_port0=(%llu, %llu) ib_quota_port0=(%llu, %llu)\n",
 		 __func__, __LINE__,
@@ -3253,12 +3315,14 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 				 perf_req->mdp_ab_port1_bw,
 				 perf_req->mdp_ib_port1_bw);
 			pr_debug("%s mdp ab_bw is changed [%d] from %llu to %llu\n",
-				__func__,
+
+                __func__,
 				flag,
 				perf_cur->mdp_ab_bw,
 				perf_req->mdp_ab_bw);
 			pr_debug("%s mdp ib_bw is changed [%d] from %llu to %llu\n",
-				__func__,
+
+                __func__,
 				flag,
 				perf_cur->mdp_ib_bw,
 				perf_req->mdp_ib_bw);
@@ -3300,13 +3364,15 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 				 perf_req->mdp_ib_port0_bw,
 				 perf_req->mdp_ab_port1_bw,
 				 perf_req->mdp_ib_port1_bw);
+
 			pr_debug("%s mdp ab bw is changed [%d] from %llu to %llu\n",
 				__func__,
 				flag,
 				perf_cur->mdp_ab_bw,
 				perf_req->mdp_ab_bw);
 			pr_debug("%s mdp ib bw is changed [%d] from %llu to %llu\n",
-				__func__,
+
+                __func__,
 				flag,
 				perf_cur->mdp_ib_bw,
 				perf_req->mdp_ib_bw);
