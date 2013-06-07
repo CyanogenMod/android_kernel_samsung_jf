@@ -2038,8 +2038,19 @@ static int _hardware_dequeue(struct ci13xxx_ep *mEp, struct ci13xxx_req *mReq)
 	if (mReq->zptr) {
 		if ((TD_STATUS_ACTIVE & mReq->zptr->token) != 0)
 			return -EBUSY;
+#ifdef CONFIG_MACH_JF_ATT
+#ifdef CONFIG_USB_MON
+		udelay(10);
+#endif
+#endif
 		dma_pool_free(mEp->td_pool, mReq->zptr, mReq->zdma);
 		mReq->zptr = NULL;
+	} else {
+#ifdef CONFIG_MACH_JF_ATT
+#ifdef CONFIG_USB_MON
+		udelay(10);
+#endif
+#endif
 	}
 
 	mReq->req.status = 0;
