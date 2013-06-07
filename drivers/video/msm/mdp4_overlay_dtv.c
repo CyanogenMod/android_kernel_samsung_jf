@@ -282,7 +282,6 @@ int mdp4_dtv_pipe_commit(int cndx, int wait)
 			pipe->pipe_used = 0; /* clear */
 		}
 	}
-
 	pipe = vctrl->base_pipe;
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	if (pipe->ov_blt_addr) {
@@ -428,7 +427,6 @@ ssize_t mdp4_dtv_show_event(struct device *dev,
 		!external_common_state->hpd_state ||
 		atomic_read(&vctrl->vsync_resume) == 0)
 		return 0;
-
 	/*
 	 * show_event thread keep spinning on vctrl->vsync_comp
 	 * race condition on x.done if multiple thread blocked

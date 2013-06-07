@@ -908,7 +908,6 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
 	mdp4_calc_blt_mdp_bw(mfd, pipe);
-
 	MDP_OUTP(MDP_BASE + 0x021c, 10); /* read pointer */
 
 	/*
