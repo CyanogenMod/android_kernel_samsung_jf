@@ -2333,6 +2333,8 @@ struct intf_mctl_mapping_cfg {
 #define EXT_CAM_SET_ANTIBANDING 25
 #define EXT_CAM_SET_ANTI_STREAMOFF 26
 #define EXT_CAM_SET_OCR_FOCUS_MODE    27
+#define EXT_CAM_SET_ORIENTATION    28
+#define EXT_CAM_SET_AF_WINDOW    29
 #define EXT_CAM_SET_HDR	33
 #define EXT_CAM_START_HDR	34
 #define EXT_CAM_RESET_HDR	35
@@ -2344,5 +2346,6 @@ struct intf_mctl_mapping_cfg {
 #define EXT_CAM_GET_ISP_DBG_LOG	43
 #define EXT_CAM_SET_RAW	44
 #define EXT_CAM_RESUME_PREVIEW 45
+#define EXT_CAM_SET_FACTORY_BIN 46
 
 #endif /* __LINUX_MSM_CAMERA_H */
