@@ -31,6 +31,7 @@
 #include <asm/mach-types.h>
 #include <mach/vreg.h>
 #include <linux/io.h>
+#include <linux/ctype.h>
 
 #include "msm_sensor_common.h"
 #include "msm.h"
@@ -40,7 +41,7 @@
 #include "msm_ispif.h"
 #include "msm_sensor.h"
 
-#define JC_ISP_TIMEOUT		5000
+#define JC_ISP_TIMEOUT		3000
 
 #define JC_LOAD_FW_MAIN	1
 #define JC_DUMP_FW	1
@@ -143,6 +144,8 @@ struct jc_ctrl_t {
 	bool need_restart_caf;
 	bool is_isp_null;
 	bool isp_null_read_sensor_fw;
+	bool samsung_app;
+	bool factory_bin;
 };
 
 static struct jc_ctrl_t *jc_ctrl;
@@ -1949,7 +1952,6 @@ static int jc_set_snapshot_mode(int mode)
 {
 	int32_t rc = 0;
 	int val = -1;
-	int retries = 0;
 
 	cam_info("Entered, shot mode %d\n", mode);
 
@@ -1965,7 +1967,7 @@ static int jc_set_snapshot_mode(int mode)
 			jc_readb(JC_CATEGORY_CAPCTRL,
 				        0x1F, &val);
 			cam_info("capture status : %d", val);
-		} while (val != 0 && retries++ < JC_I2C_VERIFY);
+		} while (val != 0);
 		if ((jc_ctrl->shot_mode == 0 ||jc_ctrl->shot_mode == 1)
 			&& (jc_ctrl->movie_mode == false)){
 			cam_info("1Sec Burst");
@@ -2534,6 +2536,17 @@ static int jc_set_ocr_focus_mode(int mode)
 	return rc;
 }
 
+static int jc_set_af_window(int mode)
+{
+	int32_t rc = 0;
+
+	cam_info("Entered, af window %d\n", mode);
+
+	jc_writeb(JC_CATEGORY_TEST, 0x8D, mode);
+
+	return rc;
+}
+
 static int jc_set_softlanding(void)
 {
 	int32_t rc = 0;
@@ -2908,6 +2921,18 @@ void sensor_native_control(void __user *arg)
 		jc_set_ocr_focus_mode(ctrl_info.value_1);
 		break;
 
+	case EXT_CAM_SET_FACTORY_BIN:
+		cam_info(" factory binary: %d", ctrl_info.value_1);
+		if (ctrl_info.value_1 == 1)
+			jc_ctrl->factory_bin = true;
+		else
+			jc_ctrl->factory_bin = false;
+		break;
+
+	case EXT_CAM_SET_AF_WINDOW:
+		jc_set_af_window(ctrl_info.value_1);
+		break;
+
 	default:
 		break;
 	}
@@ -3091,7 +3116,6 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 #endif
 
 	if (version_checked == false && jc_ctrl->fw_update == true) {
-		jc_ctrl->fw_update = false;
 		isp_ret = jc_get_isp_version();
 		jc_isp_boot();
 		jc_get_sensor_version();
@@ -3101,6 +3125,16 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			jc_sensor_power_down(&jc_s_ctrl);
 			return -ENOSYS;
 		}
+
+		cam_info("isp_ret: %d, samsung app: %d, factory bin: %d\n",
+		    isp_ret, jc_ctrl->samsung_app, jc_ctrl->factory_bin);
+
+		if (isp_ret == 0 && jc_ctrl->samsung_app == false && jc_ctrl->factory_bin == false) {
+		    cam_err("3rd party app. skip ISP FW update\n");
+		    goto start;
+		}
+
+		jc_ctrl->fw_update = false;
 
 		if (firmware_update_sdcard == true) {
 			cam_info("FW in sd card is higher priority than others!\n");
@@ -3128,7 +3162,7 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
                            return -ENOSYS;
                        }
                        result_sensor_phone = jc_check_sensor_phone();
-					   
+
                        if (result_sensor_phone > 0) {
                            cam_info("Sensor > Phone, update from sensor\n");
 			        jc_ctrl->isp_null_read_sensor_fw = true;
@@ -3188,6 +3222,7 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
+start:
 	cam_info("nv12 output setting\n");
 	err = jc_writeb(JC_CATEGORY_CAPCTRL,
 			0x0, 0x0f);
@@ -3343,6 +3378,51 @@ void jc_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 	CAM_DEBUG("X");
 }
 
+static int jc_sensor_start_stream_internal(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int rc = 0;
+
+	CAM_DEBUG("E");
+	if (jc_ctrl->anti_stream_off == true) {
+		jc_ctrl->anti_stream_off = false;
+	} else {
+		/* change to monitor mode */
+		cam_info("change to monitor mode\n");
+		rc = jc_set_mode(JC_MONITOR_MODE);
+		jc_ctrl->stream_on = true;
+		if (jc_ctrl->af_mode == 3) {
+			cam_info("start CAF\n");
+			jc_writeb(JC_CATEGORY_LENS,
+					0x01, 0x03);
+			jc_writeb(JC_CATEGORY_LENS,
+					0x02, 0x01);
+		} else if (jc_ctrl->af_mode == 4) {
+			cam_info("start macro CAF\n");
+			jc_writeb(JC_CATEGORY_LENS,
+					0x01, 0x07);
+			jc_writeb(JC_CATEGORY_LENS,
+					0x02, 0x01);
+		} else if (jc_ctrl->af_mode == 5) {
+			msleep(50);
+			cam_info("start Movie CAF\n");
+			jc_writeb(JC_CATEGORY_LENS,
+					0x01, 0x04);
+			jc_writeb(JC_CATEGORY_LENS,
+					0x02, 0x01);
+		} else if (jc_ctrl->af_mode == 6) {
+			msleep(50);
+			cam_info("FD CAF\n");
+			jc_writeb(JC_CATEGORY_LENS,
+					0x01, 0x05);
+			jc_writeb(JC_CATEGORY_LENS,
+					0x02, 0x01);
+		}
+	}
+	CAM_DEBUG("X");
+
+	return rc;
+}
+
 void jc_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	CAM_DEBUG("E");
@@ -3353,6 +3433,22 @@ void jc_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 		jc_ctrl->stream_on = false;
 	}
 	CAM_DEBUG("X");
+}
+
+static int jc_sensor_stop_stream_internal(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int rc = 0;
+
+	CAM_DEBUG("E");
+	if (jc_ctrl->anti_stream_off == false) {
+		/* change to parameter mode */
+		cam_info("change to parameter mode\n");
+		rc = jc_set_mode(JC_PARMSET_MODE);
+		jc_ctrl->stream_on = false;
+	}
+	CAM_DEBUG("X");
+
+	return rc;
 }
 
 long jc_sensor_subdev_ioctl(struct v4l2_subdev *sd,
@@ -3433,11 +3529,12 @@ int jc_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		break;
 
 	case CFG_START_STREAM:
-		s_ctrl->func_tbl->sensor_start_stream(s_ctrl);
+		rc = jc_sensor_start_stream_internal(s_ctrl);
 		break;
 
 	case CFG_STOP_STREAM:
-		s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
+		rc = jc_sensor_stop_stream_internal(s_ctrl);
+		cam_info("%s CFG_STOP_STREAM : %d\n", __func__, (int)rc);
 		break;
 
 	case CFG_GET_AF_MAX_STEPS:
@@ -3504,9 +3601,34 @@ static ssize_t jc_camera_check_fw_show(struct device *dev,
 	return sprintf(buf, "%s %s %s\n", sysfs_isp_fw_str, sysfs_phone_fw_str, sysfs_sensor_fw_str);
 }
 
+static ssize_t jc_camera_check_app_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", jc_ctrl->samsung_app);
+}
+
+static ssize_t jc_camera_check_app_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned long value = simple_strtoul(buf, NULL, 0);
+
+	CAM_DEBUG(" received value: %d\n", (int)value);
+
+	if (value == 0) {
+	    jc_ctrl->samsung_app = false;
+	} else {
+	    CAM_DEBUG(" samsung app");
+	    jc_ctrl->samsung_app = true;
+	}
+
+	return size;
+}
+
 static DEVICE_ATTR(rear_camtype, S_IRUGO, jc_camera_type_show, NULL);
 static DEVICE_ATTR(rear_camfw, S_IRUGO, jc_camera_fw_show, NULL);
 static DEVICE_ATTR(rear_checkfw, S_IRUGO, jc_camera_check_fw_show, NULL);
+static DEVICE_ATTR(rear_checkApp, S_IRUGO|S_IWUSR|S_IWGRP,
+    jc_camera_check_app_show, jc_camera_check_app_store);
 
 int32_t jc_init_vreg_port(struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -3655,6 +3777,8 @@ static int jc_i2c_probe(struct i2c_client *client,
 		s_ctrl->sensor_v4l2_subdev.devnode->num;
 
 	jc_ctrl->fw_update = true;
+	jc_ctrl->samsung_app = false;
+	jc_ctrl->factory_bin = false;
 	jc_ctrl->system_rev = s_ctrl->sensordata->sensor_platform_info->sys_rev();
 
 	/* to solve sleep current issue */
@@ -3724,7 +3848,13 @@ static int __init jc_init(void)
 	if (device_create_file
 	(cam_dev_rear, &dev_attr_rear_checkfw) < 0) {
 		cam_err("failed to create device file, %s\n",
-		dev_attr_rear_camfw.attr.name);
+		dev_attr_rear_checkfw.attr.name);
+	}
+
+	if (device_create_file
+	(cam_dev_rear, &dev_attr_rear_checkApp) < 0) {
+		cam_err("failed to create device file, %s\n",
+		dev_attr_rear_checkApp.attr.name);
 	}
 
 	return i2c_add_driver(&jc_i2c_driver);
