@@ -122,6 +122,7 @@ struct mem_cgroup_zone {
 
 #ifdef CONFIG_ZRAM_FOR_ANDROID
 atomic_t kswapd_thread_on = ATOMIC_INIT(1);
+extern int get_soft_reclaim_status(void);
 #endif /* CONFIG_ZRAM_FOR_ANDROID */
 
 #define lru_to_page(_head) (list_entry((_head)->prev, struct page, lru))
@@ -1342,6 +1343,13 @@ static int too_many_isolated(struct zone *zone, int file,
 		struct scan_control *sc)
 {
 	unsigned long inactive, isolated;
+
+#ifdef CONFIG_ZRAM_FOR_ANDROID
+	if(get_soft_reclaim_status() == 1)
+	{
+		return 0;
+	}
+#endif
 
 	if (current_is_kswapd())
 		return 0;
