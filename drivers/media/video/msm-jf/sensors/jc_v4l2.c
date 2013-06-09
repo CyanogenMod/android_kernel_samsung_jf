@@ -3165,12 +3165,12 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 		cam_info("isp_ret: %d, samsung app: %d, factory bin: %d\n",
 		    isp_ret, jc_ctrl->samsung_app, jc_ctrl->factory_bin);
-
+#if 0
 		if (isp_ret == 0 && jc_ctrl->samsung_app == false && jc_ctrl->factory_bin == false) {
 		    cam_err("3rd party app. skip ISP FW update\n");
 		    goto start;
 		}
-
+#endif
 		jc_ctrl->fw_update = false;
 
 		if (firmware_update_sdcard == true) {
@@ -3259,7 +3259,7 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
-start:
+//start:
 	cam_info("nv12 output setting\n");
 	err = jc_writeb(JC_CATEGORY_CAPCTRL,
 			0x0, 0x0f);
