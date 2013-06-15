@@ -513,10 +513,14 @@ struct input_keymap_entry {
 
 #define BTN_GAMEPAD		0x130
 #define BTN_A			0x130
+#define BTN_SOUTH		0x130
 #define BTN_B			0x131
+#define BTN_EAST		0x131
 #define BTN_C			0x132
 #define BTN_X			0x133
+#define BTN_NORTH		0x133
 #define BTN_Y			0x134
+#define BTN_WEST		0x134
 #define BTN_Z			0x135
 #define BTN_TL			0x136
 #define BTN_TR			0x137
@@ -711,6 +715,11 @@ struct input_keymap_entry {
 
 #define KEY_DMB_ANT_DET_UP		0x21b
 #define KEY_DMB_ANT_DET_DOWN		0x21c
+
+#define BTN_DPAD_UP		0x220
+#define BTN_DPAD_DOWN		0x221
+#define BTN_DPAD_LEFT		0x222
+#define BTN_DPAD_RIGHT		0x223
 
 #define BTN_TRIGGER_HAPPY		0x2c0
 #define BTN_TRIGGER_HAPPY1		0x2c0
