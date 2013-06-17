@@ -179,6 +179,7 @@ static struct dbs_tuners {
 	unsigned int sampling_early_factor;
 	unsigned int sampling_interim_factor;
 #endif
+	unsigned int input_boost;
 } dbs_tuners_ins = {
 	.up_threshold_multi_core = DEF_FREQUENCY_UP_THRESHOLD,
 	.up_threshold = DEF_FREQUENCY_UP_THRESHOLD,
@@ -198,6 +199,7 @@ static struct dbs_tuners {
 	.sampling_early_factor = DEF_SAMPLING_EARLY_HISPEED_FACTOR,
 	.sampling_interim_factor = DEF_SAMPLING_INTERIM_HISPEED_FACTOR,
 #endif
+	.input_boost = 0,
 };
 
 static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu, u64 *wall)
@@ -370,6 +372,7 @@ show_one(step_up_interim_hispeed, step_up_interim_hispeed);
 show_one(sampling_early_factor, sampling_early_factor);
 show_one(sampling_interim_factor, sampling_interim_factor);
 #endif
+show_one(input_boost, input_boost);
 
 static ssize_t show_powersave_bias
 (struct kobject *kobj, struct attribute *attr, char *buf)
@@ -442,6 +445,18 @@ static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
 	if (ret != 1)
 		return -EINVAL;
 	update_sampling_rate(input);
+	return count;
+}
+
+static ssize_t store_input_boost(struct kobject *a, struct attribute *b,
+				const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+	if (ret != 1)
+		return -EINVAL;
+	dbs_tuners_ins.input_boost = input;
 	return count;
 }
 
@@ -826,6 +841,7 @@ define_one_global_rw(step_up_interim_hispeed);
 define_one_global_rw(sampling_early_factor);
 define_one_global_rw(sampling_interim_factor);
 #endif
+define_one_global_rw(input_boost);
 
 static struct attribute *dbs_attributes[] = {
 	&sampling_rate_min.attr,
@@ -848,6 +864,7 @@ static struct attribute *dbs_attributes[] = {
 	&sampling_early_factor.attr,
 	&sampling_interim_factor.attr,
 #endif
+	&input_boost.attr,
 	NULL
 };
 
@@ -1213,6 +1230,7 @@ static void dbs_refresh_callback(struct work_struct *work)
 	struct cpu_dbs_info_s *this_dbs_info;
 	struct dbs_work_struct *dbs_work;
 	unsigned int cpu;
+	unsigned int target_freq;
 
 	dbs_work = container_of(work, struct dbs_work_struct, work);
 	cpu = dbs_work->cpu;
@@ -1229,14 +1247,19 @@ static void dbs_refresh_callback(struct work_struct *work)
 		goto bail_incorrect_governor;
 	}
 
-	if (policy->cur < policy->max) {
+	if (dbs_tuners_ins.input_boost)
+		target_freq = dbs_tuners_ins.input_boost;
+	else
+		target_freq = policy->max;
+
+	if (policy->cur < target_freq) {
 		/*
 		 * Arch specific cpufreq driver may fail.
 		 * Don't update governor frequency upon failure.
 		 */
-		if (__cpufreq_driver_target(policy, policy->max,
+		if (__cpufreq_driver_target(policy, target_freq,
 					CPUFREQ_RELATION_L) >= 0)
-			policy->cur = policy->max;
+			policy->cur = target_freq;
 
 		this_dbs_info->prev_cpu_idle = get_cpu_idle_time(cpu,
 				&this_dbs_info->prev_cpu_wall);
