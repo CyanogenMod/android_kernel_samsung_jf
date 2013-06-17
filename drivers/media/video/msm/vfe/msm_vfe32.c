@@ -6540,7 +6540,6 @@ void axi_start(struct msm_cam_media_controller *pmctl,
 		msm_camera_io_w((
 				0x1 << axi_ctrl->share_ctrl->outpath.out2.ch0),
 				axi_ctrl->share_ctrl->vfebase + VFE_BUS_CMD);
-		/* 0x1: Line base, 0x3: Frame base */
 		msm_camera_io_w(0x3, axi_ctrl->share_ctrl->vfebase +
 			vfe32_AXI_WM_CFG[axi_ctrl->share_ctrl->
 			outpath.out2.ch0]);
