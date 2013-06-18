@@ -26,6 +26,13 @@ static char *descriptions =
 	"1  Perf: Restore counter after powercollapse for generic ARM PMU's\n"
 	"2  Perf: Toggle PMU IRQ when CPU's are hotplugged\n"
 	"3  Perf: Correct irq for CPU hotplug detection\n"
+	"4  Perf: Check perf activity on correct CPU\n"
+	"5  Perf: Add DT support for L1 and L2 PMU\n"
+	"6  Perf: Add cortex A5 device tree support\n"
+	"7  Perf: Add L1 counters to tracepoints\n"
+	"8  Perf: Add cortex A7 perf support\n"
+	"9  ARM: dts: msm: add perf-events support for msm8226\n"
+	"10 Perf: Fix counts across power collapse\n"
 ;
 
 static ssize_t desc_read(struct file *fp, char __user *buf,
