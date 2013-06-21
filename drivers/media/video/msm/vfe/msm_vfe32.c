@@ -5678,11 +5678,6 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 	struct vfe_cmd_stats_buf *scfg = NULL;
 	struct vfe_cmd_stats_ack *sack = NULL;
 
-	if (!vfe32_ctrl->share_ctrl->vfebase) {
-		pr_err("%s: base address unmapped\n", __func__);
-		return -EFAULT;
-	}
-
 	CDBG("%s\n", __func__);
 	if (subdev_cmd == VIDIOC_MSM_VFE_INIT) {
 		CDBG("%s init\n", __func__);
@@ -5691,6 +5686,11 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 		msm_vfe_subdev_release(sd);
 		return 0;
 	}
+	if (!vfe32_ctrl->share_ctrl->vfebase) {
+		pr_err("%s: base address unmapped\n", __func__);
+		return -EFAULT;
+	}
+
 	vfe_params = (struct msm_camvfe_params *)arg;
 	cmd = vfe_params->vfe_cfg;
 	data = vfe_params->data;
