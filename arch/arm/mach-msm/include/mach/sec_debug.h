@@ -238,6 +238,7 @@ struct secmsg_log {
 #define secdbg_msg(fmt, ...)
 #endif
 
+//KNOX_SEANDROID_START
 #ifdef CONFIG_SEC_DEBUG_AVC_LOG
 extern asmlinkage int sec_debug_avc_log(const char *fmt, ...);
 #define AVC_LOG_MAX 256
@@ -249,6 +250,7 @@ struct secavc_log {
 #else
 #define secdbg_avc(fmt, ...)
 #endif
+//KNOX_SEANDROID_END
 
 #ifdef CONFIG_SEC_DEBUG_DCVS_LOG
 #define DCVS_LOG_MAX 256

@@ -452,15 +452,22 @@ static int kgsl_resume_device(struct kgsl_device *device)
 	int status = -EINVAL;
 
 	if (!device)
+	{
+		printk(KERN_WARNING "device = %p\n", device);
 		return -EINVAL;
+	}
 
 	KGSL_PWR_WARN(device, "resume start\n");
 	mutex_lock(&device->mutex);
 	if (device->state == KGSL_STATE_SUSPEND) {
+		printk(KERN_WARNING "device->state is in KGSL_STATE_SUSPEND\n");
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_SLUMBER);
 		status = 0;
 		complete_all(&device->hwaccess_gate);
 	}
+	else 
+		printk(KERN_WARNING "device->state is in 0x%08x\n", device->state); 
+
 	kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
 
 	mutex_unlock(&device->mutex);

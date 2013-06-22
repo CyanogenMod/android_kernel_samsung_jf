@@ -41,6 +41,7 @@
 #include <mach/msm_tsif.h>
 #include <mach/msm_serial_hs_lite.h>
 #include "clock.h"
+#include "pm.h"
 #include "devices.h"
 #include "devices-msm8x60.h"
 #include "footswitch.h"
@@ -122,6 +123,7 @@ struct platform_device msm8960_pc_cntr = {
 	.num_resources	= ARRAY_SIZE(msm8960_resources_pccntr),
 	.resource	= msm8960_resources_pccntr,
 };
+
 
 static struct resource resources_otg[] = {
 	{

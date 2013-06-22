@@ -116,6 +116,10 @@ extern struct platform_device msm8960_pc_cntr;
 extern struct platform_device msm8064_pc_cntr;
 extern struct platform_device msm8930_pc_cntr;
 
+extern struct platform_device msm8960_cpu_slp_status;
+extern struct platform_device msm8064_cpu_slp_status;
+extern struct platform_device msm8930_cpu_slp_status;
+
 extern struct platform_device msm_device_gadget_peripheral;
 extern struct platform_device msm_device_hsusb_host;
 extern struct platform_device msm_device_hsusb_host2;
