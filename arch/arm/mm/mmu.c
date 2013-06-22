@@ -1419,17 +1419,6 @@ void __init paging_init(struct machine_desc *mdesc)
 	/* allocate the zero page. */
 	zero_page = early_alloc(PAGE_SIZE);
 
-#ifdef TIMA_ENABLED
-	{
-	        /**TIMA_MAGIC*/
-	        void *mem_alloc_ptr;
-		unsigned int phy_addr; 
-		mem_alloc_ptr = early_alloc(0x200000);
-		phy_addr = __pa(mem_alloc_ptr);
-		printk(KERN_ERR"===TIMA===NEW=== -> mem_alloc_ptr= %p pa = %x\n", mem_alloc_ptr, phy_addr);
-	}
-#endif
-
 	bootmem_init();
 
 	empty_zero_page = virt_to_page(zero_page);

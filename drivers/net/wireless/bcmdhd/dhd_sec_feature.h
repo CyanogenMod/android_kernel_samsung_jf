@@ -110,7 +110,7 @@
 #if (CONFIG_WLAN_REGION_CODE == 201)     /* SKT */
 
 #ifdef CONFIG_MACH_UNIVERSAL5410
-// Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1
+/* Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1 */
 #define FIX_CPU_MIN_CLOCK
 #endif /* CONFIG_MACH_UNIVERSAL5410 */
 
@@ -122,7 +122,7 @@
 #define FULL_ROAMING_SCAN_PERIOD_60_SEC
 
 #ifdef CONFIG_MACH_UNIVERSAL5410
-// Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1
+/* Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1 */
 #define FIX_CPU_MIN_CLOCK
 #endif /* CONFIG_MACH_UNIVERSAL5410 */
 
@@ -130,7 +130,7 @@
 
 #if (CONFIG_WLAN_REGION_CODE == 203)     /* LGT */
 #ifdef CONFIG_MACH_UNIVERSAL5410
-// Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1
+/* Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1 */
 #define FIX_CPU_MIN_CLOCK
 #define FIX_BUS_MIN_CLOCK
 #endif /* CONFIG_MACH_UNIVERSAL5410 */

@@ -1072,6 +1072,13 @@ config MACH_JF_CMCC
 	help
 	  Support for the Samsung JF device.
 
+config MACH_JF_CMCCCSFB
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_CMCC_CSFB"
+	help
+	  Support for the Samsung JF device.
+
 config PHYS_OFFSET
 	hex
 	default "0x40800000" if ARCH_MSM9615
