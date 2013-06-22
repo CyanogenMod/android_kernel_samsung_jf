@@ -5728,7 +5728,7 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("core_clk",		gsbi10_uart_clk.c,	""),
 	CLK_LOOKUP("core_clk",		gsbi11_uart_clk.c,	""),
 	CLK_LOOKUP("core_clk",		gsbi12_uart_clk.c,	""),
-#if defined(CONFIG_MACH_JACTIVE_ATT)	
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"spi_qsd.1"),
 #else
 	CLK_LOOKUP("core_clk",		gsbi1_qup_clk.c,	"spi_qsd.0"),
@@ -5772,7 +5772,7 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("core_clk",		ce1_core_clk.c,		"qce.0"),
 	CLK_LOOKUP("core_clk",		ce1_core_clk.c,		"qcrypto.0"),
 	CLK_LOOKUP("dma_bam_pclk",	dma_bam_p_clk.c,	NULL),
-#if defined(CONFIG_MACH_JACTIVE_ATT)	
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	CLK_LOOKUP("iface_clk",		gsbi1_p_clk.c,		"spi_qsd.1"),
 #else
 	CLK_LOOKUP("iface_clk",		gsbi1_p_clk.c,		"spi_qsd.0"),

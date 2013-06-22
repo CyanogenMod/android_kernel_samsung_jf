@@ -3137,6 +3137,7 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 				ab_quota_port0 += pipe->bw_ab_quota;
 				ib_quota_port0 += pipe->bw_ib_quota;
 			}
+
 		} else {
 			if (ib_quota_min == 0)
 				ib_quota_min = pipe->bw_ib_quota;
@@ -3209,6 +3210,7 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	
 	ib_quota_total = max(ib_quota_total, ib_quota_min);
 
+	ib_quota_total = max(ib_quota_total, ib_quota_min);
 	perf_req->mdp_ab_bw = roundup(ab_quota_total, MDP_BUS_SCALE_AB_STEP);
 	perf_req->mdp_ib_bw = roundup(ib_quota_total, MDP_BUS_SCALE_AB_STEP);
 

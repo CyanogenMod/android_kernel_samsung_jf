@@ -61,6 +61,11 @@ struct clk_pair clks[KGSL_MAX_CLKS] = {
 	},
 };
 
+#if defined(CONFIG_MSM_KGSL_FPS_NODE_ENABLE)
+static int fps = 60;
+static int max_fps = 60;
+#endif
+
 /* Update the elapsed time at a particular clock level
  * if the device is active(on_time = true).Otherwise
  * store it as sleep time.
@@ -615,6 +620,93 @@ static int kgsl_pwrctrl_gpu_available_frequencies_show(
 	return num_chars;
 }
 
+
+#if defined(CONFIG_MSM_KGSL_FPS_NODE_ENABLE)
+static void fps_store(char *src, int *dst, int count)
+{
+	u8 i;
+
+	for (i = 0; i <= count; i++) {
+		src[i] -= '0';
+		if (src[i] >= 0 && src[i] <= 9) {
+			*dst += src[i];
+		} else {
+			*dst /= 10;
+			break;
+		}
+		*dst *= 10;
+	}
+}
+
+static int kgsl_fps_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	char temp[3];
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+
+	if (device == NULL)
+		return 0;
+
+	snprintf(temp, sizeof(temp), "%.*s",
+			 (int)min(count, sizeof(temp) - 1), buf);
+
+	mutex_lock(&device->mutex);
+
+	fps = 0;
+	fps_store(temp, &fps, (int)min(count, sizeof(temp) - 1));
+
+	mutex_unlock(&device->mutex);
+
+	return count;
+}
+
+static int kgsl_fps_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+	if (device == NULL)
+		return 0;
+	return snprintf(buf, PAGE_SIZE, "%d\n", fps);
+}
+
+static int kgsl_max_fps_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	char temp[3];
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+
+	if (device == NULL)
+		return 0;
+
+	snprintf(temp, sizeof(temp), "%.*s",
+			 (int)min(count, sizeof(temp) - 1), buf);
+
+	mutex_lock(&device->mutex);
+
+	max_fps = 0;
+	fps_store(temp, &max_fps, (int)min(count, sizeof(temp) - 1));
+
+	mutex_unlock(&device->mutex);
+
+	return count;
+}
+
+static int kgsl_max_fps_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+	if (device == NULL)
+		return 0;
+	return snprintf(buf, PAGE_SIZE, "%d\n", max_fps);
+}
+
+DEVICE_ATTR(fps, 0664, kgsl_fps_show, kgsl_fps_store);
+DEVICE_ATTR(max_fps, 0664, kgsl_max_fps_show, kgsl_max_fps_store);
+#endif
 DEVICE_ATTR(gpuclk, 0644, kgsl_pwrctrl_gpuclk_show, kgsl_pwrctrl_gpuclk_store);
 DEVICE_ATTR(max_gpuclk, 0644, kgsl_pwrctrl_max_gpuclk_show,
 	kgsl_pwrctrl_max_gpuclk_store);
@@ -653,6 +745,10 @@ static const struct device_attribute *pwrctrl_attr_list[] = {
 	&dev_attr_min_pwrlevel,
 	&dev_attr_thermal_pwrlevel,
 	&dev_attr_num_pwrlevels,
+#if defined(CONFIG_MSM_KGSL_FPS_NODE_ENABLE)
+	&dev_attr_fps,
+	&dev_attr_max_fps,
+#endif
 	NULL
 };
 

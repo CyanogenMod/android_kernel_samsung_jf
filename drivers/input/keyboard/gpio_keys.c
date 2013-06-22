@@ -45,7 +45,7 @@ struct gpio_button_data {
 	spinlock_t lock;
 	bool disabled;
 	bool key_pressed;
-	#ifdef KEY_BOOSTER
+#ifdef KEY_BOOSTER
 	struct delayed_work	work_dvfs_off;
 	struct delayed_work	work_dvfs_chg;
 	bool dvfs_lock_status;
@@ -443,7 +443,7 @@ static void gpio_keys_gpio_work_func(struct work_struct *work)
 #endif
 	gpio_keys_gpio_report_event(bdata);
 #ifdef KEY_BOOSTER
-	if (button->code == KEY_HOME)
+	if (button->code == KEY_HOMEPAGE)
 		gpio_key_set_dvfs_lock(bdata, !!state);
 #endif
 }
@@ -962,10 +962,6 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 		error = gpio_keys_setup_key(pdev, input, bdata, button);
 		if (error)
 			goto fail2;
-
-		if (button->wakeup)
-			wakeup = 1;
-	}
 #ifdef KEY_BOOSTER
 		error = gpio_key_init_dvfs(bdata);
 		if (error < 0) {
@@ -973,6 +969,9 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 			goto fail2;
 		}
 #endif
+		if (button->wakeup)
+			wakeup = 1;
+	}
 	error = sysfs_create_group(&pdev->dev.kobj, &gpio_keys_attr_group);
 	if (error) {
 		dev_err(dev, "Unable to export keys/switches, error: %d\n",

@@ -552,7 +552,7 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 	struct mmc_data data = {0};
 	struct mmc_request mrq = {NULL};
 	struct scatterlist *sg = 0;
-	int err;
+	int err=0;
 
 	/*
 	 * The caller must have CAP_SYS_RAWIO, and must be calling this on the
@@ -1186,7 +1186,8 @@ retry:
 			goto out;
 	}
 
-	if (mmc_can_sanitize(card))
+	if (mmc_can_sanitize(card) &&
+	     (card->host->caps2 & MMC_CAP2_SANITIZE))
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_SANITIZE_START, 1, 0);
 out_retry:
