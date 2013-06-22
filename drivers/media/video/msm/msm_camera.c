@@ -169,7 +169,7 @@ static void msm_queue_init(struct msm_device_queue *queue, const char *name)
 static void msm_enqueue(struct msm_device_queue *queue,
 		struct list_head *entry)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	spin_lock_irqsave(&queue->lock, flags);
 	queue->len++;
 	if (queue->len > queue->max) {
@@ -186,7 +186,7 @@ static void msm_enqueue(struct msm_device_queue *queue,
 static void msm_enqueue_vpe(struct msm_device_queue *queue,
 		struct list_head *entry)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	spin_lock_irqsave(&queue->lock, flags);
 	queue->len++;
 	if (queue->len > queue->max) {
@@ -200,7 +200,7 @@ static void msm_enqueue_vpe(struct msm_device_queue *queue,
 }
 
 #define msm_dequeue(queue, member) ({				\
-	unsigned long flags;					\
+	unsigned long flags = 0;					\
 	struct msm_device_queue *__q = (queue);			\
 	struct msm_queue_cmd *qcmd = 0;				\
 	spin_lock_irqsave(&__q->lock, flags);			\
@@ -216,7 +216,7 @@ static void msm_enqueue_vpe(struct msm_device_queue *queue,
 })
 
 #define msm_delete_entry(queue, member, q_cmd) ({		\
-	unsigned long flags;					\
+	unsigned long flags = 0;					\
 	struct msm_device_queue *__q = (queue);			\
 	struct msm_queue_cmd *qcmd = 0;				\
 	spin_lock_irqsave(&__q->lock, flags);			\
@@ -236,7 +236,7 @@ static void msm_enqueue_vpe(struct msm_device_queue *queue,
 })
 
 #define msm_queue_drain(queue, member) do {			\
-	unsigned long flags;					\
+	unsigned long flags = 0;					\
 	struct msm_device_queue *__q = (queue);			\
 	struct msm_queue_cmd *qcmd;				\
 	spin_lock_irqsave(&__q->lock, flags);			\
@@ -308,7 +308,7 @@ static int msm_pmem_table_add(struct hlist_head *ptype,
 	unsigned long len;
 	int rc = -ENOMEM;
 	struct msm_pmem_region *region;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	region = kmalloc(sizeof(struct msm_pmem_region), GFP_KERNEL);
 	if (!region)
@@ -2901,6 +2901,9 @@ static long msm_ioctl_config(struct file *filep, unsigned int cmd,
 
 	case MSM_CAM_IOCTL_FLASH_CTRL: {
 		struct flash_ctrl_data flash_info;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+		printk(" >>>>> %s  MSM_CAM_IOCTL_FLASH_CTRL \n", __func__);
+#endif
 		if (copy_from_user(&flash_info, argp, sizeof(flash_info))) {
 			ERR_COPY_FROM_USER();
 			rc = -EFAULT;

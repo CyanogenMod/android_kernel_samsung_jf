@@ -63,6 +63,7 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(event),
 #if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
 	SEC_BATTERY_ATTR(test_charge_current),
+	SEC_BATTERY_ATTR(set_stability_test),
 #endif
 };
 
@@ -2151,6 +2152,10 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 					value.intval);
 		}
 		break;
+	case BATT_STABILITY_TEST:
+		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
+			battery->stability_test);
+		break;
 #endif
 	default:
 		i = -EINVAL;
@@ -2447,6 +2452,29 @@ ssize_t sec_bat_store_attrs(
 			ret = count;
 		}
 		break;
+	case BATT_STABILITY_TEST:
+		if (sscanf(buf, "%d\n", &x) == 1) {
+			union power_supply_propval value;
+			dev_err(battery->dev,
+				"%s: BATT_STABILITY_TEST(%d)\n", __func__, x);
+			if (x) {
+				battery->stability_test = true;
+				value.intval = POWER_SUPPLY_TYPE_WIRELESS;
+				psy_do_property("sec-charger", set,
+					POWER_SUPPLY_PROP_CHARGE_TYPE, value);
+				value.intval =
+					POWER_SUPPLY_TYPE_BATTERY<<ONLINE_TYPE_MAIN_SHIFT;
+				psy_do_property("battery", set,
+						POWER_SUPPLY_PROP_ONLINE, value);
+			}
+			else {
+				battery->stability_test = false;
+				value.intval = POWER_SUPPLY_TYPE_MAINS;
+				psy_do_property("sec-charger", set,
+					POWER_SUPPLY_PROP_CHARGE_TYPE, value);
+			}
+		}
+		break;
 #endif
 	default:
 		ret = -EINVAL;
@@ -2539,6 +2567,16 @@ static int sec_bat_set_property(struct power_supply *psy,
 			current_cable_type = val->intval;
 		sec_bat_reset_discharge(battery);
 
+#if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
+		if ((current_cable_type != POWER_SUPPLY_TYPE_WIRELESS) &&
+			((current_cable_type != POWER_SUPPLY_TYPE_BATTERY) &&
+			(battery->stability_test))) {
+			dev_err(battery->dev,
+					"%s: stability test enabled(%d)\n",
+					__func__, current_cable_type);
+			break;
+		}
+#endif
 		/* if another cable is connected,
 		  * ignore wireless charing event
 		  */
@@ -2633,6 +2671,10 @@ static int sec_bat_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = battery->present;
+#ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
+		dev_info(battery->dev,
+			"%s: battery present: %d\n", __func__, val->intval);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = battery->cable_type;
@@ -2815,6 +2857,9 @@ static int __devinit sec_battery_probe(struct platform_device *pdev)
 	battery->charging_fullcharged_time = 0;
 	battery->siop_level = 100;
 	battery->wc_enable = 1;
+#if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
+	battery->stability_test = 0;
+#endif
 
 	alarm_init(&battery->event_termination_alarm,
 			ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
@@ -2941,7 +2986,22 @@ static int __devinit sec_battery_probe(struct platform_device *pdev)
 	queue_work(battery->monitor_wqueue, &battery->monitor_work);
 
 	pdata->initial_check();
+#ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
+	/*enable vf ldo to check battery */
+	battery->pdata->check_cable_result_callback(battery->cable_type);
+
+#endif
 	battery->present = battery->pdata->check_battery_callback();
+
+#ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
+	/* do not sleep in lpm mode & factory mode */
+	if (battery->pdata->is_lpm()) {
+		wake_lock_init(&battery->lpm_wake_lock, WAKE_LOCK_SUSPEND,
+				"sec-lpm-monitor");
+		wake_lock(&battery->lpm_wake_lock);
+	}
+#endif
+
 
 	dev_dbg(battery->dev,
 		"%s: SEC Battery Driver Loaded\n", __func__);

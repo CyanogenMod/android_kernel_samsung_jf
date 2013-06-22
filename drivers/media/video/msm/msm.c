@@ -461,7 +461,9 @@ static int msm_camera_v4l2_streamoff(struct file *f, void *pctx,
 
 	/* stop buffer streaming */
 	rc = vb2_streamoff(&pcam_inst->vid_bufq, buf_type);
-	D("%s, videobuf_streamoff returns %d\n", __func__, rc);
+	if (rc < 0) {
+		pr_err("axi %s, videobuf_streamoff returns %d\n", __func__, rc);
+	}
 
 	mutex_unlock(&pcam_inst->inst_lock);
 	mutex_unlock(&pcam->vid_lock);
@@ -1437,20 +1439,40 @@ static struct v4l2_subdev *msm_eeprom_probe(
 
 	D("%s called\n", __func__);
 
-	if (!eeprom_info || !eeprom_info->board_info)
-		goto probe_fail;
+	/*Start : shchang@qualcomm.com : 1104 -FROM*/
+	if (!eeprom_info){
+            D("[%s::eeprom_info] fail!!\n", __func__);
+            goto probe_fail;
+       }
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	if (eeprom_info->type == MSM_EEPROM_SPI){
+            D("[%s::eeprom_info->type ] fail!!\n", __func__);
+            goto probe_fail;
+       }
+#endif
+	if (!eeprom_info || !eeprom_info->board_info){
+            D("[%s::eeprom_info->board_info] fail!!\n", __func__);
+            goto probe_fail;
+       }
+	/*End : shchang@qualcomm.com : 1104 - FROM*/
 
 	adapter = i2c_get_adapter(eeprom_info->bus_id);
-	if (!adapter)
-		goto probe_fail;
+	if (!adapter){
+            D("[%s::adapter] fail!!\n", __func__);        
+            goto probe_fail;
+       }
 
 	eeprom_client = i2c_new_device(adapter, eeprom_info->board_info);
-	if (!eeprom_client)
-		goto device_fail;
+	if (!eeprom_client){
+            D("[%s::adapter] fail!!\n", __func__);        
+            goto device_fail;
+       }
 
 	eeprom_sdev = (struct v4l2_subdev *)i2c_get_clientdata(eeprom_client);
-	if (eeprom_sdev == NULL)
-		goto client_fail;
+	if (eeprom_sdev == NULL){
+            D("[%s::adapter] fail!!\n", __func__);        
+            goto client_fail;
+       }
 
 	return eeprom_sdev;
 client_fail:
@@ -1490,7 +1512,9 @@ int msm_sensor_register(struct v4l2_subdev *sensor_sd)
 	s_ctrl = get_sctrl(sensor_sd);
 	sdata = (struct msm_camera_sensor_info *) s_ctrl->sensordata;
 
+#ifdef CONFIG_MSM_ACTUATOR
 	pcam->act_sdev = msm_actuator_probe(sdata->actuator_info);
+#endif
 	pcam->eeprom_sdev = msm_eeprom_probe(sdata->eeprom_info);
 
 	D("%s: pcam =0x%p\n", __func__, pcam);

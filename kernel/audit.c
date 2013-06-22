@@ -41,6 +41,10 @@
  * Example user-space utilities: http://people.redhat.com/sgrubb/audit/
  */
 
+/**
+ * @knox SEAndroid
+ */
+
 #include <linux/init.h>
 #include <asm/types.h>
 #include <linux/atomic.h>

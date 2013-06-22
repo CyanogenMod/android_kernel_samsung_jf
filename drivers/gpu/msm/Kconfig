@@ -96,3 +96,10 @@ config MSM_KGSL_DISABLE_SHADOW_WRITES
 	bool "Disable register shadow writes for context switches"
 	default n
 	depends on MSM_KGSL
+
+config MSM_KGSL_FPS_NODE_ENABLE
+	bool "Enable FPS node to check FPS"
+	default n
+	---help---
+	  The fps node will control by SurfaceFlinger.
+	  SurfaceFlinger update fps and max_fps node and use it.

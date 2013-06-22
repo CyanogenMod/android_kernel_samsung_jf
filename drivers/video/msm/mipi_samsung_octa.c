@@ -98,6 +98,7 @@ static int mipi_samsung_disp_send_cmd(struct msm_fb_data_type *mfd,
 		if (lock)
 			mutex_lock(&mfd->dma->ov_mutex);
 	}
+	cmdreq.flags =	CMD_REQ_COMMIT;
 
 		switch (cmd) {
 		case PANEL_ON:
@@ -119,6 +120,7 @@ static int mipi_samsung_disp_send_cmd(struct msm_fb_data_type *mfd,
 		case PANEL_BRIGHT_CTRL:
 			cmd_desc = msd.mpd->brightness.cmd;
 			cmd_size = msd.mpd->brightness.size;
+			cmdreq.flags =  CMD_REQ_SINGLE_TX |CMD_REQ_COMMIT;
 			break;
 		case PANEL_MTP_ENABLE:
 			cmd_desc = msd.mpd->mtp_enable.cmd;
@@ -168,7 +170,6 @@ static int mipi_samsung_disp_send_cmd(struct msm_fb_data_type *mfd,
 
 	cmdreq.cmds = cmd_desc;
 	cmdreq.cmds_cnt = cmd_size;
-	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 

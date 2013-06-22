@@ -1606,7 +1606,7 @@ struct sii8240_platform_data sii8240_pdata = {
 	.power = sii8240_hw_onoff,
 	.hw_reset = sii8240_hw_reset,
 	.gpio_cfg = mhl_gpio_config,
-	.swing_level = 0x36,
+	.swing_level = 0x26,
 	.vbus_present = muic77693_mhl_cb,
 };
 
@@ -2140,6 +2140,16 @@ static int ssp_check_changes(void)
 */
 static void ssp_get_positions(int *acc, int *mag)
 {
+#if !defined(CONFIG_MACH_JF_CMCCCSFB)
+	if (system_rev == BOARD_REV13)
+		*acc = MPU6500_TOP_RIGHT_UPPER;
+	else if (system_rev > BOARD_REV09)
+		*acc = K330_TOP_LEFT_UPPER;
+	else if (system_rev > BOARD_REV04)
+		*acc = MPU6500_TOP_RIGHT_UPPER;
+	else
+		*acc = MPU6500_BOTTOM_RIGHT_UPPER;
+#else
 	if (system_rev > BOARD_REV09)
 		*acc = K330_TOP_LEFT_UPPER;
 	else if (system_rev > BOARD_REV04)
@@ -2147,6 +2157,7 @@ static void ssp_get_positions(int *acc, int *mag)
 	else
 		*acc = MPU6500_BOTTOM_RIGHT_UPPER;
 
+#endif
 	if (system_rev > BOARD_REV06)
 		*mag = YAS532_BOTTOM_RIGHT_LOWER;
 	else if (system_rev > BOARD_REV03)
@@ -4431,7 +4442,11 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.active_low     = 1,
 		.type		= EV_KEY,
 		.wakeup		= 0,
+#ifdef CONFIG_SEC_FACTORY
+		.debounce_interval = 10,
+#else
 		.debounce_interval = 5,
+#endif
 	},
 	{
 		.code           = KEY_VOLUMEDOWN,
@@ -4440,7 +4455,11 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.active_low     = 1,
 		.type		= EV_KEY,
 		.wakeup		= 0,
+#ifdef CONFIG_SEC_FACTORY
+		.debounce_interval = 10,
+#else
 		.debounce_interval = 5,
+#endif
 	},
 	{
 		.code           = KEY_HOMEPAGE,
@@ -4449,7 +4468,11 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.active_low     = 1,
 		.type		= EV_KEY,
 		.wakeup		= 1,
+#ifdef CONFIG_SEC_FACTORY
+		.debounce_interval = 10,
+#else
 		.debounce_interval = 5,
+#endif
 	},
 };
 

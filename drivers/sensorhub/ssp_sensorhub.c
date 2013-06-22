@@ -23,7 +23,7 @@ static int ssp_sensorhub_print_data(const char *func_name,
 	int log_size = strlen(func_name) + 2 + sizeof(buf) * length + 1;
 	int i;
 
-	log_str = kzalloc(log_size, GFP_KERNEL);
+	log_str = kzalloc(log_size, GFP_ATOMIC);
 	if (unlikely(!log_str)) {
 		sensorhub_err("allocate memory for data log err");
 		return -ENOMEM;
@@ -132,12 +132,23 @@ static ssize_t ssp_sensorhub_read(struct file *file, char __user *buf,
 		= container_of(file->private_data,
 			struct ssp_sensorhub_data, sensorhub_device);
 	int retries = MAX_DATA_COPY_TRY;
+	int length = 0;
 	int ret = 0;
 
+	spin_lock_bh(&hub_data->sensorhub_lock);
 	if (unlikely(list_empty(&hub_data->events_head.list))) {
 		sensorhub_info("no library data");
-		return 0;
+		goto exit;
 	}
+
+	/* first in first out */
+	hub_data->first_event
+		= list_first_entry(&hub_data->events_head.list,
+				struct sensorhub_event, list);
+	length = hub_data->first_event->library_length;
+
+	/* remove first event from the list */
+	list_del(&hub_data->first_event->list);
 
 	while (retries--) {
 		ret = copy_to_user(buf,
@@ -148,7 +159,7 @@ static ssize_t ssp_sensorhub_read(struct file *file, char __user *buf,
 	}
 	if (unlikely(ret)) {
 		sensorhub_err("read library data err(%d)", ret);
-		return -ret;
+		goto exit;
 	}
 
 	ssp_sensorhub_print_data(__func__,
@@ -156,7 +167,10 @@ static ssize_t ssp_sensorhub_read(struct file *file, char __user *buf,
 		hub_data->first_event->library_length);
 
 	complete(&hub_data->sensorhub_completion);
-	return hub_data->first_event->library_length;
+
+exit:
+	spin_unlock_bh(&hub_data->sensorhub_lock);
+	return ret ? -ret : length;
 }
 
 static long ssp_sensorhub_ioctl(struct file *file, unsigned int cmd,
@@ -231,18 +245,17 @@ void ssp_sensorhub_report_notice(struct ssp_data *ssp_data, char notice)
 		sensorhub_err("invalid notice(0x%x)", notice);
 }
 
-static void ssp_sensorhub_report_length(
-			struct ssp_sensorhub_data *hub_data, int length)
+static void ssp_sensorhub_report_library(struct ssp_sensorhub_data *hub_data)
 {
-	input_report_rel(hub_data->sensorhub_input_dev, DATA, length);
+	input_report_rel(hub_data->sensorhub_input_dev, DATA, DATA);
 	input_sync(hub_data->sensorhub_input_dev);
 	wake_lock_timeout(&hub_data->sensorhub_wake_lock, WAKE_LOCK_TIMEOUT);
 }
 
-static void ssp_sensorhub_report_large_length(
-			struct ssp_sensorhub_data *hub_data, int length)
+static void ssp_sensorhub_report_large_library(
+			struct ssp_sensorhub_data *hub_data)
 {
-	input_report_rel(hub_data->sensorhub_input_dev, LARGE_DATA, length);
+	input_report_rel(hub_data->sensorhub_input_dev, LARGE_DATA, LARGE_DATA);
 	input_sync(hub_data->sensorhub_input_dev);
 	wake_lock_timeout(&hub_data->sensorhub_wake_lock, WAKE_LOCK_TIMEOUT);
 }
@@ -261,27 +274,27 @@ static int ssp_sensorhub_list(struct ssp_sensorhub_data *hub_data,
 
 	ssp_sensorhub_print_data(__func__, dataframe+start, length);
 
+	spin_lock_bh(&hub_data->sensorhub_lock);
 	/* how many events in the list? */
 	list_for_each(list, &hub_data->events_head.list)
 		events++;
 
 	/* overwrite new event if list is full */
 	if (unlikely(events >= LIST_SIZE)) {
-		sensorhub_info("list is full... overwrite new event");
-		spin_lock_bh(&hub_data->sensorhub_lock);
-		list_del(&hub_data->first_event->list);
-		hub_data->first_event
+		struct sensorhub_event *oldest_event
 			= list_first_entry(&hub_data->events_head.list,
 					struct sensorhub_event, list);
-		spin_unlock_bh(&hub_data->sensorhub_lock);
+		list_del(&oldest_event->list);
+		sensorhub_info("overwrite event");
 	}
 
 	/* allocate memory for new event */
 	kfree(hub_data->events[hub_data->event_number].library_data);
 	hub_data->events[hub_data->event_number].library_data
-		= kzalloc(length * sizeof(char), GFP_KERNEL);
+		= kzalloc(length * sizeof(char), GFP_ATOMIC);
 	if (unlikely(!hub_data->events[hub_data->event_number].library_data)) {
 		sensorhub_err("allocate memory for library err");
+		spin_unlock_bh(&hub_data->sensorhub_lock);
 		return -ENOMEM;
 	}
 
@@ -291,7 +304,6 @@ static int ssp_sensorhub_list(struct ssp_sensorhub_data *hub_data,
 	hub_data->events[hub_data->event_number].library_length = length;
 
 	/* add new event into the end of list */
-	spin_lock_bh(&hub_data->sensorhub_lock);
 	list_add_tail(&hub_data->events[hub_data->event_number].list,
 			&hub_data->events_head.list);
 	spin_unlock_bh(&hub_data->sensorhub_lock);
@@ -320,47 +332,16 @@ static int ssp_sensorhub_thread(void *arg)
 			break;
 		}
 
-		/* get ready new event if the previous transfer has succeeded */
-		if (likely(!hub_data->transferring)) {
-			spin_lock_bh(&hub_data->sensorhub_lock);
-			/* first in first out */
-			hub_data->first_event
-				= list_first_entry(&hub_data->events_head.list,
-						struct sensorhub_event, list);
-			hub_data->transferring = true;
-			spin_unlock_bh(&hub_data->sensorhub_lock);
-		}
-
-		/* report sensorhub event length to user */
-		ssp_sensorhub_report_length(hub_data,
-				hub_data->first_event->library_length);
+		/* report sensorhub event to user */
+		ssp_sensorhub_report_library(hub_data);
 
 		/* wait until transfer finished */
 		ret = wait_for_completion_timeout(
 			&hub_data->sensorhub_completion, COMPLETION_TIMEOUT);
-		if (likely(ret > 0))
-			hub_data->transferring = false;
-		else if (unlikely(ret == 0))
+		if (unlikely(!ret))
 			sensorhub_err("wait timed out");
-		else
+		else if (unlikely(ret < 0))
 			sensorhub_err("wait for completion err(%d)", ret);
-
-		/* remove first event in the list if transfer succeeded */
-		if (likely(!hub_data->transferring)) {
-			struct list_head *list;
-			int events = 0;
-
-			/* remove first event from the list */
-			spin_lock_bh(&hub_data->sensorhub_lock);
-			list_del(&hub_data->first_event->list);
-			spin_unlock_bh(&hub_data->sensorhub_lock);
-
-			/* how many events remain in the list after removing? */
-			list_for_each(list, &hub_data->events_head.list)
-				events++;
-			if (unlikely(events))
-				sensorhub_info("%d events remain", events);
-		}
 	}
 
 	return 0;
@@ -514,8 +495,7 @@ int ssp_sensorhub_handle_large_data(struct ssp_data *ssp_data,
 
 	/* finally ready to go to user */
 	if (msg_number >= total_msg_number) {
-		ssp_sensorhub_report_large_length(hub_data,
-				hub_data->large_library_length);
+		ssp_sensorhub_report_large_library(hub_data);
 		current_msg_number = 1;
 	}
 

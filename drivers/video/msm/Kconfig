@@ -493,6 +493,12 @@ config FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT
 	select FB_MSM_MIPI_DSI_RENESAS_TFT
 	default n
 
+config FB_MSM_ENABLE_LCD_EN2
+	bool "LCD_EN2 Enable for J Active project"
+	default n
+	---help---
+		Enable LCD EN2 pin to control AVDD
+
 config FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT
 	bool
 	select FB_MSM_MIPI_DSI_SAMSUNG_OCTA

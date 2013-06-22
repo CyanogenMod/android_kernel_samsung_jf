@@ -53,7 +53,7 @@ int mercury_core_reset(void)
 
 int msm_mercury_core_reset(void)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	int rc = 0;
 	int tm = 500;/*500ms*/
 	MCR_DBG("\n%s\n(%d)%s()\n", __FILE__, __LINE__, __func__);
@@ -91,7 +91,7 @@ static int (*msm_mercury_irq_handler) (int, void *, void *);
 irqreturn_t msm_mercury_core_irq(int irq_num, void *context)
 {
 	void *data = NULL;
-	unsigned long flags;
+	unsigned long flags = 0;
 	uint16_t mcr_rd_irq;
 	uint16_t mcr_wr_irq;
 	uint32_t jpeg_status;

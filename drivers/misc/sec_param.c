@@ -140,8 +140,8 @@ bool sec_get_param(enum sec_param_index index, void *value)
 		break;
 	case param_index_boot_alarm_value_h:
 		memcpy(value, &(param_data->boot_alarm_value_h), sizeof(unsigned int));
-#endif
 		break;
+#endif
 	default:
 		return false;
 	}

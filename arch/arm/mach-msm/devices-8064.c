@@ -142,6 +142,7 @@ static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
 	.cpu_offset = MSM_ACC1_BASE - MSM_ACC0_BASE,
 	.mask = 1UL << 13,
 };
+
 struct platform_device msm8064_cpu_slp_status = {
 	.name		= "cpu_slp_status",
 	.id		= -1,
@@ -553,7 +554,7 @@ static struct resource resources_qup_spi_gsbi5[] = {
 		.end    = GSBI5_QUP_IRQ,
 		.flags  = IORESOURCE_IRQ,
 	},
-#if defined(CONFIG_MACH_JACTIVE_ATT)	
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	{
 		.name   = "spi_clk",
 		.start  = 54,

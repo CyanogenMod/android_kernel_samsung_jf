@@ -17,7 +17,6 @@
 #include <linux/module.h>
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
-#include <linux/dma-mapping.h>
 
 #define cam_err(fmt, arg...)	\
 	do {					\
@@ -25,11 +24,6 @@
 			__func__, __LINE__, ##arg);		\
 	}							\
 	while (0)
-#define SWAP32(l) \
-	(((((l) & 0xff000000) >> 24) | \
-	(((l) & 0x00ff0000) >> 8)  | \
-	(((l) & 0x0000ff00) << 8)  | \
-	(((l) & 0x000000ff) << 24)))
 
 static struct spi_device *g_spi;
 
@@ -39,7 +33,6 @@ static struct spi_device *g_spi;
 /* in camera driver file*/
 /*#define CHANGE_ENDIAN	*/
 
-#if 0
 static inline
 int spi_xmit(const u8 *addr, const int len)
 {
@@ -83,109 +76,7 @@ int spi_xmit(const u8 *addr, const int len)
 
 	return ret;
 }
-#else // for DMA write
 
-#define BUF_SIZE_FOR_SPI 2048
-/*static inline*/
-int spi_xmit(const u8 *addr,const int len)
-{
-	struct spi_message msg;
-	int ret =-1;
-	void *buf_for_tx = NULL;
-	int duplicate_len = len;
-	int check_len = 0;
-	struct spi_transfer *xfer;
-	u64 mask;
-	struct device *dev = &(g_spi->master->dev);
-	dma_addr_t dma_handle1;
-	int change_endian_count = 0;
-	unsigned long *buf_for_tx_trans;
-	unsigned long *addr_trans;
-	mask = DMA_BIT_MASK(32);
-	dev->dma_mask = &mask;
-	dev->coherent_dma_mask = DMA_BIT_MASK(32);
-	buf_for_tx = dma_alloc_coherent(dev, BUF_SIZE_FOR_SPI, &dma_handle1, GFP_KERNEL);
-	xfer = kmalloc(sizeof(struct spi_transfer),GFP_KERNEL);
-	xfer->speed_hz = 11000000;//1100000;
-	xfer->bits_per_word = 32;
-	xfer->cs_change = 0;
-	xfer->delay_usecs = 0;
-	xfer->len = BUF_SIZE_FOR_SPI;
-	xfer->tx_dma = dma_handle1;
-	xfer->rx_dma = 0;
-	xfer->tx_buf = buf_for_tx;
-	xfer->rx_buf = 0;
-	g_spi->mode |= 0x20;
-	spi_setup(g_spi);
-	buf_for_tx_trans = (unsigned long *)buf_for_tx;
-	addr_trans = (unsigned long *)addr;
-	while(duplicate_len !=0 ) {
-		if(duplicate_len > BUF_SIZE_FOR_SPI) {
-
-			if (!buf_for_tx) {
-				printk("Error allocating DMA memory\n");
-				kfree(xfer);
-				return 0;
-			}
-			while(change_endian_count != (BUF_SIZE_FOR_SPI/4)) {
-				*(buf_for_tx_trans+change_endian_count) =
-					SWAP32(*(addr_trans+(check_len*BUF_SIZE_FOR_SPI/4)+change_endian_count));
-				change_endian_count = change_endian_count+1;
-			}
-			change_endian_count = 0;
-			spi_message_init(&msg);
-			msg.is_dma_mapped=1;
-			spi_message_add_tail(xfer, &msg);
-			ret = spi_sync(g_spi, &msg);
-			if (ret < 0)
-				printk("spi_sync ret: %d\n",ret);
-			duplicate_len = duplicate_len - BUF_SIZE_FOR_SPI;
-			check_len = check_len + 1;
-		} else {
-
-			if (!buf_for_tx) {
-				printk("Error allocating DMA memory\n");
-				kfree(xfer);
-				return 0;
-			}
-
-			change_endian_count = 0;
-			xfer->speed_hz = 11000000;//1100000;
-			xfer->bits_per_word = 32;
-			xfer->cs_change = 0;
-			xfer->delay_usecs = 0;
-			xfer->len = duplicate_len;
-			xfer->tx_dma = dma_handle1;
-			xfer->rx_dma = 0;
-			xfer->tx_buf = buf_for_tx;
-			xfer->rx_buf = 0;
-			g_spi->mode |= 0x20;
-
-			while(change_endian_count != (duplicate_len/4)) {
-				*(buf_for_tx_trans+change_endian_count) =
-					SWAP32(*(addr_trans+(check_len*BUF_SIZE_FOR_SPI/4)+change_endian_count));
-				change_endian_count = change_endian_count+1;
-			}
-			change_endian_count = 0;
-			spi_setup(g_spi);
-
-			spi_message_init(&msg);
-			msg.is_dma_mapped=1;
-			spi_message_add_tail(xfer, &msg);
-			ret = spi_sync(g_spi, &msg);
-			if (ret < 0)
-				printk("spi_sync ret: %d\n",ret);
-			duplicate_len = 0;
-		}
-	}
-	dma_free_coherent(dev,BUF_SIZE_FOR_SPI,buf_for_tx,dma_handle1);
-	buf_for_tx = 0;
-	kfree(xfer);
-	xfer = 0;
-	return ret;
-
-}
-#endif
 static inline
 int spi_xmit_rx(u8 *in_buf, size_t len)
 {

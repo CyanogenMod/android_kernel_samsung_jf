@@ -84,6 +84,9 @@ struct msm_gemini_device {
 	int out_frag_cnt;
 
 	uint32_t bus_perf_client;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	uint32_t core_reset;
+#endif
 };
 
 int __msm_gemini_open(struct msm_gemini_device *pgmn_dev);
