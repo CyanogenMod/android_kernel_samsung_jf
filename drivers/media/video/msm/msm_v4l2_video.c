@@ -629,7 +629,7 @@ msm_v4l2_overlay_do_ioctl(struct file *file,
 	}
 	case VIDIOC_G_CTRL: {
 		struct v4l2_control *ctrl = arg;
-		__s32 rotation;
+		__s32 rotation = 0;
 
 		switch (ctrl->id) {
 

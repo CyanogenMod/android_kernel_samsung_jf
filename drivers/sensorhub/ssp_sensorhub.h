@@ -54,7 +54,6 @@ struct ssp_sensorhub_data {
 	struct sensorhub_event events_head;
 	struct sensorhub_event events[LIST_SIZE];
 	struct sensorhub_event *first_event;
-	bool transferring;
 	char *large_library_data;
 	int large_library_length;
 	int event_number;

@@ -57,7 +57,7 @@ static uint32_t orig_src_y, orig_src_cbcr;
 }
 
 #define msm_dequeue_vpe(queue, member) ({			\
-	unsigned long flags;					\
+	unsigned long flags = 0;					\
 	struct msm_device_queue *__q = (queue);			\
 	struct msm_queue_cmd *qcmd = 0;				\
 	spin_lock_irqsave(&__q->lock, flags);			\
@@ -1113,7 +1113,7 @@ static void vpe_send_msg_no_payload(enum VPE_MESSAGE_ID id)
 
 static void vpe_do_tasklet(unsigned long data)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	uint32_t pyaddr = 0, pcbcraddr = 0;
 	uint32_t src_y, src_cbcr, temp;
 

@@ -49,6 +49,9 @@ void msm_sensor_adjust_frame_lines2(struct msm_sensor_ctrl_t *s_ctrl)
 	uint16_t cur_line = 0;
 	uint16_t exp_fl_lines = 0;
 	uint8_t int_time[3];
+	uint32_t fll = (s_ctrl->msm_sensor_reg->
+			output_settings[s_ctrl->curr_res].frame_length_lines *
+			s_ctrl->fps_divider) / Q10;
 	if (s_ctrl->sensor_exp_gain_info) {
 		msm_camera_i2c_read_seq(s_ctrl->sensor_i2c_client,
 			s_ctrl->sensor_exp_gain_info->coarse_int_time_addr-1,
@@ -58,8 +61,7 @@ void msm_sensor_adjust_frame_lines2(struct msm_sensor_ctrl_t *s_ctrl)
 		cur_line |= int_time[2] >> 4;
 		exp_fl_lines = cur_line +
 			s_ctrl->sensor_exp_gain_info->vert_offset;
-		if (exp_fl_lines > s_ctrl->msm_sensor_reg->
-			output_settings[s_ctrl->curr_res].frame_length_lines)
+		if (exp_fl_lines > fll)
 			msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 				s_ctrl->sensor_output_reg_addr->
 				frame_length_lines,
@@ -141,6 +143,9 @@ int32_t msm_sensor_write_output_settings(struct msm_sensor_ctrl_t *s_ctrl,
 	uint16_t res)
 {
 	int32_t rc = -EFAULT;
+	uint32_t fll = (s_ctrl->msm_sensor_reg->
+		output_settings[res].frame_length_lines *
+		s_ctrl->fps_divider) / Q10;
 	struct msm_camera_i2c_reg_conf dim_settings[] = {
 		{s_ctrl->sensor_output_reg_addr->x_output,
 			s_ctrl->msm_sensor_reg->
@@ -152,10 +157,11 @@ int32_t msm_sensor_write_output_settings(struct msm_sensor_ctrl_t *s_ctrl,
 			s_ctrl->msm_sensor_reg->
 			output_settings[res].line_length_pclk},
 		{s_ctrl->sensor_output_reg_addr->frame_length_lines,
-			s_ctrl->msm_sensor_reg->
-			output_settings[res].frame_length_lines},
+			fll},
 	};
-
+#if 1 //temp insook0321
+	return rc;	
+#endif
 	rc = msm_camera_i2c_write_tbl(s_ctrl->sensor_i2c_client, dim_settings,
 		ARRAY_SIZE(dim_settings), MSM_CAMERA_I2C_WORD_DATA);
 	return rc;
@@ -215,7 +221,7 @@ int32_t msm_sensor_set_fps(struct msm_sensor_ctrl_t *s_ctrl,
 }
 
 int32_t msm_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint32_t gain, uint32_t line)
 {
 	uint32_t fl_lines;
 	uint8_t offset;
@@ -227,6 +233,7 @@ int32_t msm_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 		
 	if(fl_lines == 1133 || fl_lines == 1130)	//[Liz] //added by jay for pip
 		fl_lines += 20;
+	fl_lines += (fl_lines & 0x01);
 
 	s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
@@ -243,7 +250,7 @@ int32_t msm_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 }
 
 int32_t msm_sensor_write_exp_gain2(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint32_t gain, uint32_t line)
 {
 	uint32_t fl_lines, ll_pclk, ll_ratio;
 	uint8_t offset;
@@ -334,6 +341,7 @@ int32_t msm_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 		msm_sensor_write_init_settings(s_ctrl);
 	} else if (update_type == MSM_SENSOR_UPDATE_PERIODIC) {
 		msm_sensor_write_res_settings(s_ctrl, res);
+		msleep(30);	/*Add delay for stable enter*/
 		v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 			NOTIFY_PCLK_CHANGE, &s_ctrl->msm_sensor_reg->
 			output_settings[res].op_pixel_clk);
@@ -1602,7 +1610,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 	s_ctrl->curr_res = MSM_SENSOR_INVALID_RES;
-	msleep(20);
+	usleep(20*1000);
 	return rc;
 
 cci_init_failed:
@@ -1737,12 +1745,19 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 		return -EFAULT;
 	}
 
-#if !defined(CONFIG_JC) && !defined(CONFIG_S5K6B2YX)
+#if 1 
 	rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
 	if (rc < 0) {
 		pr_err("%s %s power up failed\n", __func__, client->name);
 		return rc;
 	}
+
+#ifdef CONFIG_CAMERA_SW_I2C_ACT	
+	if ( (s_ctrl->sensordata->eeprom_info) &&
+		(s_ctrl->sensordata->eeprom_info->type == MSM_EEPROM_SPI) ) {
+		imx175_eeprom_init();
+	}
+#endif		
 
 	if (s_ctrl->func_tbl->sensor_match_id)
 		rc = s_ctrl->func_tbl->sensor_match_id(s_ctrl);
@@ -1770,14 +1785,14 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 	s_ctrl->sensor_v4l2_subdev.entity.revision =
 		s_ctrl->sensor_v4l2_subdev.devnode->num;
 	goto power_down;
-#if !defined(CONFIG_JC) && !defined(CONFIG_S5K6B2YX)
+#if 1 //temp insook0321 #if !defined(CONFIG_JC) && !defined(CONFIG_S5K6B2YX)
 probe_fail:
 	pr_err("%s %s_i2c_probe failed\n", __func__, client->name);
 #endif
 power_down:
 	if (rc > 0)
 		rc = 0;
-#if !defined(CONFIG_JC) && !defined(CONFIG_S5K6B2YX)
+#if 1 //temp insook0321 #if !defined(CONFIG_JC) && !defined(CONFIG_S5K6B2YX)
 	s_ctrl->func_tbl->sensor_power_down(s_ctrl);
 #endif
 	s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;

@@ -486,6 +486,11 @@ out:
 	mutex_unlock(&l2_regulator_lock);
 }
 
+static int minus_vc;
+module_param_named(
+	mclk, minus_vc, int, S_IRUGO | S_IWUSR | S_IWGRP
+);
+
 /* Set the CPU's clock rate and adjust the L2 rate, voltage and BW requests. */
 static int acpuclk_krait_set_rate(int cpu, unsigned long rate,
 				  enum setrate_reason reason)
@@ -525,7 +530,7 @@ static int acpuclk_krait_set_rate(int cpu, unsigned long rate,
 	/* Calculate voltage requirements for the current CPU. */
 	vdd_data.vdd_mem  = calculate_vdd_mem(tgt);
 	vdd_data.vdd_dig  = calculate_vdd_dig(tgt);
-	vdd_data.vdd_core = calculate_vdd_core(tgt);
+	vdd_data.vdd_core = calculate_vdd_core(tgt) + minus_vc;
 	vdd_data.ua_core = tgt->ua_core;
 
 	/* Disable AVS before voltage switch */
@@ -949,10 +954,10 @@ static void __init cpufreq_table_init(void)
 		for (i = 0; drv.acpu_freq_tbl[i].speed.khz != 0
 				&& freq_cnt < ARRAY_SIZE(*freq_table); i++) {
 			if (drv.acpu_freq_tbl[i].use_for_scaling) {
-#if 0
+#ifdef CONFIG_SEC_FACTORY 
 				// if factory_condition, set the core freq limit.
 				//QMCK
-				if (console_set_on_cmdline && drv.acpu_freq_tbl[i].speed.khz > 1242000) {
+				if (console_set_on_cmdline && drv.acpu_freq_tbl[i].speed.khz > 1000000) {
 					if(console_batt_stat == 1) {
 						continue;
 					}
