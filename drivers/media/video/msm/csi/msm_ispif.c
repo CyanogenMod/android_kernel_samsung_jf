@@ -289,6 +289,8 @@ static int msm_ispif_config(struct ispif_device *ispif,
 			ispif_params[i].cid_mask, vfe_intf);
 	}
 
+	msm_camera_io_w(0x40, ispif->base + ISPIF_CTRL_ADDR);
+
 	msm_camera_io_w(ISPIF_IRQ_STATUS_MASK, ispif->base +
 					ISPIF_IRQ_MASK_ADDR);
 	msm_camera_io_w(ISPIF_IRQ_STATUS_MASK, ispif->base +
@@ -430,76 +432,59 @@ static int msm_ispif_stop_intf_transfer(struct ispif_device *ispif,
 	int rc = 0;
 	uint8_t intf_cmd_mask = 0x00;
 	uint16_t intfnum = 0, mask = intfmask;
-	int16_t timeout_counter = 4000;
 	mutex_lock(&ispif->mutex);
 	CDBG("%s intfmask %x intf_cmd_mask %x\n", __func__, intfmask,
 		intf_cmd_mask);
 	msm_ispif_intf_cmd(ispif, intfmask, intf_cmd_mask, vfe_intf);
 	while (mask != 0) {
 		if (intfmask & (0x1 << intfnum)) {
-			timeout_counter = 4000;
 			switch (intfnum) {
 			case PIX0:
-				while (((msm_camera_io_r(ispif->base +
+				while ((msm_camera_io_r(ispif->base +
 					ISPIF_PIX_0_STATUS_ADDR +
 					(0x200 * vfe_intf))
-					& 0xf) != 0xf)&& timeout_counter>0) {
-					timeout_counter --;
-					usleep_range(500, 600);
+					& 0xf) != 0xf) {
 					CDBG("Wait for pix0 Idle\n");
 				}
 				break;
 
 			case RDI0:
-				while (((msm_camera_io_r(ispif->base +
+				while ((msm_camera_io_r(ispif->base +
 					ISPIF_RDI_0_STATUS_ADDR +
 					(0x200 * vfe_intf))
-					& 0xf) != 0xf)&& timeout_counter>0) {
-					timeout_counter --;
-					usleep_range(500, 600);
+					& 0xf) != 0xf) {
 					CDBG("Wait for rdi0 Idle\n");
 				}
 				break;
 
 			case PIX1:
-				while (((msm_camera_io_r(ispif->base +
+				while ((msm_camera_io_r(ispif->base +
 					ISPIF_PIX_1_STATUS_ADDR +
 					(0x200 * vfe_intf))
-					& 0xf) != 0xf)&& timeout_counter>0) {
-					timeout_counter --;
-					usleep_range(500, 600);
+					& 0xf) != 0xf) {
 					CDBG("Wait for pix1 Idle\n");
 				}
 				break;
 
 			case RDI1:
-				while (((msm_camera_io_r(ispif->base +
+				while ((msm_camera_io_r(ispif->base +
 					ISPIF_RDI_1_STATUS_ADDR +
 					(0x200 * vfe_intf))
-					& 0xf) != 0xf)&& timeout_counter>0) {
-					timeout_counter --;
-					usleep_range(500, 600);
+					& 0xf) != 0xf) {
 					CDBG("Wait for rdi1 Idle\n");
 				}
 				break;
 
 			case RDI2:
-				while (((msm_camera_io_r(ispif->base +
+				while ((msm_camera_io_r(ispif->base +
 					ISPIF_RDI_2_STATUS_ADDR +
 					(0x200 * vfe_intf))
-					& 0xf) != 0xf)&& timeout_counter>0) {
-					timeout_counter --;
-					usleep_range(500, 600);
+					& 0xf) != 0xf) {
 					CDBG("Wait for rdi2 Idle\n");
 				}
 				break;
 
 			default:
-				break;
-			}
-			if(timeout_counter <= 0) {
-				rc = -EINVAL;
-				pr_err("%s: Error: ispif wait timeout\n", __func__);
 				break;
 			}
 			if (intfnum != RDI2)
@@ -559,7 +544,7 @@ static void send_rdi_sof(struct ispif_device *ispif,
 
 static void ispif_do_tasklet(unsigned long data)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	struct ispif_isr_queue_cmd *qcmd = NULL;
 	struct ispif_device *ispif;
@@ -587,7 +572,7 @@ static void ispif_do_tasklet(unsigned long data)
 static void ispif_process_irq(struct ispif_device *ispif,
 	struct ispif_irq_status *out)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct ispif_isr_queue_cmd *qcmd;
 
 	qcmd = kzalloc(sizeof(struct ispif_isr_queue_cmd),
@@ -720,9 +705,6 @@ static int msm_ispif_init(struct ispif_device *ispif,
 	int rc = 0;
 	CDBG("%s called %d\n", __func__, __LINE__);
 
-	ispif->ispif_ref_cnt++;
-	CDBG("%s, ref count = %d\n", __func__, ispif->ispif_ref_cnt);
-
 	if (ispif->ispif_state == ISPIF_POWER_UP) {
 		pr_err("%s: ispif invalid state %d\n", __func__,
 			ispif->ispif_state);
@@ -752,6 +734,9 @@ static int msm_ispif_init(struct ispif_device *ispif,
 		if (rc < 0)
 			return rc;
 	}
+
+	ispif->ispif_ref_cnt++;
+
 	rc = msm_ispif_reset(ispif);
 	ispif->ispif_state = ISPIF_POWER_UP;
 	return rc;
