@@ -40,7 +40,7 @@ inline void msm_mercury_q_init(char const *name, struct msm_mercury_q *q_p)
 
 inline void *msm_mercury_q_out(struct msm_mercury_q *q_p)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct msm_mercury_q_entry *q_entry_p = NULL;
 	void *data = NULL;
 
@@ -66,7 +66,7 @@ inline void *msm_mercury_q_out(struct msm_mercury_q *q_p)
 
 inline int msm_mercury_q_in(struct msm_mercury_q *q_p, void *data)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	struct msm_mercury_q_entry *q_entry_p;
 

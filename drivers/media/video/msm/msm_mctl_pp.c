@@ -71,7 +71,7 @@ int msm_mctl_check_pp(struct msm_cam_media_controller *p_mctl,
 	int image_mode, int *pp_divert_type, int *pp_type)
 {
 	int rc = 0;
-	unsigned long flags;
+	unsigned long flags = 0;
 	uint32_t pp_key = 0;
 
 	*pp_type = 0;
@@ -428,7 +428,7 @@ int msm_mctl_pp_proc_cmd(struct msm_cam_media_controller *p_mctl,
 			struct msm_mctl_pp_cmd *pp_cmd)
 {
 	int rc = 0;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	switch (pp_cmd->id) {
 	case MCTL_CMD_DIVERT_FRAME_PP_PATH: {

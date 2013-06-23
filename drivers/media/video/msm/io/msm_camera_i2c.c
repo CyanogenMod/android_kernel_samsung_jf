@@ -129,7 +129,7 @@ int32_t msm_camera_i2c_write_seq(struct msm_camera_i2c_client *client,
 {
 	int32_t rc = -EFAULT;
 	unsigned char buf[client->addr_type+num_byte];
-	uint8_t len = 0, i = 0;
+	uint16_t len = 0, i = 0;
 
 	if ((client->addr_type != MSM_CAMERA_I2C_BYTE_ADDR
 		&& client->addr_type != MSM_CAMERA_I2C_WORD_ADDR)

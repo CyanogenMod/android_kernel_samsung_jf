@@ -605,15 +605,15 @@ static int s5k6b2yx_sensor_set_streaming_mode(
 	int rc = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-		CAM_DEBUG("stop streaming");
-		s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
+	CAM_DEBUG("stop streaming");
+	s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
 
 	CAM_DEBUG("vision_mode_enable=%d: E", vision_mode_enable);
 	if(vision_mode_enable) { /*switch from normal/dual to vision mode */
 		CAM_DEBUG("set X_SHUTDOWN pin to low");
 		data->sensor_platform_info->
 			sensor_pmic_gpio_ctrl(data->sensor_platform_info->reset, 0);
-		usleep(1050);
+		usleep(1100);
 		CAM_DEBUG("set VIS_STBY pin to high");
 		data->sensor_platform_info->
 			sensor_pmic_gpio_ctrl(data->sensor_platform_info->stby, 1);
@@ -641,7 +641,7 @@ static int s5k6b2yx_sensor_set_streaming_mode(
 		CAM_DEBUG("set VIS_STBY pin to low");
 		data->sensor_platform_info->
 			sensor_pmic_gpio_ctrl(data->sensor_platform_info->stby, 0);
-		usleep(1050);
+		usleep(1100);
 		CAM_DEBUG("set X_SHUTDOWN pin to high");
 		data->sensor_platform_info->
 			sensor_pmic_gpio_ctrl(data->sensor_platform_info->reset, 1);
