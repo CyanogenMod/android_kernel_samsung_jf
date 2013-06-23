@@ -26,7 +26,7 @@ static wait_queue_head_t reset_wait;
 
 int msm_jpeg_core_reset(uint8_t op_mode, void *base, int size)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	int rc = 0;
 	int tm = 500; /*500ms*/
 	memset(&fe_pingpong_buf, 0, sizeof(fe_pingpong_buf));
@@ -158,7 +158,7 @@ static int (*msm_jpeg_irq_handler) (int, void *, void *);
 irqreturn_t msm_jpeg_core_irq(int irq_num, void *context)
 {
 	void *data = NULL;
-	unsigned long flags;
+	unsigned long flags = 0;
 	int jpeg_irq_status;
 
 	JPEG_DBG("%s:%d] irq_num = %d\n", __func__, __LINE__, irq_num);

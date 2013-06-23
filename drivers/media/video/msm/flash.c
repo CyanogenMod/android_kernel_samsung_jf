@@ -551,14 +551,62 @@ int msm_camera_flash_pmic(
 	return rc;
 }
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+int msm_camera_flash_pmic_gpio(
+	struct msm_camera_sensor_flash_pmic_gpio *pmic_gpio,
+	unsigned led_state)
+{
+	int rc = 0;
+
+	printk(">>>>> msm_camera_flash_pmic_gpio: %d\n", led_state);
+
+	switch (led_state) {
+		case MSM_CAMERA_LED_LOW:		
+			printk("LED_LOW\n");
+			rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_1, 1); /* flash for a short time */
+			//rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_2, 1);
+			break;
+
+		case MSM_CAMERA_LED_HIGH:
+			printk("LED_HIGH\n");
+			//rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_1,	1);
+			rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_2, 1); /* emitting until coming LOW signal */
+			break;
+
+		case MSM_CAMERA_LED_INIT:
+		case MSM_CAMERA_LED_RELEASE:
+		case MSM_CAMERA_LED_OFF:
+			printk("LED_OFF\n");
+			rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_2, 0);
+			rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_1, 0);
+			break;
+
+		default:
+			printk("LED_DEFAULT\n");
+			rc = -EFAULT;
+			break;
+	}
+	CDBG("flash_set_led_state: return %d\n", rc);
+
+	printk("%s Exit rc = %d \n", __func__, rc);
+
+	return rc;
+}
+#endif
+
 int32_t msm_camera_flash_set_led_state(
 	struct msm_camera_sensor_flash_data *fdata, unsigned led_state)
 {
 	int32_t rc;
-
+#if 0//defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	printk(">>>>> %s Enter fdata->flash_type : %d \n", __func__, fdata->flash_type);
+#endif
 	if (fdata->flash_type != MSM_CAMERA_FLASH_LED ||
 		fdata->flash_src == NULL)
 		return -ENODEV;
+#if 0//defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	printk(">>>>> %s Enter led_state : %d \n", __func__, led_state);
+#endif
 
 	switch (fdata->flash_src->flash_sr_type) {
 	case MSM_CAMERA_FLASH_SRC_PMIC:
@@ -589,6 +637,13 @@ int32_t msm_camera_flash_set_led_state(
 				led_state);
 		break;
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	case MSM_CAMERA_FLASH_SRC_PMIC_GPIO:
+		rc = msm_camera_flash_pmic_gpio(&fdata->flash_src->_fsrc.pmic_gpio_src,
+			led_state);
+		break;
+#endif
+
 	default:
 		rc = -ENODEV;
 		break;
@@ -614,7 +669,7 @@ static int msm_strobe_flash_xenon_charge(int32_t flash_charge,
 
 static void strobe_flash_xenon_recharge_handler(unsigned long data)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct msm_camera_sensor_strobe_flash_data *sfdata =
 		(struct msm_camera_sensor_strobe_flash_data *)data;
 
@@ -640,7 +695,7 @@ static irqreturn_t strobe_flash_charge_ready_irq(int irq_num, void *data)
 static int msm_strobe_flash_xenon_init(
 	struct msm_camera_sensor_strobe_flash_data *sfdata)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	int rc = 0;
 
 	spin_lock_irqsave(&sfdata->spin_lock, flags);
@@ -674,7 +729,7 @@ go_out:
 static int msm_strobe_flash_xenon_release
 (struct msm_camera_sensor_strobe_flash_data *sfdata, int32_t final_release)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	spin_lock_irqsave(&sfdata->spin_lock, flags);
 	if (sfdata->state > 0) {
@@ -754,6 +809,9 @@ int msm_flash_ctrl(struct msm_camera_sensor_info *sdata,
 {
 	int rc = 0;
 	sensor_data = sdata;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	printk(">>>>> %s Enter flashtype : %d \n", __func__, flash_info->flashtype);
+#endif
 	switch (flash_info->flashtype) {
 	case LED_FLASH:
 		rc = msm_camera_flash_set_led_state(sdata->flash_data,

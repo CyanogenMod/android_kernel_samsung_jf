@@ -336,6 +336,7 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 
 	case MSM_CAM_IOCTL_GET_ACTUATOR_INFO: {
 		struct msm_actuator_cfg_data cdata;
+		pr_err("%s: %d, MSM_CAM_IOCTL_GET_ACTUATOR_INFO \n", __func__, __LINE__);
 		if (copy_from_user(&cdata,
 			(void *)argp,
 			sizeof(struct msm_actuator_cfg_data))) {
@@ -349,7 +350,7 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 			struct msm_camera_sensor_info *sdata;
 
 			sdata = p_mctl->sdata;
-			CDBG("%s: Act_cam_Name %d\n", __func__,
+			pr_err("%s: Act_cam_Name %d\n", __func__,
 				sdata->actuator_info->cam_name);
 
 			cdata.is_af_supported = 1;
@@ -357,9 +358,9 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 				(enum af_camera_name)sdata->
 				actuator_info->cam_name;
 
-			CDBG("%s: Af Support:%d\n", __func__,
+			pr_err("%s: Af Support:%d\n", __func__,
 				cdata.is_af_supported);
-			CDBG("%s: Act_name:%d\n", __func__, cdata.cfg.cam_name);
+			pr_err("%s: Act_name:%d\n", __func__, cdata.cfg.cam_name);
 
 		}
 		if (copy_to_user((void *)argp,
@@ -411,7 +412,7 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 				rc = -EFAULT;
 				break;
 			}
-			eeprom_data.is_eeprom_supported = 0;
+			eeprom_data.is_eeprom_supported = 1;	//Check by teddy
 			rc = copy_to_user((void *)argp,
 					 &eeprom_data,
 					 sizeof(struct msm_eeprom_cfg_data));
@@ -438,6 +439,9 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 
 	case MSM_CAM_IOCTL_FLASH_CTRL: {
 		struct flash_ctrl_data flash_info;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+		printk(" >>>>> %s  MSM_CAM_IOCTL_FLASH_CTRL \n", __func__);
+#endif
 		if (copy_from_user(&flash_info, argp, sizeof(flash_info))) {
 			ERR_COPY_FROM_USER();
 			rc = -EFAULT;
@@ -532,7 +536,22 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 				VIDIOC_MSM_AXI_RELEASE, NULL);
 		}
 		break;
-
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+    case MSM_CAM_IOCTL_VFE_STATS_VERSION:
+		{
+			uint32_t vfe_ver_num;
+			pr_err("%s:%d: MSM_CAM_IOCTL_VFE_STATS_VERSION checking ",__func__, __LINE__);
+			rc = copy_from_user(&vfe_ver_num, (void *)argp,
+				sizeof(uint32_t));
+			if (rc != 0) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = v4l2_subdev_call(p_mctl->vfe_sdev, core, ioctl,
+				VIDIOC_MSM_VFE_STATS_VERSION, &vfe_ver_num);
+		}
+		break;
+#endif
 	case MSM_CAM_IOCTL_AXI_LOW_POWER_MODE:
 		if (p_mctl->axi_sdev) {
 			v4l2_set_subdev_hostdata(p_mctl->axi_sdev, p_mctl);
@@ -598,7 +617,12 @@ static int msm_mctl_open(struct msm_cam_media_controller *p_mctl,
 			pr_err("%s: act power failed:%d\n", __func__, rc);
 			goto act_power_up_failed;
 		}
-
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+        if (sinfo->eeprom_info && sinfo->eeprom_info->type ==
+            MSM_EEPROM_SPI) {
+            msm_mctl_find_eeprom_subdevs(p_mctl);
+        }
+#endif
 		if (p_mctl->csic_sdev)
 			csi_info.is_csic = 1;
 		else

@@ -84,6 +84,10 @@ struct msm_sensor_id_info_t {
 	uint16_t sensor_id;
 };
 
+struct msm_sensor_mode_array {
+	struct msm_camera_i2c_conf_array *conf;
+	uint16_t size;
+};
 struct msm_sensor_reg_t {
 	enum msm_camera_i2c_data_type default_data_type;
 	struct msm_camera_i2c_reg_conf *start_stream_conf;
@@ -97,6 +101,7 @@ struct msm_sensor_reg_t {
 	struct msm_camera_i2c_conf_array *init_settings;
 	uint8_t init_size;
 	struct msm_camera_i2c_conf_array *mode_settings;
+	struct msm_sensor_mode_array *mode_settings2;	
 	struct msm_camera_i2c_conf_array *no_effect_settings;
 	struct msm_sensor_output_info_t *output_settings;
 	uint8_t num_conf;
@@ -135,9 +140,9 @@ struct msm_sensor_fn_t {
 	int32_t (*sensor_set_fps) (struct msm_sensor_ctrl_t *,
 			struct fps_cfg *);
 	int32_t (*sensor_write_exp_gain) (struct msm_sensor_ctrl_t *,
-			uint16_t, uint32_t);
+			uint32_t, uint32_t);
 	int32_t (*sensor_write_snapshot_exp_gain) (struct msm_sensor_ctrl_t *,
-			uint16_t, uint32_t);
+			uint32_t, uint32_t);	/*shchang@qualcomm.com : 1222*/
 	int32_t (*sensor_setting) (struct msm_sensor_ctrl_t *,
 			int update_type, int rt);
 	int32_t (*sensor_csi_setting) (struct msm_sensor_ctrl_t *,

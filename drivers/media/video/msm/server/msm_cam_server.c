@@ -49,7 +49,7 @@ void msm_queue_init(struct msm_device_queue *queue, const char *name)
 void msm_enqueue(struct msm_device_queue *queue,
 			struct list_head *entry)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	spin_lock_irqsave(&queue->lock, flags);
 	queue->len++;
 	if (queue->len > queue->max) {
@@ -65,7 +65,7 @@ void msm_enqueue(struct msm_device_queue *queue,
 
 void msm_drain_eventq(struct msm_device_queue *queue)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct msm_queue_cmd *qcmd;
 	struct msm_isp_event_ctrl *isp_event;
 	spin_lock_irqsave(&queue->lock, flags);
@@ -748,7 +748,7 @@ int msm_server_streamon(struct msm_cam_v4l2_device *pcam, int idx)
 	struct msm_ctrl_cmd ctrlcmd;
 	D("%s\n", __func__);
 	ctrlcmd.type	   = MSM_V4L2_STREAM_ON;
-	ctrlcmd.timeout_ms = 5000;
+	ctrlcmd.timeout_ms = 3000;
 	ctrlcmd.length	 = 0;
 	ctrlcmd.value    = NULL;
 	ctrlcmd.stream_type = pcam->dev_inst[idx]->image_mode;
@@ -769,7 +769,7 @@ int msm_server_streamoff(struct msm_cam_v4l2_device *pcam, int idx)
 
 	D("%s, pcam = 0x%x\n", __func__, (u32)pcam);
 	ctrlcmd.type        = MSM_V4L2_STREAM_OFF;
-	ctrlcmd.timeout_ms  = 5000;
+	ctrlcmd.timeout_ms  = 3000;
 	ctrlcmd.length      = 0;
 	ctrlcmd.value       = NULL;
 	ctrlcmd.stream_type = pcam->dev_inst[idx]->image_mode;
@@ -1412,7 +1412,10 @@ static long msm_ioctl_server(struct file *file, void *fh,
 	case MSM_CAM_IOCTL_V4L2_EVT_NATIVE_CMD:
 		pr_err("%s: MSM_CAM_IOCTL_V4L2_EVT_NATIVE_CMD : %d\n",
 			__func__, _IOC_NR(cmd));
-		sensor_native_control(arg);
+#if defined(CONFIG_MACH_JACTIVE_ATT) ||  defined(CONFIG_MACH_JACTIVE_EUR)
+#else //not defined
+        sensor_native_control(arg);
+#endif
 		rc = 0;
 		break;
 	case MSM_CAM_IOCTL_V4L2_EVT_NATIVE_FRONT_CMD:
@@ -1892,6 +1895,13 @@ int msm_mctl_find_sensor_subdevs(struct msm_cam_media_controller *p_mctl,
 	return rc;
 }
 
+/*Start : shchang@qualcomm.com : 1104 -FROM*/
+void msm_mctl_find_eeprom_subdevs(struct msm_cam_media_controller *p_mctl)
+{
+	p_mctl->eeprom_sdev = g_server_dev.eeprom_device;
+}
+/*End : shchang@qualcomm.com : 1104 - FROM*/
+
 static irqreturn_t msm_camera_server_parse_irq(int irq_num, void *data)
 {
 	unsigned long flags;
@@ -2366,6 +2376,9 @@ int msm_cam_register_subdev_node(struct v4l2_subdev *sd,
 				sd_info->irq_num);
 		}
 		break;
+	case EEPROM_DEV:
+		g_server_dev.eeprom_device = sd;
+		break;
 	default:
 		break;
 	}
@@ -2777,6 +2790,40 @@ static unsigned int msm_poll_config(struct file *fp,
 	return rc;
 }
 
+static int msm_mmap_config(struct file *fp, struct vm_area_struct *vma)
+{
+	struct msm_cam_config_dev *config_cam = fp->private_data;
+	int rc = 0;
+	int phyaddr;
+	int retval;
+	unsigned long size;
+
+	D("%s: phy_addr=0x%x", __func__, config_cam->mem_map.cookie);
+	phyaddr = (int)config_cam->mem_map.cookie;
+	if (!phyaddr) {
+		pr_err("%s: no physical memory to map", __func__);
+		return -EFAULT;
+	}
+	memset(&config_cam->mem_map, 0,
+		sizeof(struct msm_mem_map_info));
+	size = vma->vm_end - vma->vm_start;
+	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+	retval = remap_pfn_range(vma, vma->vm_start,
+					phyaddr >> PAGE_SHIFT,
+					size, vma->vm_page_prot);
+	if (retval) {
+		pr_err("%s: remap failed, rc = %d",
+					__func__, retval);
+		rc = -ENOMEM;
+		goto end;
+	}
+	D("%s: phy_addr=0x%x: %08lx-%08lx, pgoff %08lx\n",
+			__func__, (uint32_t)phyaddr,
+			vma->vm_start, vma->vm_end, vma->vm_pgoff);
+end:
+	return rc;
+}
+
 static int msm_open_config(struct inode *inode, struct file *fp)
 {
 	int rc;
@@ -3053,6 +3100,12 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 		rc = msm_v4l2_evt_notify(config_cam->p_mctl, cmd, arg);
 		break;
 
+	case MSM_CAM_IOCTL_SET_MEM_MAP_INFO:
+		if (copy_from_user(&config_cam->mem_map, (void __user *)arg,
+				sizeof(struct msm_mem_map_info)))
+			rc = -EINVAL;
+		break;
+
 	case MSM_CAM_IOCTL_SET_MCTL_SDEV:{
 		struct msm_mctl_set_sdev_data set_data;
 		if (copy_from_user(&set_data, (void __user *)arg,
@@ -3136,6 +3189,7 @@ static const struct file_operations msm_fops_config = {
 	.open  = msm_open_config,
 	.poll  = msm_poll_config,
 	.unlocked_ioctl = msm_ioctl_config,
+	.mmap	= msm_mmap_config,
 	.release = msm_close_config,
 };
 
