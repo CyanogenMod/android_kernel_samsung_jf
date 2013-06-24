@@ -211,6 +211,10 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 	}
 	mutex_unlock(&vctrl->update_lock);
 
+
+	/* free previous committed iommu back to pool */
+	mdp4_overlay_iommu_unmap_freelist(mixer);
+
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	if (vctrl->ov_koff != vctrl->ov_done) {
 		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
@@ -228,11 +232,12 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 			real_pipe = mdp4_overlay_ndx2pipe(pipe->pipe_ndx);
 			if (real_pipe && real_pipe->pipe_used) {
 				/*
-				 * commit pipes which are in pending queue
-				 * and not be unset yet
-				 */
+                 * commit pipes which are in pending queue
+                 * and not be unset yet
+                 */
 				mdp4_overlay_vsync_commit(pipe);
 			}
+
 		}
 	}
 
@@ -241,7 +246,7 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 	/* start timing generator & mmu if they are not started yet */
 	mdp4_overlay_dsi_video_start();
 
-	/*
+	 /*
 	 * there has possibility that pipe commit come very close to next vsync
 	 * this may cause two consecutive pie_commits happen within same vsync
 	 * period which casue iommu page fault when previous iommu buffer
@@ -853,7 +858,6 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	complete_all(&vctrl->vsync_comp);
 
 	vctrl->wait_vsync_cnt = 0;
-
 	if (pipe == NULL)
 		return -EINVAL;
 		
@@ -909,7 +913,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 
 	if (vctrl->vsync_irq_enabled) {
 		vctrl->vsync_irq_enabled = 0;
-		mdp4_video_vsync_irq_ctrl(cndx, 0);
+		vsync_irq_disable(INTR_PRIMARY_VSYNC, MDP_PRIM_VSYNC_TERM);
 	}
 
 	/*
@@ -1302,7 +1306,7 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 		if (pipe->ov_blt_addr)
 			mdp4_dsi_video_wait4ov(cndx);
 		else
-			mdp4_dsi_video_wait4vsync(cndx);
+			mdp4_dsi_video_wait4dmap(cndx);
 	}
 
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
