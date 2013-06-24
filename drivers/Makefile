@@ -154,3 +154,7 @@ obj-$(CONFIG_FELICA) += felica/
 ifeq (1, $(shell if [ -d ../../../../../../kernel/drivers/exfat ] ; then echo 1 ; fi))
 	obj-y   += exfat/
 endif
+
+ifeq ($(TIMA_ENABLED),1)
+obj-y                           += checkpower/
+endif

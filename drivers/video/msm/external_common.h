@@ -253,7 +253,6 @@ struct external_common_state_type {
 	int (*hpd_feature)(int on);
 #endif
 	uint16 audio_speaker_data;
-	boolean sii8240_connected;
 };
 
 /* The external interface driver needs to initialize the common state. */

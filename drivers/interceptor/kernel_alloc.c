@@ -75,8 +75,7 @@ ssh_calloc_flags (size_t nitems, size_t isize, SshUInt32 flags)
   void                * ptr;
   unsigned long       size;
 
-  size = isize * nitems;  
-  if (size/isize != nitems) return NULL;
+  size = isize * nitems;
 
   if ((ptr = ssh_malloc_flags(size ? size : 1, flags)) == NULL)
     return NULL;
