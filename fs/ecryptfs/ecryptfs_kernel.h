@@ -348,9 +348,9 @@ struct ecryptfs_mount_crypt_stat {
 #ifdef CONFIG_WTL_ENCRYPTION_FILTER
 	int max_name_filter_len;
 	char enc_filter_name[ENC_NAME_FILTER_MAX_INSTANCE]
-				[ENC_NAME_FILTER_MAX_LEN];
+				[ENC_NAME_FILTER_MAX_LEN + 1];
 	char enc_filter_ext[ENC_EXT_FILTER_MAX_INSTANCE]
-				[ENC_EXT_FILTER_MAX_LEN];
+				[ENC_EXT_FILTER_MAX_LEN + 1];
 #endif
 
 };

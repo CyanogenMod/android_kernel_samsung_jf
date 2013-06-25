@@ -285,15 +285,7 @@ void __init page_cgroup_init(void)
 		     pfn < end_pfn;
                      pfn = ALIGN(pfn + 1, PAGES_PER_SECTION)) {
 
-			/* 
-			 * even if the first pfn is invalid, that doesn't mean
-			 * that the entire section is not used.
-			 * so we should check if the section has the mem map.
-			 * if it has the mem map then we should go ahead and
-			 * create the page cgroup.
-			 */
-			struct mem_section *section = __pfn_to_section(pfn);
-			if (!section->section_mem_map)
+			if (!pfn_valid(pfn))
 				continue;
 			/*
 			 * Nodes's pfns can be overlapping.

@@ -645,24 +645,6 @@ ifeq ($(shell $(CONFIG_SHELL) $(srctree)/scripts/gcc-goto.sh $(CC)), y)
 	KBUILD_CFLAGS += -DCC_HAVE_ASM_GOTO
 endif
 
-#Disable the whole of the following block to disable L1 TIMA
-#ifeq ($(TIMA_ENABLED),1)
-#      KBUILD_CFLAGS += -DTIMA_ENABLED \
-#						-DTIMA_PGD_FREE_MANAGE -DTIMA_COPY_PMD_MANAGE -DTIMA_PMD_CLEAR_MANAGE \
-#						-DTIMA_KERNEL_L1_MANAGE \
-#						-DTIMA_DEBUG_INFRA -DTIMA_INIT_SEC_MON
- #      KBUILD_AFLAGS += -DTIMA_ENABLED \
-#						-DTIMA_PGD_FREE_MANAGE -DTIMA_COPY_PMD_MANAGE -DTIMA_PMD_CLEAR_MANAGE \
-#						-DTIMA_KERNEL_L1_MANAGE \
-#						-DTIMA_DEBUG_INFRA -DTIMA_INIT_SEC_MON
-#endif
-
-#Disable the whole of the following block to disable LKM AUTH
-ifeq ($(TIMA_ENABLED),1)
-       KBUILD_CFLAGS += -DTIMA_LKM_AUTH_ENABLED
-       KBUILD_AFLAGS += -DTIMA_LKM_AUTH_ENABLED
-endif
-
 # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments
 # But warn user when we do so
 warn-assign = \

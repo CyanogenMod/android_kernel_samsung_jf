@@ -553,7 +553,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	 * Change memory allocation size to 4K from 64K
 	 * Sluggish Problem
 	 */
-#if 0
+#if 1
 	page_size = (align >= ilog2(SZ_64K) && size >= SZ_64K)
 			? SZ_64K : PAGE_SIZE;
 #else

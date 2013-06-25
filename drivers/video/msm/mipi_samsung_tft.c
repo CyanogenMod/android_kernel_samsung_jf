@@ -133,16 +133,6 @@ static int mipi_samsung_disp_send_cmd(struct msm_fb_data_type *mfd,
 			cmd_size = msd.mpd->cabc_disable.size;
 			break;
 #endif
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
-		case PANEL_HSYNC_ON:
-			cmd_desc = msd.mpd->hsync_on.cmd;
-			cmd_size = msd.mpd->hsync_on.size;
-			break;
-		case PANEL_HSYNC_OFF:
-			cmd_desc = msd.mpd->hsync_off.cmd;
-			cmd_size = msd.mpd->hsync_off.size;
-			break;
-#endif
 		default:
 			goto unknown_command;
 			;
@@ -178,43 +168,6 @@ unknown_command:
 	return 0;
 }
 
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
-void lcd_hsync_onoff(bool onoff)
-{
-	struct msm_fb_data_type *mfd;
-	mfd = platform_get_drvdata(msd.msm_pdev);
-
-	if (unlikely(!mfd)) { pr_err("%s : panel no mfd",__func__); return;}
-//		return -ENODEV;
-	if (unlikely(mfd->key != MFD_KEY)) { pr_err("%s : panel mfd invlaid",__func__); return;}
-//		return -EINVAL;
-
-#if defined(CONFIG_MACH_JACTIVE_EUR) /* HW DEFECT under REV 0.5 */
-	if( system_rev > 15 )
-		return;
-#endif
-
-	if (mfd->panel_power_on == TRUE)
-		{ 
-			if( onoff )
-				{
-				msleep(30);
-				mipi_samsung_disp_send_cmd(mfd, PANEL_HSYNC_ON, true);
-				pr_info("%s : HSYNC On\n",__func__);
-				}
-			else
-				{
-				mipi_samsung_disp_send_cmd(mfd, PANEL_HSYNC_OFF, true);
-				msleep(10); /* Need time to discharging by capacitance*/
-				pr_info("%s : HSYNC Off\n",__func__);
-				}
-		}
-	else
-		pr_err("%s : panel power off\n",__func__);
-	
-return;
-}
-#endif
 static char manufacture_id1[2] = {0xDA, 0x00}; /* DTYPE_DCS_READ */
 static char manufacture_id2[2] = {0xDB, 0x00}; /* DTYPE_DCS_READ */
 static char manufacture_id3[2] = {0xDC, 0x00}; /* DTYPE_DCS_READ */
@@ -402,10 +355,6 @@ static void __devinit mipi_samsung_disp_shutdown(struct platform_device *pdev)
 		mipi_dsi_pdata->active_reset(0); /* low */
 
 	usleep(2000); /*1ms delay(minimum) required between reset low and AVDD off*/
-
-#if defined(CONFIG_MACH_JACTIVE_EUR)
-	msleep ( 10 ); // need more delay for POWER OFF SIGNAL
-#endif
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
 		mipi_dsi_pdata->panel_power_save(0);

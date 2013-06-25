@@ -165,8 +165,13 @@ static struct synaptics_rmi_f1a_button_map tm1940_f1a_button_map = {
 #define SYNAPTICS_MAX_X_SIZE	1079
 #define SYNAPTICS_MAX_Y_SIZE	1919
 #define SYNAPTICS_MAX_WIDTH	SYNAPTICS_MAX_Y_SIZE
+#if defined(CONFIG_MACH_JACTIVE_EUR)
+#define NUM_RX	16
+#define NUM_TX	28
+#else
 #define NUM_RX	28
 #define NUM_TX	16
+#endif
 
 static struct synaptics_rmi4_platform_data rmi4_platformdata = {
 	/*.irq_type = IRQF_TRIGGER_FALLING,*/
@@ -189,9 +194,6 @@ static struct synaptics_rmi4_platform_data rmi4_platformdata = {
 	.register_cb = synaptics_tsp_register_callback,
 #ifdef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
 	.tout1_on = touch_tout1_on,
-#endif
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
-	.hsync_onoff = lcd_hsync_onoff,
 #endif
 };
 

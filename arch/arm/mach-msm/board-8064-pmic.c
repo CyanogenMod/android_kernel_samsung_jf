@@ -151,7 +151,7 @@ static struct pm8xxx_gpio_init pm8917_gpios[] __initdata = {
 	PM8921_GPIO_OUTPUT(26, 1, HIGH), /* Backlight: on */
 	PM8921_GPIO_OUTPUT_BUFCONF(36, 1, LOW, OPEN_DRAIN),
 	PM8921_GPIO_OUTPUT_FUNC(38, 0, PM_GPIO_FUNC_2),
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	PM8921_GPIO_OUTPUT(33, 0, LOW), /* FLASH_SET */
 	PM8921_GPIO_OUTPUT(24, 0, LOW), /* FLASH_EN */
 #else
@@ -166,7 +166,7 @@ static struct pm8xxx_gpio_init pm8917_gpios[] __initdata = {
 	PM8921_GPIO_INPUT(12, PM_GPIO_PULL_UP_30),     /* PCIE_WAKE_N */
 };
 
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #else
 /* Initial PM8917 SD Card Detection Pin */
 static struct pm8xxx_gpio_init pm8917_sd_det[] __initdata = {
@@ -214,7 +214,7 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 {
 	int i, rc;
 
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	printk("%s Enter \n", __func__);
 	if (socinfo_get_pmic_model() != PMIC_MODEL_PM8917)
 		printk("PM8921 system_rev = %d\n", system_rev);
@@ -227,7 +227,7 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 	else {
 		apq8064_configure_gpios(pm8917_gpios, ARRAY_SIZE(pm8917_gpios));
 
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #else
 #if defined(CONFIG_MACH_JF_ATT) || defined(CONFIG_MACH_JF_TMO) || defined(CONFIG_MACH_JF_EUR)
 		if (system_rev >= BOARD_REV09)

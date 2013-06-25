@@ -2302,7 +2302,7 @@ static struct platform_device *common_not_mpq_devices[] __initdata = {
 static struct platform_device *early_common_devices[] __initdata = {
 	&apq8064_device_acpuclk,
 	&apq8064_device_dmov,
-#if !defined(CONFIG_MACH_JACTIVE_ATT)	
+#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 	&apq8064_device_qup_spi_gsbi5,
 #endif	
 };
@@ -2331,7 +2331,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_device_hsusb_host,
 	&android_usb_device,
 	&msm_device_wcnss_wlan,
-#if defined(CONFIG_MACH_JACTIVE_ATT)	
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	&apq8064_device_qup_spi_gsbi5,
 #endif	
 	&msm_device_iris_fm,
@@ -2458,6 +2458,7 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&msm_rotator_device,
 #endif
 	&msm8064_pc_cntr,
+	&msm8064_cpu_slp_status,
 };
 
 static struct platform_device

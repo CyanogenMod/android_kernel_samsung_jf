@@ -4081,6 +4081,7 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&msm_rotator_device,
 #endif
 	&msm8064_pc_cntr,
+	&msm8064_cpu_slp_status,
 	&sec_device_jack,
 #ifdef CONFIG_SENSORS_SSP_C12SD
 	&uv_device,
@@ -4456,7 +4457,11 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.active_low     = 1,
 		.type		= EV_KEY,
 		.wakeup		= 0,
+#ifdef CONFIG_SEC_FACTORY
+		.debounce_interval = 10,
+#else
 		.debounce_interval = 5,
+#endif
 	},
 	{
 		.code           = KEY_VOLUMEDOWN,
@@ -4465,7 +4470,11 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.active_low     = 1,
 		.type		= EV_KEY,
 		.wakeup		= 0,
+#ifdef CONFIG_SEC_FACTORY
+		.debounce_interval = 10,
+#else
 		.debounce_interval = 5,
+#endif
 	},
 	{
 		.code           = KEY_HOMEPAGE,
@@ -4474,7 +4483,11 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.active_low     = 1,
 		.type		= EV_KEY,
 		.wakeup		= 1,
+#ifdef CONFIG_SEC_FACTORY
+		.debounce_interval = 10,
+#else
 		.debounce_interval = 5,
+#endif
 	},
 };
 

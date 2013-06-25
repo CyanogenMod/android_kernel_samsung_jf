@@ -67,6 +67,9 @@ struct sec_battery_info {
 	struct wake_lock monitor_wake_lock;
 	struct workqueue_struct *monitor_wqueue;
 	struct work_struct monitor_work;
+#ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
+	struct wake_lock lpm_wake_lock;
+#endif
 	unsigned int polling_count;
 	unsigned int polling_time;
 	bool polling_in_sleep;

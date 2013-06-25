@@ -43,7 +43,7 @@ struct gpio_button_data {
 	spinlock_t lock;
 	bool disabled;
 	bool key_pressed;
-	#ifdef KEY_BOOSTER
+#ifdef KEY_BOOSTER
 	struct delayed_work	work_dvfs_off;
 	struct delayed_work	work_dvfs_chg;
 	bool dvfs_lock_status;
@@ -435,11 +435,12 @@ static void gpio_keys_gpio_work_func(struct work_struct *work)
 {
 	struct gpio_button_data *bdata =
 		container_of(work, struct gpio_button_data, work);
-const struct gpio_keys_button *button = bdata->button;
-int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
+	const struct gpio_keys_button *button = bdata->button;
+	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
+
 	gpio_keys_gpio_report_event(bdata);
-	#ifdef KEY_BOOSTER
-	if (button->code == KEY_HOME)
+#ifdef KEY_BOOSTER
+	if (button->code == KEY_HOMEPAGE)
 		gpio_key_set_dvfs_lock(bdata, !!state);
 #endif
 }
@@ -897,8 +898,10 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	struct input_dev *input;
 	int i, error;
 	int wakeup = 0;
-	int ret=0;
+#ifdef CONFIG_SENSORS_HALL
+	int ret;
 	struct device *sec_key;
+#endif
 
 	if (!pdata) {
 		error = gpio_keys_get_devtree_pdata(dev, &alt_pdata);
@@ -956,10 +959,6 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 		error = gpio_keys_setup_key(pdev, input, bdata, button);
 		if (error)
 			goto fail2;
-
-		if (button->wakeup)
-			wakeup = 1;
-	}
 #ifdef KEY_BOOSTER
 		error = gpio_key_init_dvfs(bdata);
 		if (error < 0) {
@@ -967,6 +966,9 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 			goto fail2;
 		}
 #endif
+		if (button->wakeup)
+			wakeup = 1;
+	}
 	error = sysfs_create_group(&pdev->dev.kobj, &gpio_keys_attr_group);
 	if (error) {
 		dev_err(dev, "Unable to export keys/switches, error: %d\n",
@@ -989,8 +991,8 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	}
 	input_sync(input);
 
-	sec_key = device_create(sec_class, NULL, 0, NULL, "sec_key");
 #ifdef CONFIG_SENSORS_HALL
+	sec_key = device_create(sec_class, NULL, 0, NULL, "sec_key");
 	if (IS_ERR(sec_key))
 		pr_err("Failed to create device(sec_key)!\n");
 
@@ -999,7 +1001,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 		pr_err("Failed to create device file(%s)!, error: %d\n",
 			dev_attr_hall_detect.attr.name, ret);
 	}
-#endif
+
 	ret = device_create_file(sec_key, &dev_attr_sec_key_pressed);
 	if (ret) {
 		pr_err("Failed to create device file in sysfs entries(%s)!\n",
@@ -1011,6 +1013,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 			dev_attr_wakeup_keys.attr.name, ret);
 	}
 	dev_set_drvdata(sec_key, ddata);
+#endif
 	device_init_wakeup(&pdev->dev, 1);
 
 	return 0;

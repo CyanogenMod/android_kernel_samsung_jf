@@ -121,17 +121,10 @@ static char renesas_backlight_control[] = {
 	0x2C,
 };
 
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
 static char renesas_teon_control[] = {
 	0x35,
 	0x01,
 };
-
-static char renesas_teoff_control[] = {
-	0x35,
-	0x00,
-};
-#endif
 
 static char renesas_memory_access_control[] = {
 	0x36,
@@ -180,10 +173,8 @@ static struct dsi_cmd_desc renesas_ready_to_on_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_backlight_control), renesas_backlight_control},
 
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_teon_control), renesas_teon_control},
-#endif
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 120,
 		sizeof(renesas_sleep_out), renesas_sleep_out},
@@ -250,17 +241,6 @@ static struct dsi_cmd_desc panel_cabc_disable_cmds[] = {
 };
 #endif
 
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
-static struct dsi_cmd_desc panel_hsync_on_cmds[] = {
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
-		sizeof(renesas_teon_control), renesas_teon_control},
-};
-
-static struct dsi_cmd_desc panel_hsync_off_cmds[] = {
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
-		sizeof(renesas_teoff_control), renesas_teoff_control},
-};
-#endif
 static int get_candela_index(int bl_level)
 {
 	int backlightlevel;
@@ -481,12 +461,6 @@ static struct mipi_panel_data mipi_pd = {
 				, ARRAY_SIZE(panel_cabc_enable_cmds)},
 	.cabc_disable	= {panel_cabc_disable_cmds
 				, ARRAY_SIZE(panel_cabc_disable_cmds)},
-#endif
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
-	.hsync_on = {panel_hsync_on_cmds
-				, ARRAY_SIZE(panel_hsync_on_cmds)},
-	.hsync_off	= {panel_hsync_off_cmds
-				, ARRAY_SIZE(panel_hsync_off_cmds)},
 #endif
 };
 

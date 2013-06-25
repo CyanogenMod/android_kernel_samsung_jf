@@ -291,7 +291,7 @@ static void max77693_haptic_power_onoff(int onoff)
 
 	if (!reg_l8) {
 		reg_l8 = regulator_get(NULL, "8921_l8");
-		ret = regulator_set_voltage(reg_l8, 3000000, 3000000);
+		ret = regulator_set_voltage(reg_l8, 1800000, 3000000);
 
 		if (IS_ERR(reg_l8)) {
 			printk(KERN_ERR"could not get 8921_l8, rc = %ld\n",
@@ -4046,6 +4046,7 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&msm_rotator_device,
 #endif
 	&msm8064_pc_cntr,
+	&msm8064_cpu_slp_status,
 	&sec_device_jack,
 #ifdef CONFIG_SENSORS_SSP_C12SD
 	&uv_device,
@@ -4420,7 +4421,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.desc           = "volume_up_key",
 		.active_low     = 1,
 		.type		= EV_KEY,
-		.wakeup		= 1,
+		.wakeup		= 0,
 		.debounce_interval = 5,
 	},
 	{
@@ -4429,7 +4430,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.desc           = "volume_down_key",
 		.active_low     = 1,
 		.type		= EV_KEY,
-		.wakeup		= 1,
+		.wakeup		= 0,
 		.debounce_interval = 5,
 	},
 	{
@@ -5254,7 +5255,7 @@ static void __init apq8064_common_init(void)
 	printk(KERN_DEBUG"[TSP] System revision, LPM mode : %d %d\n",
 				system_rev, poweroff_charging);
 	if (!poweroff_charging) 
-			S5000_tsp_input_init(lcd_tsp_panel_version);
+		S5000_tsp_input_init(lcd_tsp_panel_version);
 #endif
 
 #if defined(CONFIG_VIDEO_MHL_V2)

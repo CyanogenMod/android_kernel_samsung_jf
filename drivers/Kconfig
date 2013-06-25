@@ -160,7 +160,5 @@ source "drivers/barcode_emul/Kconfig"
 
 source "drivers/irda/Kconfig"
 
-source "drivers/interceptor/Kconfig" 
-
 source "drivers/felica/Kconfig"
 endmenu

@@ -2038,18 +2038,18 @@ static int _hardware_dequeue(struct ci13xxx_ep *mEp, struct ci13xxx_req *mReq)
 	if (mReq->zptr) {
 		if ((TD_STATUS_ACTIVE & mReq->zptr->token) != 0)
 			return -EBUSY;
-
+		
 		/* The controller may access this dTD one more time.
 		 * Defer freeing this to next zero length dTD completion.
 		 * It is safe to assume that controller will no longer
-		 * access the previous dTD after next dTD completion.
+		 * access the previous dTD after next dTD completion. 
 		 */
-		if (mEp->last_zptr)
+		 if (mEp->last_zptr)
 			dma_pool_free(mEp->td_pool, mEp->last_zptr,
-					mEp->last_zdma);
-		mEp->last_zptr = mReq->zptr;
+							mEp->last_zdma);
+		mEp->last_zptr = mReq->zptr;		
 		mEp->last_zdma = mReq->zdma;
-
+		
 		mReq->zptr = NULL;
 	}
 
@@ -2179,7 +2179,7 @@ static int _gadget_stop_activity(struct usb_gadget *gadget)
 
 	if (udc->ep0in.last_zptr) {
 		dma_pool_free(udc->ep0in.td_pool, udc->ep0in.last_zptr,
-				udc->ep0in.last_zdma);
+							udc->ep0in.last_zdma);
 		udc->ep0in.last_zptr = NULL;
 	}
 
@@ -2792,12 +2792,12 @@ static int ep_disable(struct usb_ep *ep)
 			mEp->dir = (mEp->dir == TX) ? RX : TX;
 
 	} while (mEp->dir != direction);
-
+	
 	if (mEp->last_zptr) {
 		dma_pool_free(mEp->td_pool, mEp->last_zptr,
-				mEp->last_zdma);
+							mEp->last_zdma);
 		mEp->last_zptr = NULL;
-	}
+	}	
 
 	mEp->desc = NULL;
 	mEp->ep.desc = NULL;
@@ -3342,7 +3342,7 @@ static int ci13xxx_start(struct usb_gadget_driver *driver,
 	if (!udc->status_buf) {
 		usb_ep_free_request(&udc->ep0in.ep, udc->status);
 		return -ENOMEM;
-	}
+	}	
 	spin_lock_irqsave(udc->lock, flags);
 
 	udc->gadget.ep0 = &udc->ep0in.ep;
@@ -3420,7 +3420,7 @@ static int ci13xxx_stop(struct usb_gadget_driver *driver)
 	spin_unlock_irqrestore(udc->lock, flags);
 	driver->unbind(&udc->gadget);               /* MAY SLEEP */
 	spin_lock_irqsave(udc->lock, flags);
-
+	
 	usb_ep_free_request(&udc->ep0in.ep, udc->status);
 	kfree(udc->status_buf);
 

@@ -2633,6 +2633,10 @@ static int sec_bat_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = battery->present;
+#ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
+		dev_info(battery->dev,
+			"%s: battery present: %d\n", __func__, val->intval);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = battery->cable_type;
@@ -2941,7 +2945,22 @@ static int __devinit sec_battery_probe(struct platform_device *pdev)
 	queue_work(battery->monitor_wqueue, &battery->monitor_work);
 
 	pdata->initial_check();
+#ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
+	/*enable vf ldo to check battery */
+	battery->pdata->check_cable_result_callback(battery->cable_type);
+
+#endif
 	battery->present = battery->pdata->check_battery_callback();
+
+#ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
+	/* do not sleep in lpm mode & factory mode */
+	if (battery->pdata->is_lpm()) {
+		wake_lock_init(&battery->lpm_wake_lock, WAKE_LOCK_SUSPEND,
+				"sec-lpm-monitor");
+		wake_lock(&battery->lpm_wake_lock);
+	}
+#endif
+
 
 	dev_dbg(battery->dev,
 		"%s: SEC Battery Driver Loaded\n", __func__);

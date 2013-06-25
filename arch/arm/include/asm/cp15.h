@@ -52,24 +52,6 @@ static inline unsigned int get_cr(void)
 	return val;
 }
 
-#ifdef TIMA_ENABLED
-void tima_dump_log2(void);
-void tima_verify_state(unsigned long pmdp, unsigned long val, unsigned long rd_only, unsigned long caller);
-
-static inline void tima_send_cmd (unsigned int r2val, unsigned int cmdid)
-{
-	asm volatile (
-#if __GNUC__ >= 4 && __GNUC_MINOR__ >= 6
-        ".arch_extension sec\n"
-#endif	
-	    "stmfd   sp!, {r0-r3, r11}\n"
-        "mov     r11, r0\n"
-        "mov     r2, %0\n" 
-		"mov     r0, %1\n"
-		"smc     #1\n" 
-        "ldmfd   sp!, {r0-r3, r11}" : : "r" (r2val), "r" (cmdid) : "r0","r2","r11","cc");
-}
-#endif
 static inline void set_cr(unsigned int val)
 {
 	asm volatile("mcr p15, 0, %0, c1, c0, 0	@ set CR"

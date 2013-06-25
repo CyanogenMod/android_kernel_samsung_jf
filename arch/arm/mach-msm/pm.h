@@ -77,6 +77,12 @@ struct msm_pm_platform_data {
 
 extern struct msm_pm_platform_data msm_pm_sleep_modes[];
 
+struct msm_pm_sleep_status_data {
+	void *base_addr;
+	uint32_t cpu_offset;
+	uint32_t mask;
+};
+
 struct msm_pm_sleep_ops {
 	void *(*lowest_limits)(bool from_idle,
 			enum msm_pm_sleep_mode sleep_mode,
@@ -103,9 +109,11 @@ void __init msm_pm_set_tz_retention_flag(unsigned int flag);
 #ifdef CONFIG_MSM_PM8X60
 void msm_pm_set_rpm_wakeup_irq(unsigned int irq);
 void msm_pm_set_sleep_ops(struct msm_pm_sleep_ops *ops);
+int msm_pm_wait_cpu_shutdown(unsigned int cpu);
 #else
 static inline void msm_pm_set_rpm_wakeup_irq(unsigned int irq) {}
 static inline void msm_pm_set_sleep_ops(struct msm_pm_sleep_ops *ops) {}
+static inline int msm_pm_wait_cpu_shutdown(unsigned int cpu) { return 0; }
 #endif
 #ifdef CONFIG_HOTPLUG_CPU
 int msm_platform_secondary_init(unsigned int cpu);

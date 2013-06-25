@@ -24,6 +24,7 @@
 #include <linux/smp.h>
 #include <linux/suspend.h>
 #include <linux/tick.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <mach/msm_iomap.h>
 #include <mach/socinfo.h>
@@ -80,6 +81,7 @@ module_param_named(
 	debug_mask, msm_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
 );
 static int msm_pm_retention_tz_call;
+static struct msm_pm_sleep_status_data *msm_pm_slp_sts;
 
 /******************************************************************************
  * Sleep Modes and Parameters
@@ -956,6 +958,31 @@ cpuidle_enter_bail:
 	return 0;
 }
 
+int msm_pm_wait_cpu_shutdown(unsigned int cpu)
+{
+	int timeout = 10;
+
+	if (!msm_pm_slp_sts)
+		return 0;
+
+	while (timeout--) {
+		/*
+		 * Check for the SPM of the core being hotplugged to set
+		 * its sleep state.The SPM sleep state indicates that the
+		 * core has been power collapsed.
+		 */
+		int acc_sts = __raw_readl(msm_pm_slp_sts->base_addr
+				+ cpu * msm_pm_slp_sts->cpu_offset);
+		mb();
+		if (acc_sts & msm_pm_slp_sts->mask)
+			return 0;
+		udelay(100);
+	}
+	pr_info("%s(): Timed out waiting for CPU %u SPM to enter sleep state",
+		__func__, cpu);
+	return -EBUSY;
+}
+
 void msm_pm_cpu_enter_lowpower(unsigned int cpu)
 {
 	int i;
@@ -1155,6 +1182,27 @@ static struct platform_driver msm_pc_counter_driver = {
 	},
 };
 
+static int __devinit msm_cpu_status_probe(struct platform_device *pdev)
+{
+	struct msm_pm_sleep_status_data *pdata;
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata)
+		return -EFAULT;
+
+	msm_pm_slp_sts = pdata;
+
+	return 0;
+};
+
+static struct platform_driver msm_cpu_status_driver = {
+	.probe = msm_cpu_status_probe,
+	.driver = {
+		.name = "cpu_slp_status",
+		.owner = THIS_MODULE,
+	},
+};
+
 static int __init msm_pm_init(void)
 {
 	pgd_t *pc_pgd;
@@ -1218,6 +1266,7 @@ static int __init msm_pm_init(void)
 	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
 	msm_cpuidle_init();
 	platform_driver_register(&msm_pc_counter_driver);
+	platform_driver_register(&msm_cpu_status_driver);
 
 	return 0;
 }

@@ -45,11 +45,16 @@
 /* PATCH : SMART_UP */
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
-#define SMART_UP_PLUS (1)
+#undef SMART_UP_PLUS
+
+#if defined (SMART_UP_PLUS)
 #define SMART_UP_SLOW_UP_AT_HIGH_FREQ (1)
 #define SUP_MAX_STEP (3)
 #define SUP_CORE_NUM (4)
 #define SUP_SLOW_UP_DUR (2)
+#else
+#undef SMART_UP_SLOW_UP_AT_HIGH_FREQ
+#endif
 
 #if defined(SMART_UP_PLUS)
 static unsigned int SUP_THRESHOLD_STEPS[SUP_MAX_STEP] = {75, 85, 90};
@@ -950,7 +955,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 	}
 
 #endif
-/*
+
 	if ((num_online_cpus() > 1) && (dbs_tuners_ins.enable_turbo_mode)) {
 		if (max_load_other_cpu >
 				dbs_tuners_ins.up_threshold_any_cpu_load) {
@@ -968,7 +973,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 			return;
 		}
 	}
-*/
+
 	/* Check for frequency decrease */
 	/* if we cannot reduce the frequency anymore, break out early */
 	if (policy->cur == policy->min)

@@ -144,7 +144,7 @@ struct ci13xxx {
 	struct dma_pool           *td_pool;   /* DMA pool for transfer descs */
 	struct usb_request        *status;    /* ep0 status request */
 	void                      *status_buf;/* GET_STATUS buffer */
-
+	
 	struct usb_gadget          gadget;     /* USB slave device */
 	struct ci13xxx_ep          ci13xxx_ep[ENDPT_MAX]; /* extended endpts */
 	u32                        ep0_dir;    /* ep0 direction */
