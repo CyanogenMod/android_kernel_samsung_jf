@@ -383,6 +383,7 @@ u32 vcd_update_clnt_perf_lvl(
 			VCD_MSG_ERROR("Failed to get max perf level\n");
 		}
 	}
+
 	if (cctxt->status.req_perf_lvl) {
 		dev_ctxt->reqd_perf_lvl =
 		    dev_ctxt->reqd_perf_lvl - cctxt->reqd_perf_lvl +

@@ -82,6 +82,7 @@ module_param_named(
 	debug_mask, msm_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
 );
 static int msm_pm_retention_tz_call;
+static struct msm_pm_sleep_status_data *msm_pm_slp_sts;
 
 /******************************************************************************
  * Sleep Modes and Parameters
@@ -973,6 +974,7 @@ int msm_pm_wait_cpu_shutdown(unsigned int cpu)
 		return 0;
 	if (!msm_pm_slp_sts[cpu].base_addr)
 		return 0;
+
 	while (timeout--) {
 		/*
 		 * Check for the SPM of the core being hotplugged to set
@@ -1356,7 +1358,6 @@ static int __init msm_pm_init(void)
 				msm_cpu_status_driver.driver.name);
 		return rc;
 	}
-
 
 	return 0;
 }

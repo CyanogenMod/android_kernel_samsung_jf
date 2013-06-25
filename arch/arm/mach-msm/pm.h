@@ -64,11 +64,6 @@ struct msm_pm_time_params {
 	uint32_t modified_time_us;
 };
 
-struct msm_pm_sleep_status_data {
-	void *base_addr;
-	uint32_t cpu_offset;
-	uint32_t mask;
-};
 
 struct msm_pm_platform_data {
 	u8 idle_supported;   /* Allow device to enter mode during idle */
@@ -82,6 +77,12 @@ struct msm_pm_platform_data {
 };
 
 extern struct msm_pm_platform_data msm_pm_sleep_modes[];
+
+struct msm_pm_sleep_status_data {
+	void *base_addr;
+	uint32_t cpu_offset;
+	uint32_t mask;
+};
 
 struct msm_pm_sleep_ops {
 	void *(*lowest_limits)(bool from_idle,

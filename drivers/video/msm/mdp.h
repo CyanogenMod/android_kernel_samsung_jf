@@ -843,7 +843,7 @@ static inline int mdp_bus_scale_update_request(u64 ab_p0,
 {
 	return 0;
 }
- 
+
 static int mdp_bus_scale_restore_request(void) 
 { 
  return 0; 

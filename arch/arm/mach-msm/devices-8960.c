@@ -41,6 +41,7 @@
 #include <mach/msm_tsif.h>
 #include <mach/msm_serial_hs_lite.h>
 #include "clock.h"
+#include "pm.h"
 #include "devices.h"
 #include "devices-msm8x60.h"
 #include "footswitch.h"
@@ -121,6 +122,20 @@ struct platform_device msm8960_pc_cntr = {
 	.id		= -1,
 	.num_resources	= ARRAY_SIZE(msm8960_resources_pccntr),
 	.resource	= msm8960_resources_pccntr,
+};
+
+static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
+	.base_addr = MSM_ACC0_BASE + 0x08,
+	.cpu_offset = MSM_ACC1_BASE - MSM_ACC0_BASE,
+	.mask = 1UL << 13,
+};
+
+struct platform_device msm8960_cpu_slp_status = {
+	.name		= "cpu_slp_status",
+	.id		= -1,
+	.dev = {
+		.platform_data = &msm_pm_slp_sts_data,
+	},
 };
 
 static struct resource resources_otg[] = {
@@ -1635,18 +1650,6 @@ struct platform_device msm_device_bam_dmux = {
 	.id		= -1,
 };
 
-static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
-	.base_addr = MSM_ACC0_BASE + 0x08,
-	.cpu_offset = MSM_ACC1_BASE - MSM_ACC0_BASE,
-	.mask = 1UL << 13,
-};
-struct platform_device msm8960_cpu_slp_status = {
-	.name		= "cpu_slp_status",
-	.id		= -1,
-	.dev = {
-		.platform_data = &msm_pm_slp_sts_data,
-	},
-};
 
 static struct msm_watchdog_pdata msm_watchdog_pdata = {
 	.pet_time = 10000,
