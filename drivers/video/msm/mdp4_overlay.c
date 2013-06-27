@@ -3099,47 +3099,59 @@ int mdp4_calc_blt_mdp_bw(struct msm_fb_data_type *mfd,
 }
 static int mdp4_axi_port_read_client_pipe(struct mdp4_overlay_pipe *pipe)
 {
-       u32 data = inpdw(MDP_BASE + 0x0404);
-       u32 port = 0;
-       if (pipe->pipe_ndx == 1) /* rgb1 */
-               port = (data & 0x0010) ? 1 : 0;
-       else if (pipe->pipe_ndx == 2) /* rgb2 */
-               port = (data & 0x0080) ? 1 : 0;
-       else if (pipe->pipe_ndx == 3) /* vg1 */
-               port = (data & 0x0001) ? 1 : 0;
-       else if (pipe->pipe_ndx == 4) /* vg2 */
-               port = (data & 0x0004) ? 1 : 0;
-       pr_debug("%s axi_rd=%x pipe_ndx=%d port=%d\n", __func__,
-               data, pipe->pipe_ndx, port);
-       return port;
+	u32 data = 0, port = 0;
+
+	mdp_clk_ctrl(1);
+	data = inpdw(MDP_BASE + 0x0404);
+	mdp_clk_ctrl(0);
+
+	if (pipe->pipe_ndx == 1) /* rgb1 */
+		port = (data & 0x0010) ? 1 : 0;
+	else if (pipe->pipe_ndx == 2) /* rgb2 */
+		port = (data & 0x0080) ? 1 : 0;
+	else if (pipe->pipe_ndx == 3) /* vg1 */
+		port = (data & 0x0001) ? 1 : 0;
+	else if (pipe->pipe_ndx == 4) /* vg2 */
+		port = (data & 0x0004) ? 1 : 0;
+	pr_debug("%s axi_rd=%x pipe_ndx=%d port=%d\n", __func__,
+		data, pipe->pipe_ndx, port);
+	return port;
 }
 
 static int mdp4_axi_port_read_client_mixer(int mixer)
 {
-       u32 data = inpdw(MDP_BASE + 0x0404);
-       u32 port = 0;
-       if (mixer == MDP4_MIXER0) /* dmap */
-               port = (data & 0x1000) ? 1 : 0;
-       else if (mixer == MDP4_MIXER1) /* dmae */
-               port = (data & 0x80000) ? 1 : 0;
-       pr_debug("%s axi_rd=%x mixer=%d port=%d\n",
-                __func__, data, mixer, port);
-       return port;
+	u32 data = 0, port = 0;
+
+	mdp_clk_ctrl(1);
+	data = inpdw(MDP_BASE + 0x0404);
+	mdp_clk_ctrl(0);
+
+	if (mixer == MDP4_MIXER0) /* dmap */
+		port = (data & 0x1000) ? 1 : 0;
+	else if (mixer == MDP4_MIXER1) /* dmae */
+		port = (data & 0x80000) ? 1 : 0;
+	pr_debug("%s axi_rd=%x mixer=%d port=%d\n",
+		 __func__, data, mixer, port);
+	return port;
 }
 
 static int mdp4_axi_port_write_client_mixer(int mixer)
 {
-       u32 data = inpdw(MDP_BASE + 0x0408);
-       u32 port = 0;
-       if (mixer == MDP4_MIXER0) /* dmap */
-               port = (data & 0x0001) ? 1 : 0;
-       else if (mixer == MDP4_MIXER1) /* dmae */
-               port = (data & 0x0004) ? 1 : 0;
-       else if (mixer == MDP4_MIXER2)
-               port = (data & 0x0004) ? 1 : 0;
-       pr_debug("%s axi_wr=%x mixer=%d port=%d\n",
-                __func__, data, mixer, port);
-       return port;
+	u32 data = 0, port = 0;
+
+	mdp_clk_ctrl(1);
+	data = inpdw(MDP_BASE + 0x0408);
+	mdp_clk_ctrl(0);
+
+	if (mixer == MDP4_MIXER0) /* dmap */
+		port = (data & 0x0001) ? 1 : 0;
+	else if (mixer == MDP4_MIXER1) /* dmae */
+		port = (data & 0x0004) ? 1 : 0;
+	else if (mixer == MDP4_MIXER2)
+		port = (data & 0x0004) ? 1 : 0;
+	pr_debug("%s axi_wr=%x mixer=%d port=%d\n",
+		 __func__, data, mixer, port);
+	return port;
 }
 
 int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
