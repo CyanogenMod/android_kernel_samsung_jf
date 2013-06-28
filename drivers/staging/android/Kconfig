@@ -112,6 +112,14 @@ config KSWAPD_NOSWAP
 	help
 	  This option controls swap action in kswapd
 
+config ANDROID_LMK_ADJ_RBTREE
+	bool "Use RBTREE for Android Low Memory Killer"
+	depends on ANDROID_LOW_MEMORY_KILLER
+	default N
+	---help---
+	  Use oom_score_adj rbtree to select the best proecss to kill
+	  when system in low memory status.
+
 endif # if ANDROID
 
 endmenu
