@@ -1287,7 +1287,7 @@ bail_acq_sema_failed:
 	return 0;
 }
 
-#if !defined(CONFIG_SEC_DVFS)
+#if !defined(CONFIG_SEC_DVFS_BOOSTER)
 static void dbs_input_event(struct input_handle *handle, unsigned int type,
 		unsigned int code, int value)
 {
@@ -1424,7 +1424,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			atomic_notifier_chain_register(&migration_notifier_head,
 					&dbs_migration_nb);
 		}
-#if !defined(CONFIG_SEC_DVFS)
+#if !defined(CONFIG_SEC_DVFS_BOOSTER)
 		if (!cpu)
 			rc = input_register_handler(&dbs_input_handler);
 #endif
@@ -1454,7 +1454,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		/* If device is being removed, policy is no longer
 		 * valid. */
 		this_dbs_info->cur_policy = NULL;
-#if !defined(CONFIG_SEC_DVFS)
+#if !defined(CONFIG_SEC_DVFS_BOOSTER)
 		if (!cpu)
 			input_unregister_handler(&dbs_input_handler);
 #endif
