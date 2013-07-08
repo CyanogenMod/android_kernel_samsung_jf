@@ -470,63 +470,6 @@ static struct gpiomux_setting sx150x_active_cfg = {
 };
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
-static struct gpiomux_setting cyts_sleep_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting cyts_sleep_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting cyts_int_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting cyts_int_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct msm_gpiomux_config cyts_gpio_configs[] __initdata = {
-	{	/* TS INTERRUPT */
-		.gpio = 6,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cyts_int_act_cfg,
-			[GPIOMUX_SUSPENDED] = &cyts_int_sus_cfg,
-		},
-	},
-	{	/* TS SLEEP */
-		.gpio = 33,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cyts_sleep_act_cfg,
-			[GPIOMUX_SUSPENDED] = &cyts_sleep_sus_cfg,
-		},
-	},
-};
-static struct msm_gpiomux_config cyts_gpio_alt_config[] __initdata = {
-	{	/* TS INTERRUPT */
-		.gpio = 6,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cyts_int_act_cfg,
-			[GPIOMUX_SUSPENDED] = &cyts_int_sus_cfg,
-		},
-	},
-	{	/* TS SLEEP */
-		.gpio = 12,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cyts_sleep_act_cfg,
-			[GPIOMUX_SUSPENDED] = &cyts_sleep_sus_cfg,
-		},
-	},
-};
-
 static struct gpiomux_setting hsic_act_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
@@ -812,6 +755,14 @@ static struct msm_gpiomux_config apq8064_nc_configs[] __initdata = {
 };
 
 static struct msm_gpiomux_config apq8064_nc_configs_rev05[] __initdata = {
+#if !defined(CONFIG_FB_MSM_ENABLE_LCD_EN2)
+	{
+		.gpio      = 20,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_config,
+		},
+	},
+#endif
 	{
 		.gpio      = 21,
 		.settings = {
@@ -1647,16 +1598,6 @@ void __init apq8064_init_gpiomux(void)
 		else
 			msm_gpiomux_install(mdm_configs,
 					ARRAY_SIZE(mdm_configs));
-	}
-
-	if (machine_is_apq8064_mtp()|| machine_is_JF()) {
-		if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
-			msm_gpiomux_install(cyts_gpio_alt_config,
-					ARRAY_SIZE(cyts_gpio_alt_config));
-		} else {
-			msm_gpiomux_install(cyts_gpio_configs,
-					ARRAY_SIZE(cyts_gpio_configs));
-		}
 	}
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC

@@ -245,12 +245,21 @@ static u8 es325_internal_route_1mic_speaker_WB[10] = {
 	0xff		/* terminate */
 };
 
+#if defined(CONFIG_MACH_JACTIVE_ATT)
+/* 1-mic Speaker NB (1-mic FT)(NS off)(SW bypss) - JACTIVE doesn't use 2-mic for SPK */
+static u8 es325_internal_route_2mic_speaker[10] = {
+	0x90, 0x31, 0x00, 0x0d, /* 1 Mic 1 FEOUT */
+	0x90, 0x31, 0x00, 0x82, /* Algo Preset: 1-mic CT NB */
+	0xff		/* terminate */
+};
+#else
 /* 2-mic Speaker NB (2-mic FT)(NS on) */
 static u8 es325_internal_route_2mic_speaker[10] = {	
 	0x90, 0x31, 0x00, 0x02, /* 2 Mic 1 FEOUT w UITone CT */
 	0x90, 0x31, 0x00, 0x16, /* Algo Preset for 2 Mic FT NB */
 	0xff		/* terminate */
 };
+#endif
 
 /* 2-mic Speaker WB (2-mic FT)(NS off) */
 static u8 es325_internal_route_2mic_speaker_WB[10] = {		
@@ -1725,7 +1734,7 @@ static void es325_switch_route(void)
 			es325->new_internal_route_config < 3 + NETWORK_OFFSET)) {
 			
 			es325->new_internal_route_config += NS_OFFSET;
-			pr_info("=[ES325]=%s() adjust 2mic_enable offset\n", __func__);
+			pr_info("=[ES325]=%s() adjust 2mic_enable offset, es325_2mic_enable=%d\n", __func__, es325_2mic_enable);
 		}
 	} else {
 		if ((es325->new_internal_route_config >= 1 + NS_OFFSET &&
@@ -1734,7 +1743,7 @@ static void es325_switch_route(void)
 			es325->new_internal_route_config < 3 + NETWORK_OFFSET + NS_OFFSET)) {
 			
 			es325->new_internal_route_config -= NS_OFFSET;
-			pr_info("=[ES325]=%s() adjust 2mic_enable offset\n", __func__);
+			pr_info("=[ES325]=%s() adjust 2mic_enable offset, es325_2mic_enable=%d\n", __func__, es325_2mic_enable);
 		}
 	}
 

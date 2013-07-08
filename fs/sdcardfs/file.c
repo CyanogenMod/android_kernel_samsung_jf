@@ -82,6 +82,8 @@ static int sdcardfs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	struct dentry *dentry = file->f_path.dentry;
 
 	lower_file = sdcardfs_lower_file(file);
+
+	lower_file->f_pos = file->f_pos;
 	err = vfs_readdir(lower_file, filldir, dirent);
 	file->f_pos = lower_file->f_pos;
 	if (err >= 0)		/* copy the atime */

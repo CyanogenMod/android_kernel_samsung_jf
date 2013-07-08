@@ -289,6 +289,50 @@ static void execute_panel_init(struct msm_fb_data_type *mfd)
 	mipi_samsung_disp_send_cmd(mfd, PANEL_MTP_DISABLE, false);
 }
 
+static int mipi_samsung_disp_on_in_video_engine(struct platform_device *pdev)
+{
+	struct msm_fb_data_type *mfd;
+
+	printk(KERN_INFO "[lcd] mipi_samsung_disp_on_in_video_engine start\n" );
+
+	mfd = platform_get_drvdata(pdev);
+	if (unlikely(!mfd))
+		return -ENODEV;
+	if (unlikely(mfd->key != MFD_KEY))
+		return -EINVAL;
+
+	mipi_samsung_disp_send_cmd(mfd, PANEL_ON, false);
+	mfd->resume_state = MIPI_RESUME_STATE;
+
+#if defined(RUMTIME_MIPI_CLK_CHANGE)
+	current_fps = mfd->panel_info.mipi.frame_rate;
+#endif
+	
+#if defined(AUTO_BRIGHTNESS_CABC_FUNCTION)
+	is_disp_on = 1;
+
+	if( is_cabc_on() == true )
+	{
+		mipi_samsung_disp_send_cmd(mfd, PANEL_CABC_ENABLE, false);
+		is_cabc_delayed = 0;
+		printk ( KERN_ERR "%s-PANEL_CABC_ENABLE(keystring)\n", __func__ );
+	}
+	else if( (is_cabc_on() != false) && ((is_cabc_delayed == 1) || (msd.mpd->siop_status == true)) )
+	{
+		mipi_samsung_disp_send_cmd(mfd, PANEL_CABC_ENABLE, false);
+		is_cabc_delayed = 0;
+		printk ( KERN_ERR "%s-PANEL_CABC_ENABLE(delayed)\n", __func__ );
+	}
+#endif
+	
+	printk(KERN_INFO "[lcd] mipi_samsung_disp_on_in_video_engine end %d\n", gpio_get_value(err_fg_gpio));
+	
+#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
+		enable_irq(PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PMIC_GPIO_ERR_FG));
+#endif
+
+	return 0;
+}
 
 static int mipi_samsung_disp_on(struct platform_device *pdev)
 {
@@ -318,37 +362,8 @@ static int mipi_samsung_disp_on(struct platform_device *pdev)
 						PANEL_NEED_FLIP, false);
 	}
 
-	mipi_samsung_disp_send_cmd(mfd, PANEL_ON, false);
-	mfd->resume_state = MIPI_RESUME_STATE;
+	printk(KERN_INFO "[lcd] mipi_samsung_disp_on end\n" );
 
-#if	defined(CONFIG_MDNIE_LITE_TUNING)
-	if (!first_boot_on)
-	{
-		mfd->resume_state = MIPI_RESUME_STATE;
-		first_boot_on = 1;
-	}
-#endif
-
-#if defined(RUMTIME_MIPI_CLK_CHANGE)
-	current_fps = mfd->panel_info.mipi.frame_rate;
-#endif
-
-#if defined(AUTO_BRIGHTNESS_CABC_FUNCTION)
-	is_disp_on = 1;
-
-	if( (is_cabc_delayed == 1) || (msd.mpd->siop_status == true) )
-	{
-		mipi_samsung_disp_send_cmd(mfd, PANEL_CABC_ENABLE, false);
-		is_cabc_delayed = 0;
-		printk ( KERN_ERR "%s-PANEL_CABC_ENABLE(delayed)\n", __func__ );
-	}
-#endif
-
-	printk(KERN_INFO "[lcd] mipi_samsung_disp_on end %d\n", gpio_get_value(err_fg_gpio));
-
-#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
-	enable_irq(PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PMIC_GPIO_ERR_FG));
-#endif
 	return 0;
 }
 
@@ -387,8 +402,13 @@ static int mipi_samsung_disp_off(struct platform_device *pdev)
 static void __devinit mipi_samsung_disp_shutdown(struct platform_device *pdev)
 {
 	static struct mipi_dsi_platform_data *mipi_dsi_pdata = NULL;
+	struct msm_fb_data_type *mfd = NULL;
 
 	if (pdev->id != 0)
+		return;
+
+	mfd = platform_get_drvdata(msd.msm_pdev);
+	if (unlikely(!mfd))
 		return;
 
 	mipi_dsi_pdata = pdev->dev.platform_data;
@@ -397,6 +417,8 @@ static void __devinit mipi_samsung_disp_shutdown(struct platform_device *pdev)
 		return;
 	}
 
+	mfd->resume_state = MIPI_SUSPEND_STATE;
+	mipi_samsung_disp_send_cmd(mfd, PANEL_OFF, false);
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
 		mipi_dsi_pdata->active_reset(0); /* low */
@@ -523,13 +545,23 @@ int mipi_samsung_cabc_onoff ( int enable )
 	{
 		if( enable )
 		{
-			mipi_samsung_disp_send_cmd(mfd, PANEL_CABC_ENABLE, false);
-			printk ( KERN_ERR "@@@@@%s-PANEL_CABC_ENABLE\n", __func__ );
+			if( is_cabc_on() != false )
+			{
+				mipi_samsung_disp_send_cmd(mfd, PANEL_CABC_ENABLE, false);
+				printk ( KERN_ERR "@@@@@%s-PANEL_CABC_ENABLE\n", __func__ );
+			}
+			else
+				printk ( KERN_ERR "@@@@@%s-CABC KEYSTRING is OFF, so skip ENABLE\n", __func__ );
 		}
 		else
 		{
-			mipi_samsung_disp_send_cmd(mfd, PANEL_CABC_DISABLE, false);
-			printk ( KERN_ERR "@@@@@%s-PANEL_CABC_DISABLE\n", __func__ );
+			if( is_cabc_on() != true )
+			{
+				mipi_samsung_disp_send_cmd(mfd, PANEL_CABC_DISABLE, false);
+				printk ( KERN_ERR "@@@@@%s-PANEL_CABC_DISABLE\n", __func__ );
+			}
+			else
+				printk ( KERN_ERR "@@@@@%s-CABC KEYSTRING is ON, so skip DISABLE\n", __func__ );
 		}
 	}
 
@@ -1176,6 +1208,7 @@ static struct platform_driver this_driver = {
 };
 
 static struct msm_fb_panel_data samsung_panel_data = {
+	.late_init = mipi_samsung_disp_on_in_video_engine,
 	.on		= mipi_samsung_disp_on,
 	.off		= mipi_samsung_disp_off,
 	.set_backlight	= mipi_samsung_disp_backlight,

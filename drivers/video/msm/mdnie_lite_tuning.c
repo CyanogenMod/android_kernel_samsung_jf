@@ -71,7 +71,7 @@
 
 int play_speed_1_5;
 #if defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
-static int cabc = 0;
+static int cabc = -1;
 extern int mipi_samsung_cabc_onoff ( int enable );
 #endif
 
@@ -994,6 +994,11 @@ static ssize_t cabc_store(struct device *dev,
 	DPRINT ( "cabc_store, input value = %d\n", value);
 
 	return size;
+}
+
+int is_cabc_on ( void )
+{
+	return cabc;
 }
 
 static DEVICE_ATTR(cabc, 0664,

@@ -854,6 +854,30 @@ static int sec_chg_set_property(struct power_supply *psy,
 		max77693_set_input_current(charger,
 				val->intval);
 		break;
+#if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
+	case POWER_SUPPLY_PROP_CHARGE_TYPE:
+		if(val->intval == POWER_SUPPLY_TYPE_WIRELESS) {
+			u8 reg_data;
+			max77693_read_reg(charger->max77693->i2c,
+				MAX77693_CHG_REG_CHG_CNFG_12, &reg_data);
+			reg_data &= ~(1 << 5);
+			max77693_write_reg(charger->max77693->i2c,
+				MAX77693_CHG_REG_CHG_CNFG_12, reg_data);
+			pr_err("%s: charge only WC CNFG_12: 0x%x\n",
+					__func__, reg_data);
+		}
+		else {
+			u8 reg_data;
+			max77693_read_reg(charger->max77693->i2c,
+				MAX77693_CHG_REG_CHG_CNFG_12, &reg_data);
+			reg_data |= (1 << 5);
+			max77693_write_reg(charger->max77693->i2c,
+				MAX77693_CHG_REG_CHG_CNFG_12, reg_data);
+			pr_err("%s: set CNFG_12: 0x%x\n", __func__, reg_data);
+
+		}
+		break;
+#endif
 	default:
 		return -EINVAL;
 	}
