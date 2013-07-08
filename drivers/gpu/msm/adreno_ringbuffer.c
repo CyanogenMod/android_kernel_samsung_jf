@@ -86,10 +86,6 @@ adreno_ringbuffer_waitspace(struct adreno_ringbuffer *rb,
 			GSL_RB_GET_READPTR(rb, &rb->rptr);
 		} while (!rb->rptr);
 
-		rb->wptr++;
-
-		adreno_ringbuffer_submit(rb);
-
 		rb->wptr = 0;
 	}
 
