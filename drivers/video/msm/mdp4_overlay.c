@@ -3753,8 +3753,13 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 	}
 
 	if (pipe->flags & MDP_SECURE_OVERLAY_SESSION) {
-		mdp4_map_sec_resource(mfd);
-		mfd->sec_active = TRUE;
+		if (req->flags & MDP_SECURE_OVERLAY_SESSION) {
+			mdp4_map_sec_resource(mfd);
+			mfd->sec_active = TRUE;
+		} else {
+			pr_err("%s Switch secure %d", __func__, pipe->pipe_ndx);
+			mfd->sec_active = FALSE;
+		}
 	}
 
 	/* return id back to user */
