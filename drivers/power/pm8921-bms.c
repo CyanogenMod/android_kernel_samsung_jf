@@ -1836,6 +1836,10 @@ static int adjust_soc(struct pm8921_bms_chip *chip, int soc,
 		pr_debug("new delta ocv = %d\n", delta_ocv_uv);
 	}
 
+	if (wake_lock_active(&chip->low_voltage_wake_lock)) {
+		pr_debug("Low Voltage, apply only ibat limited corrections\n");
+	}
+
 	chip->last_ocv_uv -= delta_ocv_uv;
 
 	if (chip->last_ocv_uv >= chip->max_voltage_uv)
@@ -2222,6 +2226,7 @@ static void calculate_soc_work(struct work_struct *work)
 
 	mutex_lock(&chip->last_ocv_uv_mutex);
 	read_soc_params_raw(chip, &raw);
+	calib_hkadc_check(chip, batt_temp);
 
 	soc = calculate_state_of_charge(chip, &raw,
 					batt_temp, last_chargecycles);
@@ -2591,6 +2596,7 @@ void pm8921_bms_charging_began(void)
 
 	mutex_lock(&the_chip->last_ocv_uv_mutex);
 	read_soc_params_raw(the_chip, &raw);
+	calib_hkadc_check(the_chip, batt_temp);
 	mutex_unlock(&the_chip->last_ocv_uv_mutex);
 
 	the_chip->start_percent = report_state_of_charge(the_chip);
@@ -2633,6 +2639,7 @@ void pm8921_bms_charging_end(int is_battery_full)
 	mutex_lock(&the_chip->last_ocv_uv_mutex);
 
 	read_soc_params_raw(the_chip, &raw);
+	calib_hkadc_check(the_chip, batt_temp);
 
 	calculate_cc_uah(the_chip, raw.cc, &bms_end_cc_uah);
 
