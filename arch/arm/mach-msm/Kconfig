@@ -3007,4 +3007,10 @@ config SEC_FACTORY
 config SAMSUNG_PRODUCT_SHIP
 	bool "set up for product shipping"
 	default n
+
+config HAS_MACH_MEMUTILS
+	default n
+	bool "Motorola MSM memcpy enhancements"
+	help
+	Faster memcpy performance for Krait
 endif
