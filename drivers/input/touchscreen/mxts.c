@@ -1432,7 +1432,7 @@ static int mxt_initialize(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
 
-	u32 read_info_crc, calc_info_crc;
+	u32 read_info_crc = 0, calc_info_crc = 0;
 	int ret;
 
 	ret = mxt_read_id_info(data);
