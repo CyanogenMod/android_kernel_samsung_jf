@@ -1881,7 +1881,7 @@ void mdp4_mixer_stage_down(struct mdp4_overlay_pipe *pipe, int commit)
 			ctrl->stage[mixer][i] = NULL;  /* clear it */
 	}
 
-	if (commit)
+	if (commit || (mixer > 0 && !hdmi_prim_display))
 		mdp4_mixer_stage_commit(mixer);
 }
 /*
