@@ -2813,25 +2813,13 @@ static int mdp4_calc_req_mdp_clk(struct msm_fb_data_type *mfd,
 		mfd->panel_info.xres;
 
 	/*
-	 * For the scaling cases, make more margin by removing porch
-	 * values and adding extra 20%.
-	 
-	if ((pipe->src_h != pipe->dst_h) ||
-	    (pipe->src_w != pipe->dst_w)) {
-		hsync = mfd->panel_info.xres;
+	 * For the scaling cases, adding 20% margin
+	 */
+	if ((src_h != dst_h) || (src_w != dst_w)) {
 		hsync *= 100;
 		hsync /= 120;
-		pr_debug("%s: panel hsync is %d. with scaling\n",
-			__func__, hsync);
 
-	} else {
-	*/
-	hsync = mfd->panel_info.lcdc.h_back_porch +
-		mfd->panel_info.lcdc.h_front_porch +
-		mfd->panel_info.lcdc.h_pulse_width +
-		mfd->panel_info.xres;
-	pr_debug("%s: panel hsync is %d.\n",
-		__func__, hsync);
+	}
 
 	if (!hsync) {
 		pr_err("%s: panel hsync is zero!\n", __func__);
@@ -2937,6 +2925,7 @@ static int mdp4_calc_req_blt(struct msm_fb_data_type *mfd,
 			     struct mdp_overlay *req)
 {
 	int ret = 0;
+	int clk = 0;
 
 	if (!req) {
 		pr_err("%s: req is null!\n", __func__);
@@ -2948,10 +2937,12 @@ static int mdp4_calc_req_blt(struct msm_fb_data_type *mfd,
 		return ret;
 	}
 
-	if (mdp4_calc_req_mdp_clk
-		(mfd, req->src_rect.h, req->dst_rect.h,
-		 req->src_rect.w, req->dst_rect.w) > mdp_max_clk)
+	clk = mdp4_calc_req_mdp_clk(mfd, req->src_rect.h, req->dst_rect.h,
+		 req->src_rect.w, req->dst_rect.w);
+	if (clk > mdp_max_clk) {
+		pr_err("%s: clk requested=%d > max=%d", __func__, clk, mdp_max_clk);
 		ret = -EINVAL;
+	}
 
 	return ret;
 }
