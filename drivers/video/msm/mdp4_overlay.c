@@ -159,7 +159,6 @@ static int mdp4_map_sec_resource(struct msm_fb_data_type *mfd)
 		return -ENODEV;
 	}
 
-
 	pr_debug("%s %d mfd->index=%d,mapped=%d,active=%d\n",
 		__func__, __LINE__,
 		 mfd->index, mfd->sec_mapped, mfd->sec_active);
@@ -1902,16 +1901,27 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 
 	mixer = pipe->mixer_num;
 
-	if (ctrl->baselayer[mixer])
+	printk("%s mixer(%d) start\n", __func__, mixer);
+	if (ctrl && ctrl->baselayer[mixer]) {
+		pr_err("%s:%d ctl is NULL", __func__, __LINE__);
 		return;
+	}
 
 	bspipe = ctrl->stage[mixer][MDP4_MIXER_STAGE_BASE];
-
+	if(!bspipe) {
+		pr_err("%s:%d base pipe in NULL", __func__, __LINE__);
+		return;
+	}
+	
 	/*
 	 * bspipe is clone here
 	 * get real pipe
 	 */
 	bspipe = mdp4_overlay_ndx2pipe(bspipe->pipe_ndx);
+	if(!bspipe) {
+		pr_err("%s:%d real base pipe in NULL", __func__, __LINE__);
+		return;
+	}
 
 	/* save original base layer */
 	ctrl->baselayer[mixer] = bspipe;
@@ -1955,6 +1965,8 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 	mdp4_overlay_reg_flush(bspipe, 1);
 	/* borderfill pipe as base layer */
 	mdp4_mixer_stage_up(pipe, 0);
+
+	printk("%s mixer(%d) end\n", __func__, mixer);
 }
 
 void mdp4_overlay_borderfill_stage_down(struct mdp4_overlay_pipe *pipe)
@@ -2119,51 +2131,51 @@ void mdp4_mixer_blend_cfg(int mixer)
 		blend++;
 	}
 }
-
-static void mdp4_set_blend_by_op(struct mdp4_overlay_pipe *s_pipe,
-					struct mdp4_overlay_pipe *d_pipe,
-					int alpha_drop,
-					struct blend_cfg *blend)
-{
-	int d_alpha, s_alpha;
-	u32 op;
-
-	d_alpha = d_pipe->alpha_enable;
-	s_alpha = s_pipe->alpha_enable;
-	/* base on fg's alpha */
-	blend->fg_alpha = s_pipe->alpha;
-	blend->bg_alpha = 0x0ff - s_pipe->alpha;
-	blend->op = MDP4_BLEND_FG_ALPHA_FG_CONST |
-	MDP4_BLEND_BG_ALPHA_BG_CONST;
-	blend->co3_sel = 1; /* use fg alpha */
-	op = s_pipe->blend_op;
-	if (op == BLEND_OP_OPAQUE) {
-		blend->bg_alpha = 0;
-		blend->fg_alpha = 0xff;
-	} else if ((op == BLEND_OP_PREMULTIPLIED) &&
-			(!alpha_drop) && s_alpha) {
-		blend->op = MDP4_BLEND_FG_ALPHA_FG_CONST |
-			MDP4_BLEND_BG_INV_ALPHA |
-			MDP4_BLEND_BG_ALPHA_FG_PIXEL;
-		if (blend->fg_alpha != 0xff) {
-			blend->bg_alpha = blend->fg_alpha;
-			blend->op |= MDP4_BLEND_BG_MOD_ALPHA;
-		}
-	} else if (!alpha_drop && s_alpha) {
-		blend->op = MDP4_BLEND_FG_ALPHA_FG_PIXEL |
-			MDP4_BLEND_BG_INV_ALPHA |
-			MDP4_BLEND_BG_ALPHA_FG_PIXEL;
-		if (blend->fg_alpha != 0xff) {
-			blend->bg_alpha = blend->fg_alpha;
-			blend->op |= MDP4_BLEND_FG_MOD_ALPHA |
-				MDP4_BLEND_BG_MOD_ALPHA;
-		}
-	}
-	if (!s_alpha && d_alpha)
-		blend->co3_sel = 0;
-	pr_debug("%s: op %d bg alpha %d, fg alpha %d blend: %x\n",
-		__func__, op, blend->bg_alpha, blend->fg_alpha, blend->op);
+static void mdp4_set_blend_by_op(struct mdp4_overlay_pipe *s_pipe,        
+					struct mdp4_overlay_pipe *d_pipe,                                
+					int alpha_drop,                                                  
+					struct blend_cfg *blend)                                         
+{                                                                         
+	int d_alpha, s_alpha;                                                    
+	u32 op;                                                                  
+                                                                          
+	d_alpha = d_pipe->alpha_enable;                                          
+	s_alpha = s_pipe->alpha_enable;                                          
+	/* base on fg's alpha */                                                 
+	blend->fg_alpha = s_pipe->alpha;                                         
+	blend->bg_alpha = 0x0ff - s_pipe->alpha;                                 
+	blend->op = MDP4_BLEND_FG_ALPHA_FG_CONST |                               
+	MDP4_BLEND_BG_ALPHA_BG_CONST;                                            
+	blend->co3_sel = 1; /* use fg alpha */                                   
+	op = s_pipe->blend_op;                                                   
+	if (op == BLEND_OP_OPAQUE) {                                             
+		blend->bg_alpha = 0;                                                   
+		blend->fg_alpha = 0xff;                                                
+	} else if ((op == BLEND_OP_PREMULTIPLIED) &&                             
+			(!alpha_drop) && s_alpha) {                                          
+		blend->op = MDP4_BLEND_FG_ALPHA_FG_CONST |                             
+			MDP4_BLEND_BG_INV_ALPHA |                                            
+			MDP4_BLEND_BG_ALPHA_FG_PIXEL;                                        
+		if (blend->fg_alpha != 0xff) {                                         
+			blend->bg_alpha = blend->fg_alpha;                                   
+			blend->op |= MDP4_BLEND_BG_MOD_ALPHA;                                
+		}                                                                      
+	} else if (!alpha_drop && s_alpha) {                                     
+		blend->op = MDP4_BLEND_FG_ALPHA_FG_PIXEL |                             
+			MDP4_BLEND_BG_INV_ALPHA |                                            
+			MDP4_BLEND_BG_ALPHA_FG_PIXEL;                                        
+		if (blend->fg_alpha != 0xff) {                                         
+			blend->bg_alpha = blend->fg_alpha;                                   
+            blend->op |= MDP4_BLEND_FG_MOD_ALPHA |
+				MDP4_BLEND_BG_MOD_ALPHA;                                           
+		}                                                                      
+	}                                                                        
+	if (!s_alpha && d_alpha)                                                 
+		blend->co3_sel = 0;                                                    
+	pr_debug("%s: op %d bg alpha %d, fg alpha %d blend: %x\n",               
+		__func__, op, blend->bg_alpha, blend->fg_alpha, blend->op);            
 }
+
 
 static void mdp4_set_blend_by_fmt(struct mdp4_overlay_pipe *s_pipe,
 					struct mdp4_overlay_pipe *d_pipe,
@@ -2870,7 +2882,7 @@ static int mdp4_calc_req_mdp_clk(struct msm_fb_data_type *mfd,
 	} else {		/* upscale */
 		yscale = dst_h;
 		yscale <<= shift;
-		yscale /= src_h;
+		yscale /= dst_h;
 	}
 
 	yscale *= src_w;

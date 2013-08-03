@@ -141,7 +141,6 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 		return;
 
 	device->ftbl->power_stats(device, &stats);
-
 	priv->bin.total_time += stats.total_time;
 	priv->bin.busy_time += stats.busy_time;
 	/* Do not waste CPU cycles running this algorithm if

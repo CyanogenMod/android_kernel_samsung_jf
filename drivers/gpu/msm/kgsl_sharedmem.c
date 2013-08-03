@@ -682,7 +682,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 done:
 	if ((memdesc->sglen_alloc * sizeof(struct page *)) > PAGE_SIZE)
 		vfree(pages);
-	else
+	else		
 		kfree(pages);
 
 	if (ret)

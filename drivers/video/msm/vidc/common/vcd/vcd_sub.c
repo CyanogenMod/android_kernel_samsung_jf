@@ -1871,7 +1871,7 @@ u32 vcd_handle_recvd_eos(
 					VCD_CLIENT_STATE_EOS,
 					CLIENT_STATE_EVENT_NUMBER
 					(encode_frame));
-		} else {
+        } else {
 			transc = vcd_get_first_in_use_trans_for_clnt(cctxt);
 			if (transc) {
 				transc->flags |= VCD_FRAME_FLAG_EOS;

@@ -35,7 +35,6 @@
 #include <linux/elf.h>
 #include <linux/firmware.h>
 #include <linux/freezer.h>
-#include <linux/delay.h>
 #include <mach/board.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
@@ -552,7 +551,7 @@ static int __qseecom_process_incomplete_cmd(struct qseecom_dev_handle *data,
 	unsigned long flags;
 	struct qseecom_client_listener_data_irsp send_data_rsp;
 	struct qseecom_registered_listener_list *ptr_svc = NULL;
-	unsigned int cnt = 0;
+
 
 	while (resp->result == QSEOS_RESULT_INCOMPLETE) {
 		lstnr = resp->data;
@@ -577,20 +576,11 @@ static int __qseecom_process_incomplete_cmd(struct qseecom_dev_handle *data,
 		}
 		pr_debug("waking up rcv_req_wq and "
 				"waiting for send_resp_wq\n");
-
-		cnt = 0;
-		do {
-			if (!wait_event_freezable(qseecom.send_resp_wq,
-				__qseecom_listener_has_sent_rsp(data)))
-				break;
-
-			if (cnt++ > 100) {
-				pr_err("%s : Time Out\n", __func__);
-				cnt = 0;	
-				break;
-			}
-			msleep(1);
-		} while (1);
+		if (wait_event_freezable(qseecom.send_resp_wq,
+				__qseecom_listener_has_sent_rsp(data))) {
+			pr_warning("Interrupted: exiting send_cmd loop\n");
+			return -ERESTARTSYS;
+		}
 
 		if (data->abort) {
 			pr_err("Aborting listener service %d\n",

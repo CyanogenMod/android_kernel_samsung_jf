@@ -2,7 +2,7 @@
  * Core MDSS framebuffer driver.
  *
  * Copyright (C) 2007 Google Incorporated
- * Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1124,6 +1124,192 @@ static int mdss_fb_set_lut(struct fb_info *info, void __user *p)
 	return 0;
 }
 
+static int mdss_fb_handle_pp_ioctl(struct msm_fb_data_type *mfd,            
+							void __user *argp)                                             
+{                                                                           
+	int ret;                                                                   
+	struct msmfb_mdp_pp mdp_pp;                                                
+	u32 copyback = 0;                                                          
+                                                                            
+	ret = copy_from_user(&mdp_pp, argp, sizeof(mdp_pp));                       
+	if (ret)                                                                   
+		return ret;                                                              
+                                                                            
+	switch (mdp_pp.op) {                                                       
+	case mdp_op_pa_cfg:                                                        
+		ret = mdss_mdp_pa_config(&mdp_pp.data.pa_cfg_data,                       
+				&copyback);                                                          
+		break;                                                                   
+                                                                            
+	case mdp_op_pcc_cfg:                                                       
+		ret = mdss_mdp_pcc_config(&mdp_pp.data.pcc_cfg_data,                     
+			   &copyback);                                                         
+		break;                                                                   
+                                                                            
+	case mdp_op_lut_cfg:                                                       
+		switch (mdp_pp.data.lut_cfg_data.lut_type) {                             
+		case mdp_lut_igc:                                                        
+			ret = mdss_mdp_igc_lut_config(                                         
+					(struct mdp_igc_lut_data *)                                        
+					&mdp_pp.data.lut_cfg_data.data,                                    
+					&copyback);                                                        
+			break;                                                                 
+                                                                            
+		case mdp_lut_pgc:                                                        
+			ret = mdss_mdp_argc_config(                                            
+				&mdp_pp.data.lut_cfg_data.data.pgc_lut_data,                         
+				&copyback);                                                          
+			break;                                                                 
+                                                                            
+		case mdp_lut_hist:                                                       
+			ret = mdss_mdp_hist_lut_config(                                        
+				(struct mdp_hist_lut_data *)                                         
+				&mdp_pp.data.lut_cfg_data.data, &copyback);                          
+			break;                                                                 
+                                                                            
+		default:                                                                 
+			ret = -ENOTSUPP;                                                       
+			break;                                                                 
+		}                                                                        
+		break;                                                                   
+	case mdp_op_dither_cfg:                                                    
+		ret = mdss_mdp_dither_config(&mdp_pp.data.dither_cfg_data,               
+				&copyback);                                                          
+		break;                                                                   
+	case mdp_op_gamut_cfg:                                                     
+		ret = mdss_mdp_gamut_config(&mdp_pp.data.gamut_cfg_data,                 
+				&copyback);                                                          
+		break;                                                                   
+	case mdp_bl_scale_cfg:                                                     
+		ret = mdss_bl_scale_config(mfd, (struct mdp_bl_scale_data *)             
+						&mdp_pp.data.bl_scale_data);                                     
+		break;                                                                   
+	default:                                                                   
+		pr_err("Unsupported request to MDP_PP IOCTL.\n");                        
+		ret = -EINVAL;                                                           
+		break;                                                                   
+	}                                                                          
+	if ((ret == 0) && copyback)                                                
+		ret = copy_to_user(argp, &mdp_pp, sizeof(struct msmfb_mdp_pp));          
+	return ret;                                                                
+}                                                                           
+static int mdss_fb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,      
+						struct mdp_buf_sync *buf_sync)                                   
+{                                                                           
+	int i, fence_cnt = 0, ret = 0;                                             
+	int acq_fen_fd[MDP_MAX_FENCE_FD];                                          
+	struct sync_fence *fence;                                                  
+                                                                            
+	if ((buf_sync->acq_fen_fd_cnt > MDP_MAX_FENCE_FD) ||                       
+		(mfd->timeline == NULL))                                                 
+		return -EINVAL;                                                          
+                                                                            
+	if ((!mfd->op_enable) || (!mfd->panel_power_on))                           
+		return -EPERM;                                                           
+                                                                            
+	if (buf_sync->acq_fen_fd_cnt)                                              
+		ret = copy_from_user(acq_fen_fd, buf_sync->acq_fen_fd,                   
+				buf_sync->acq_fen_fd_cnt * sizeof(int));                             
+	if (ret) {                                                                 
+		pr_err("%s:copy_from_user failed", __func__);                            
+		return ret;                                                              
+	}                                                                          
+	mutex_lock(&mfd->sync_mutex);                                              
+	for (i = 0; i < buf_sync->acq_fen_fd_cnt; i++) {                           
+		fence = sync_fence_fdget(acq_fen_fd[i]);                                 
+		if (fence == NULL) {                                                     
+			pr_info("%s: null fence! i=%d fd=%d\n", __func__, i,                   
+				acq_fen_fd[i]);                                                      
+			ret = -EINVAL;                                                         
+			break;                                                                 
+		}                                                                        
+		mfd->acq_fen[i] = fence;                                                 
+	}                                                                          
+	fence_cnt = i;                                                             
+	if (ret)                                                                   
+		goto buf_sync_err_1;                                                     
+	mfd->acq_fen_cnt = fence_cnt;                                              
+	if (buf_sync->flags & MDP_BUF_SYNC_FLAG_WAIT)                              
+		mdss_fb_wait_for_fence(mfd);                                             
+                                                                            
+	mfd->cur_rel_sync_pt = sw_sync_pt_create(mfd->timeline,                    
+			mfd->timeline_value + 2);                                              
+	if (mfd->cur_rel_sync_pt == NULL) {                                        
+		pr_err("%s: cannot create sync point", __func__);                        
+		ret = -ENOMEM;                                                           
+		goto buf_sync_err_1;                                                     
+	}                                                                          
+	/* create fence */                                                         
+	mfd->cur_rel_fence = sync_fence_create("mdp-fence",                        
+			mfd->cur_rel_sync_pt);                                                 
+	if (mfd->cur_rel_fence == NULL) {                                          
+		sync_pt_free(mfd->cur_rel_sync_pt);                                      
+		mfd->cur_rel_sync_pt = NULL;                                             
+		pr_err("%s: cannot create fence", __func__);                             
+		ret = -ENOMEM;                                                           
+		goto buf_sync_err_1;                                                     
+	}                                                                          
+	/* create fd */                                                            
+	mfd->cur_rel_fen_fd = get_unused_fd_flags(0);                              
+	if (mfd->cur_rel_fen_fd < 0) {                                             
+		pr_err("%s: get_unused_fd_flags failed", __func__);                      
+		ret  = -EIO;                                                             
+		goto buf_sync_err_2;                                                     
+	}                                                                          
+	sync_fence_install(mfd->cur_rel_fence, mfd->cur_rel_fen_fd);               
+	ret = copy_to_user(buf_sync->rel_fen_fd,                                   
+		&mfd->cur_rel_fen_fd, sizeof(int));                                      
+	if (ret) {                                                                 
+		pr_err("%s:copy_to_user failed", __func__);                              
+		goto buf_sync_err_3;                                                     
+	}                                                                          
+	mutex_unlock(&mfd->sync_mutex);                                            
+	return ret;                                                                
+buf_sync_err_3:                                                             
+	put_unused_fd(mfd->cur_rel_fen_fd);                                        
+buf_sync_err_2:                                                             
+	sync_fence_put(mfd->cur_rel_fence);                                        
+	mfd->cur_rel_fence = NULL;                                                 
+	mfd->cur_rel_fen_fd = 0;                                                   
+buf_sync_err_1:                                                             
+	for (i = 0; i < fence_cnt; i++)                                            
+		sync_fence_put(mfd->acq_fen[i]);                                         
+	mfd->acq_fen_cnt = 0;                                                      
+	mutex_unlock(&mfd->sync_mutex);                                            
+	return ret;                                                                
+}                                                                           
+static int mdss_fb_display_commit(struct fb_info *info,                     
+						unsigned long *argp)                                             
+{                                                                           
+	int ret;                                                                   
+	struct mdp_display_commit disp_commit;                                     
+	ret = copy_from_user(&disp_commit, argp,                                   
+			sizeof(disp_commit));                                                  
+	if (ret) {                                                                 
+		pr_err("%s:copy_from_user failed", __func__);                            
+		return ret;                                                              
+	}                                                                          
+	ret = mdss_fb_pan_display_ex(info, &disp_commit);                          
+	return ret;                                                                
+}                                                                           
+                                                                            
+static int mdss_fb_get_metadata(struct msm_fb_data_type *mfd,               
+				struct msmfb_metadata *metadata)                                     
+{                                                                           
+	int ret = 0;                                                               
+	switch (metadata->op) {                                                    
+	case metadata_op_frame_rate:                                               
+		metadata->data.panel_frame_rate =                                        
+			mdss_get_panel_framerate(mfd);                                         
+		break;                                                                   
+	default:                                                                   
+		pr_warn("Unsupported request to MDP META IOCTL.\n");                     
+		ret = -EINVAL;                                                           
+		break;                                                                   
+	}                                                                          
+	return ret;                                                                
+}                                                                           
+
 static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg)
 {
@@ -1132,10 +1318,49 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	struct mdp_page_protection fb_page_protection;
 	int ret = -ENOSYS;
 
+	struct mdp_buf_sync buf_sync;	
+	struct msmfb_metadata metadata; 
+									
+	mdss_fb_power_setting_idle(mfd);
+									
+	mdss_fb_pan_idle(mfd);			
+
 	switch (cmd) {
 	case MSMFB_CURSOR:
 		ret = mdss_fb_cursor(info, argp);
 		break;
+
+	case MSMFB_MDP_PP:										  
+		ret = mdss_fb_handle_pp_ioctl(mfd, argp);				
+		break;													
+															  
+	case MSMFB_BUFFER_SYNC: 								  
+		ret = copy_from_user(&buf_sync, argp, sizeof(buf_sync));
+		if (ret)												
+			return ret; 										  
+															  
+		ret = mdss_fb_handle_buf_sync_ioctl(mfd, &buf_sync);	
+															  
+		if (!ret)												
+			ret = copy_to_user(argp, &buf_sync, sizeof(buf_sync));
+		break;													
+															  
+	case MSMFB_NOTIFY_UPDATE:								  
+		ret = mdss_fb_notify_update(mfd, argp); 				
+		break;													
+															  
+	case MSMFB_DISPLAY_COMMIT:								  
+		ret = mdss_fb_display_commit(info, argp);				
+		break;													
+															  
+	case MSMFB_METADATA_GET:								  
+		ret = copy_from_user(&metadata, argp, sizeof(metadata));
+		if (ret)												
+			return ret; 										  
+		ret = mdss_fb_get_metadata(mfd, &metadata); 			
+		if (!ret)												
+			ret = copy_to_user(argp, &metadata, sizeof(metadata));
+		break;													
 
 	case MSMFB_SET_LUT:
 		ret = mdss_fb_set_lut(info, argp);

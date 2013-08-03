@@ -38,6 +38,8 @@
 #endif
 #include <mach/msm_subsystem_map.h>
 #include <mach/iommu_domains.h>
+#include <linux/sync.h>   
+#include <linux/sw_sync.h>
 
 #define DRIVER_NAME "msm_rotator"
 
@@ -152,6 +154,7 @@ struct rot_sync_info {
 	atomic_t queue_buf_cnt;
 };
 
+
 struct msm_rotator_session {
 	struct msm_rotator_img_info img_info;
 	struct msm_rotator_fd_info fd_info;
@@ -246,6 +249,7 @@ enum {
 	CLK_DIS,
 	CLK_SUSPEND,
 };
+
 struct res_mmu_clk {
 	char *mmu_clk_name;
 	struct clk *mmu_clk;
@@ -425,6 +429,87 @@ int msm_rotator_iommu_map_buf(int mem_id, int domain,
 		__func__, mem_id, *start, *len);
 	return 0;
 }
+
+static int rot_enable_iommu_clocks(struct msm_rotator_dev *rot_dev)                     
+{                                                                                       
+	int ret = 0, i;                                                                        
+	if (rot_dev->mmu_clk_on)                                                               
+		return 0;                                                                            
+	for (i = 0; i < ARRAY_SIZE(rot_mmu_clks); i++) {                                       
+		rot_mmu_clks[i].mmu_clk = clk_get(&msm_rotator_dev->pdev->dev,                       
+			rot_mmu_clks[i].mmu_clk_name);                                                     
+		if (IS_ERR(rot_mmu_clks[i].mmu_clk)) {                                               
+			pr_err(" %s: Get failed for clk %s", __func__,                                     
+				   rot_mmu_clks[i].mmu_clk_name);                                                
+			ret = PTR_ERR(rot_mmu_clks[i].mmu_clk);                                            
+			break;                                                                             
+		}                                                                                    
+		ret = clk_prepare_enable(rot_mmu_clks[i].mmu_clk);                                   
+		if (ret) {                                                                           
+			clk_put(rot_mmu_clks[i].mmu_clk);                                                  
+			rot_mmu_clks[i].mmu_clk = NULL;                                                    
+		}                                                                                    
+	}                                                                                      
+	if (ret) {                                                                             
+		for (i--; i >= 0; i--) {                                                             
+			clk_disable_unprepare(rot_mmu_clks[i].mmu_clk);                                    
+			clk_put(rot_mmu_clks[i].mmu_clk);                                                  
+			rot_mmu_clks[i].mmu_clk = NULL;                                                    
+		}                                                                                    
+	} else {                                                                               
+		rot_dev->mmu_clk_on = 1;                                                             
+	}                                                                                      
+	return ret;                                                                            
+}                                                                                       
+                                                                                        
+static int rot_disable_iommu_clocks(struct msm_rotator_dev *rot_dev)
+{                                                                                       
+	int i;                                                                                 
+	if (!rot_dev->mmu_clk_on)                                                              
+		return 0;                                                                            
+	for (i = 0; i < ARRAY_SIZE(rot_mmu_clks); i++) {                                       
+		clk_disable_unprepare(rot_mmu_clks[i].mmu_clk);                                      
+		clk_put(rot_mmu_clks[i].mmu_clk);                                                    
+		rot_mmu_clks[i].mmu_clk = NULL;                                                      
+	}                                                                                      
+	rot_dev->mmu_clk_on = 0;
+	return 0;                                                                              
+}                                                                                       
+                                                                                        
+static int map_sec_resource(struct msm_rotator_dev *rot_dev)                            
+{                                                                                       
+	int ret = 0;                                                                           
+	if (rot_dev->sec_mapped)                                                               
+		return 0;                                                                            
+                                                                                        
+	ret = rot_enable_iommu_clocks(rot_dev);                                                
+	if (ret) {                                                                             
+		pr_err("IOMMU clock enabled failed while open");                                     
+		return ret;                                                                          
+	}                                                                                      
+	ret = msm_ion_secure_heap(ION_HEAP(ION_CP_MM_HEAP_ID));                                
+	if (ret)                                                                               
+		pr_err("ION heap secure failed heap id %d ret %d\n",                                 
+			   ION_CP_MM_HEAP_ID, ret);                                                        
+	else                                                                                   
+		rot_dev->sec_mapped = 1;                                                             
+	rot_disable_iommu_clocks(rot_dev);                                                     
+	return ret;                                                                            
+}                                                                                       
+                                                                                        
+static int unmap_sec_resource(struct msm_rotator_dev *rot_dev)                          
+{                                                                                       
+	int ret = 0;                                                                           
+	ret = rot_enable_iommu_clocks(rot_dev);                                                
+	if (ret) {                                                                             
+		pr_err("IOMMU clock enabled failed while close\n");                                  
+		return ret;                                                                          
+	}                                                                                      
+	msm_ion_unsecure_heap(ION_HEAP(ION_CP_MM_HEAP_ID));                                    
+	rot_dev->sec_mapped = 0;                                                               
+	rot_disable_iommu_clocks(rot_dev);                                                     
+	return ret;                                                                            
+}                                                                                       
 
 int msm_rotator_imem_allocate(int requestor)
 {
@@ -1792,8 +1877,7 @@ static int msm_rotator_rotate_prepare(
 		pr_err("%s() : Attempt to use invalid session_id %d\n",
 			__func__, s);
 		rc = -EINVAL;
-		mutex_unlock(&msm_rotator_dev->rotator_lock);
-		return rc;
+		goto rotate_prepare_error;
 	}
 
 	img_info = &(msm_rotator_dev->rot_session[s]->img_info);
@@ -1801,8 +1885,7 @@ static int msm_rotator_rotate_prepare(
 		dev_dbg(msm_rotator_dev->device,
 			"%s() : Session_id %d not enabled\n", __func__, s);
 		rc = -EINVAL;
-		mutex_unlock(&msm_rotator_dev->rotator_lock);
-		return rc;
+		goto rotate_prepare_error;
 	}
 
 	if (msm_rotator_get_plane_sizes(img_info->src.format,
@@ -1811,8 +1894,7 @@ static int msm_rotator_rotate_prepare(
 					&src_planes)) {
 		pr_err("%s: invalid src format\n", __func__);
 		rc = -EINVAL;
-		mutex_unlock(&msm_rotator_dev->rotator_lock);
-		return rc;
+		goto rotate_prepare_error;
 	}
 	if (msm_rotator_get_plane_sizes(img_info->dst.format,
 					img_info->dst.width,
@@ -1820,8 +1902,7 @@ static int msm_rotator_rotate_prepare(
 					&dst_planes)) {
 		pr_err("%s: invalid dst format\n", __func__);
 		rc = -EINVAL;
-		mutex_unlock(&msm_rotator_dev->rotator_lock);
-		return rc;
+		goto rotate_prepare_error;
 	}
 
 	rc = get_img(&info.src, ROTATOR_SRC_DOMAIN, (unsigned long *)&in_paddr,
@@ -2148,6 +2229,7 @@ do_rotate_exit:
 	msm_rotator_imem_free(ROTATOR_REQUEST);
 #endif
 	schedule_delayed_work(&msm_rotator_dev->rot_clk_work, HZ);
+
 	put_img(dstp1_file, dstp1_ihdl, ROTATOR_DST_DOMAIN,
 		img_info->secure);
 	put_img(srcp1_file, srcp1_ihdl, ROTATOR_SRC_DOMAIN, 0);
@@ -2292,87 +2374,6 @@ static void msm_rotator_set_perf_level(u32 wh, u32 is_rgb)
 		perf_level);
 #endif
 
-}
-
-static int rot_enable_iommu_clocks(struct msm_rotator_dev *rot_dev)
-{
-	int ret = 0, i;
-	if (rot_dev->mmu_clk_on)
-		return 0;
-	for (i = 0; i < ARRAY_SIZE(rot_mmu_clks); i++) {
-		rot_mmu_clks[i].mmu_clk = clk_get(&msm_rotator_dev->pdev->dev,
-			rot_mmu_clks[i].mmu_clk_name);
-		if (IS_ERR(rot_mmu_clks[i].mmu_clk)) {
-			pr_err(" %s: Get failed for clk %s", __func__,
-				   rot_mmu_clks[i].mmu_clk_name);
-			ret = PTR_ERR(rot_mmu_clks[i].mmu_clk);
-			break;
-		}
-		ret = clk_prepare_enable(rot_mmu_clks[i].mmu_clk);
-		if (ret) {
-			clk_put(rot_mmu_clks[i].mmu_clk);
-			rot_mmu_clks[i].mmu_clk = NULL;
-		}
-	}
-	if (ret) {
-		for (i--; i >= 0; i--) {
-			clk_disable_unprepare(rot_mmu_clks[i].mmu_clk);
-			clk_put(rot_mmu_clks[i].mmu_clk);
-			rot_mmu_clks[i].mmu_clk = NULL;
-		}
-	} else {
-		rot_dev->mmu_clk_on = 1;
-	}
-	return ret;
-}
-
-static int rot_disable_iommu_clocks(struct msm_rotator_dev *rot_dev)
-{
-	int i;
-	if (!rot_dev->mmu_clk_on)
-		return 0;
-	for (i = 0; i < ARRAY_SIZE(rot_mmu_clks); i++) {
-		clk_disable_unprepare(rot_mmu_clks[i].mmu_clk);
-		clk_put(rot_mmu_clks[i].mmu_clk);
-		rot_mmu_clks[i].mmu_clk = NULL;
-	}
-	rot_dev->mmu_clk_on = 0;
-	return 0;
-}
-
-static int map_sec_resource(struct msm_rotator_dev *rot_dev)
-{
-	int ret = 0;
-	if (rot_dev->sec_mapped)
-		return 0;
-
-	ret = rot_enable_iommu_clocks(rot_dev);
-	if (ret) {
-		pr_err("IOMMU clock enabled failed while open");
-		return ret;
-	}
-	ret = msm_ion_secure_heap(ION_HEAP(ION_CP_MM_HEAP_ID));
-	if (ret)
-		pr_err("ION heap secure failed heap id %d ret %d\n",
-			   ION_CP_MM_HEAP_ID, ret);
-	else
-		rot_dev->sec_mapped = 1;
-	rot_disable_iommu_clocks(rot_dev);
-	return ret;
-}
-
-static int unmap_sec_resource(struct msm_rotator_dev *rot_dev)
-{
-	int ret = 0;
-	ret = rot_enable_iommu_clocks(rot_dev);
-	if (ret) {
-		pr_err("IOMMU clock enabled failed while close\n");
-		return ret;
-	}
-	msm_ion_unsecure_heap(ION_HEAP(ION_CP_MM_HEAP_ID));
-	rot_dev->sec_mapped = 0;
-	rot_disable_iommu_clocks(rot_dev);
-	return ret;
 }
 
 static int msm_rotator_start(unsigned long arg,
@@ -2619,6 +2620,7 @@ static int msm_rotator_start(unsigned long arg,
 	}
 	sync_info->acq_fen = NULL;
 	atomic_set(&sync_info->queue_buf_cnt, 0);
+
 rotator_start_exit:
 	mutex_unlock(&msm_rotator_dev->rotator_lock);
 
@@ -2642,13 +2644,14 @@ static int msm_rotator_finish(unsigned long arg)
 			if (msm_rotator_dev->last_session_idx == s)
 				msm_rotator_dev->last_session_idx =
 					INVALID_SESSION;
-			msm_rotator_signal_timeline(s);
-			msm_rotator_release_acq_fence(s);
+            msm_rotator_signal_timeline(s);
+            msm_rotator_release_acq_fence(s);
 			if (msm_rotator_dev->rot_session[s]->enable_2pass) {
 				rotator_free_2pass_buf(mrd->y_rot_buf, s);
 				rotator_free_2pass_buf(mrd->chroma_rot_buf, s);
 				rotator_free_2pass_buf(mrd->chroma2_rot_buf, s);
 			}
+
 			kfree(msm_rotator_dev->rot_session[s]);
 			msm_rotator_dev->rot_session[s] = NULL;
 			break;

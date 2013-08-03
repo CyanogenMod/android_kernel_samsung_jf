@@ -142,7 +142,6 @@ static inline void *kgsl_sg_alloc(unsigned int sglen)
 		return kzalloc(sglen * sizeof(struct scatterlist), GFP_KERNEL);
 	else {
 		void *ptr = vmalloc(sglen * sizeof(struct scatterlist));
-
 		if (ptr)
 			memset(ptr, 0, sglen * sizeof(struct scatterlist));
 

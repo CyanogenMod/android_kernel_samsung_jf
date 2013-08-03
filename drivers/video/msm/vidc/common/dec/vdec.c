@@ -1625,7 +1625,6 @@ static u32 vid_dec_start_stop(struct video_client_ctx *client_ctx, u32 start)
 				return false;
 			}
 		}
-
 		client_ctx->stop_called = false;
 	} else {
 		DBG("%s(): Calling vcd_stop()", __func__);

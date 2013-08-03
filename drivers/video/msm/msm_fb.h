@@ -213,8 +213,10 @@ struct msm_fb_data_type {
 	boolean panel_driver_on;
 	int vsync_sysfs_created;
 	int resume_state;
-	uint32 sec_mapped;
-	uint32 sec_active;
+	void *copy_splash_buf;
+	unsigned char *copy_splash_phys;
+	uint32 sec_mapped;				
+	uint32 sec_active;				
 };
 struct msm_fb_backup_type {
 	struct fb_info info;

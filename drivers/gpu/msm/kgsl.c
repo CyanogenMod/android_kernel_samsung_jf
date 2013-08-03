@@ -233,8 +233,10 @@ EXPORT_SYMBOL(kgsl_mem_entry_destroy);
  * assign it with a gpu address space before insertion
  * @process: the process that owns the memory
  * @entry: the memory entry
+ * @gpuaddr: The gpuaddr that needs to be assigned to memory entry when
+ * cpu=gpu map feature is on
  *
- * @returns - 0 on succcess else error code
+ * @returns - 0 on succces else error code
  *
  * Insert the kgsl_mem_entry in to the rb_tree for searching by GPU address.
  * The assignment of gpu address and insertion into list needs to
@@ -718,7 +720,7 @@ void kgsl_late_resume_driver(struct early_suspend *h)
 {
 	struct kgsl_device *device = container_of(h,
 					struct kgsl_device, display_off);
-	KGSL_PWR_ERR(device, "late resume start\n");
+	KGSL_PWR_WARN(device, "late resume start\n");
 	mutex_lock(&device->mutex);
 	device->pwrctrl.restore_slumber = false;
 	if (device->pwrscale.policy == NULL)
@@ -854,7 +856,7 @@ kgsl_find_process_private(struct kgsl_device_private *cur_dev_priv)
 
 	kref_init(&private->refcount);
 
-	private->pid = task_tgid_nr(current);
+    private->pid = task_tgid_nr(current);
 	spin_lock_init(&private->mem_lock);
 	mutex_init(&private->process_private_mutex);
 	/* Add the newly created process struct obj to the process list */
@@ -1106,6 +1108,8 @@ kgsl_sharedmem_find_region(struct kgsl_process_private *private,
 			return NULL;
 		}
 	}
+	spin_unlock(&private->mem_lock);
+
 	spin_unlock(&private->mem_lock);
 
 	return NULL;
@@ -1378,9 +1382,6 @@ static long kgsl_ioctl_rb_issueibcmds(struct kgsl_device_private *dev_priv,
 	context = kgsl_context_get_owner(dev_priv, param->drawctxt_id);
 	if (context == NULL) {
 		result = -EINVAL;
-		KGSL_DRV_ERR(dev_priv->device,
-			"invalid context_id %d\n",
-			param->drawctxt_id);
 		goto done;
 	}
 
@@ -1531,6 +1532,7 @@ static long _cmdstream_freememontimestamp(struct kgsl_device_private *dev_priv,
 		kgsl_mem_entry_put(entry);
 		return -EBUSY;
 	}
+
 	trace_kgsl_mem_timestamp_queue(device, entry, context_id,
 				       kgsl_readtimestamp(device, context,
 						  KGSL_TIMESTAMP_RETIRED),
@@ -1678,7 +1680,7 @@ static long kgsl_ioctl_gpumem_free_id(struct kgsl_device_private *dev_priv,
 	 * this function when calling kgsl_sharedmem_find_id, second one is
 	 * to free the memory since this is a free ioctl
 	 */
-	kgsl_mem_entry_put(entry);
+    kgsl_mem_entry_put(entry);
 	kgsl_mem_entry_put(entry);
 	return 0;
 }
@@ -2905,6 +2907,12 @@ kgsl_get_unmapped_area(struct file *file, unsigned long addr,
 		goto put;
 	}
 
+	/*
+	 * The orig_len may not include guard page and we need a free slot that
+	 * includes the guard page
+	 */
+	orig_len = kgsl_memdesc_mmapsize(&entry->memdesc);
+
 	align = kgsl_memdesc_get_align(&entry->memdesc);
 	if (align >= ilog2(SZ_1M))
 		align = ilog2(SZ_1M);
@@ -2988,7 +2996,7 @@ kgsl_get_unmapped_area(struct file *file, unsigned long addr,
 	} while (mmap_range_valid(addr, len));
 
 	if (IS_ERR_VALUE(ret))
-		KGSL_MEM_INFO(device,
+        KGSL_MEM_ERR(device,
 				"pid %d pgoff %lx len %ld failed error %ld\n",
 				private->pid, pgoff, len, ret);
 put:

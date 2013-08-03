@@ -2517,6 +2517,42 @@ static unsigned int gmem_restore_quad[QUAD_RESTORE_LEN] = {
 	0x3f800000, 0x3f800000,
 };
 
+static int a3xx_rb_init(struct adreno_device *adreno_dev,
+			 struct adreno_ringbuffer *rb)
+{
+	unsigned int *cmds, cmds_gpu;
+	cmds = adreno_ringbuffer_allocspace(rb, NULL, 18);
+	if (cmds == NULL)
+		return -ENOMEM;
+
+	cmds_gpu = rb->buffer_desc.gpuaddr + sizeof(uint) * (rb->wptr - 18);
+
+	GSL_RB_WRITE(cmds, cmds_gpu, cp_type3_packet(CP_ME_INIT, 17));
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x000003f7);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000080);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000100);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000180);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00006600);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000150);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x0000014e);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000154);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000001);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
+	/* Protected mode control - turned off for A3XX */
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
+	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
+
+	adreno_ringbuffer_submit(rb);
+
+	return 0;
+}
+
+
 static void set_gmem_copy_quad(struct adreno_device *adreno_dev)
 {
         gmem_restore_quad[5] = uint2float(1);
@@ -3188,41 +3224,6 @@ static void a305_create_on_resume_ib(struct adreno_device *adreno_dev)
 
 	*dummy_src = adreno_dev->on_resume_cmd.gpuaddr +
 	   ((cmds - (unsigned int *)adreno_dev->on_resume_cmd.hostptr) << 2);
-}
-
-static int a3xx_rb_init(struct adreno_device *adreno_dev,
-			 struct adreno_ringbuffer *rb)
-{
-	unsigned int *cmds, cmds_gpu;
-	cmds = adreno_ringbuffer_allocspace(rb, NULL, 18);
-	if (cmds == NULL)
-		return -ENOMEM;
-
-	cmds_gpu = rb->buffer_desc.gpuaddr + sizeof(uint) * (rb->wptr - 18);
-
-	GSL_RB_WRITE(cmds, cmds_gpu, cp_type3_packet(CP_ME_INIT, 17));
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x000003f7);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000080);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000100);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000180);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00006600);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000150);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x0000014e);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000154);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000001);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
-	/* Protected mode control - turned off for A3XX */
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
-	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
-
-	adreno_ringbuffer_submit(rb);
-
-	return 0;
 }
 
 static void a3xx_err_callback(struct adreno_device *adreno_dev, int bit)

@@ -1777,7 +1777,7 @@ static long vid_enc_ioctl(struct file *file,
 		}
 		break;
 	}
-	case VEN_IOCTL_SET_AC_PREDICTION:
+    case VEN_IOCTL_SET_AC_PREDICTION:
 	case VEN_IOCTL_GET_AC_PREDICTION:
 	case VEN_IOCTL_SET_RVLC:
 	case VEN_IOCTL_GET_RVLC:

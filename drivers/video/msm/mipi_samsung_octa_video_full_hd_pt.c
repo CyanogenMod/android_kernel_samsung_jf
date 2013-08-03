@@ -52,6 +52,11 @@ static char samsung_test_key_on3[] = {
 	0x5A, 0x5A,
 };
 
+static char samsung_test_key_off3[] = {
+	0xFC,
+	0xA5, 0xA5,
+};
+
 static char samsung_touchkey_off[] = {
 	0xFF,
 	0x1F,
@@ -953,13 +958,15 @@ static struct dsi_cmd_desc samsung_on_cmds_revH[] = {
 static struct dsi_cmd_desc samsung_on_cmds_revI[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(samsung_test_key_on1), samsung_test_key_on1},
+
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(samsung_test_key_on2), samsung_test_key_on2},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(samsung_test_key_on3), samsung_test_key_on3},
-
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(samsung_touchkey_off_revH), samsung_touchkey_off_revH},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(samsung_test_key_off3), samsung_test_key_off3},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 20,
 		sizeof(samsung_sleep_out), samsung_sleep_out},
@@ -1000,7 +1007,11 @@ static struct dsi_cmd_desc samsung_on_cmds_revI[] = {
 		sizeof(samsung_gamma_update), samsung_gamma_update},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-			sizeof(samsung_touchkey_on_revH), samsung_touchkey_on_revH},
+		sizeof(samsung_test_key_on3), samsung_test_key_on3},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(samsung_touchkey_on_revH), samsung_touchkey_on_revH},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(samsung_test_key_off3), samsung_test_key_off3},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(samsung_display_on), samsung_display_on},

@@ -34,8 +34,8 @@
 #define DVFS_STAGE_NONE		0
 #include <linux/cpufreq.h>
 
-#define TOUCH_BOOSTER_OFF_TIME	300
-#define TOUCH_BOOSTER_CHG_TIME	200
+#define TOUCH_BOOSTER_OFF_TIME	3000
+#define TOUCH_BOOSTER_CHG_TIME	300
 #endif
 
 /* To support suface touch, firmware should support data
