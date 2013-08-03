@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -963,6 +963,9 @@ int mdp4_update_base_blend(struct msm_fb_data_type *mfd,
 u32 mdp4_get_mixer_num(u32 panel_type);
 int mdp4_overlay_reset(void);
 void dump_underrun_pipe_info(void);
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+void dtv_update_camera_vector_override(uint8_t enable);
+#endif
 
 #ifndef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
 static inline void mdp4_wfd_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe)
@@ -987,5 +990,13 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd, int cndx, int wait);
 #if defined(CONFIG_FB_MSM_CAMERA_CSC)
 #define CSC_UPDATA_SIZE 10
 #endif
-
+#ifdef CONFIG_FB_MSM_OVERLAY
+int mdp4_unmap_sec_resource(struct msm_fb_data_type *mfd);
+#else
+static inline void mdp4_unmap_sec_resource(struct msm_fb_data_type *mfd);
+{
+	/* empty */
+	return 0;
+}
+#endif
 #endif /* MDP_H */

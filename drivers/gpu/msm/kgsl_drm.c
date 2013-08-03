@@ -252,6 +252,28 @@ kgsl_gem_alloc_memory(struct drm_gem_object *obj)
 					"Unable to allocate PMEM memory\n");
 					return result;
 				}
+			result = kgsl_mmu_get_gpuaddr(priv->pagetable,
+							&priv->memdesc);
+			if (result) {
+				DRM_ERROR(
+				"kgsl_mmu_get_gpuaddr failed. result = %d\n",
+				result);
+				ion_free(kgsl_drm_ion_client,
+					priv->ion_handle);
+				priv->ion_handle = NULL;
+				return result;
+			}
+			result = kgsl_mmu_map(priv->pagetable, &priv->memdesc);
+			if (result) {
+				DRM_ERROR(
+				"kgsl_mmu_map failed.  result = %d\n", result);
+				kgsl_mmu_put_gpuaddr(priv->pagetable,
+							&priv->memdesc);
+				ion_free(kgsl_drm_ion_client,
+					priv->ion_handle);
+				priv->ion_handle = NULL;
+				return result;
+			}
 		}
 		else
 			return -EINVAL;
@@ -270,6 +292,18 @@ kgsl_gem_alloc_memory(struct drm_gem_object *obj)
 				DRM_ERROR(
 				"Unable to allocate Vmalloc user memory\n");
 				return result;
+		result = kgsl_mmu_get_gpuaddr(priv->pagetable, &priv->memdesc);
+		if (result) {
+			DRM_ERROR(
+			"kgsl_mmu_get_gpuaddr failed.  result = %d\n", result);
+			goto memerr;
+		}
+		result = kgsl_mmu_map(priv->pagetable, &priv->memdesc);
+		if (result) {
+			DRM_ERROR(
+			"kgsl_mmu_map failed.  result = %d\n", result);
+			kgsl_mmu_put_gpuaddr(priv->pagetable, &priv->memdesc);
+			goto memerr;
 		}
 	} else
 		return -EINVAL;
@@ -295,6 +329,10 @@ kgsl_gem_free_memory(struct drm_gem_object *obj)
 
 	kgsl_gem_mem_flush(&priv->memdesc,  priv->type,
 			   DRM_KGSL_GEM_CACHE_OP_FROM_DEV);
+	if (priv->memdesc.gpuaddr) {
+		kgsl_mmu_unmap(priv->memdesc.pagetable, &priv->memdesc);
+		kgsl_mmu_put_gpuaddr(priv->memdesc.pagetable, &priv->memdesc);
+	}
 
 	kgsl_sharedmem_free(&priv->memdesc);
 

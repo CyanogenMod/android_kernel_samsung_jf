@@ -96,3 +96,9 @@ config MSM_KGSL_DISABLE_SHADOW_WRITES
 	bool "Disable register shadow writes for context switches"
 	default n
 	depends on MSM_KGSL
+
+config MSM_KGSL_KERNEL_API_ENABLE
+	bool "Enable kernel API for KGSL"
+	default n
+	---help---
+	  This API will use by device driver for performance.

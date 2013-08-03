@@ -2000,6 +2000,9 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 
 	mdp_dma_pan_update(info);
 	msm_fb_signal_timeline(mfd);
+	if (mdp4_unmap_sec_resource(mfd))
+		pr_err("%s: unmap secure res failed\n", __func__);
+
 	up(&msm_fb_pan_sem);
 
 	if (unset_bl_level && !bl_updated) {
@@ -3723,6 +3726,23 @@ static int msmfb_display_commit(struct fb_info *info,
 	return ret;
 }
 
+static int msmfb_get_metadata(struct msm_fb_data_type *mfd,
+				struct msmfb_metadata *metadata_ptr)                
+{                                                          
+	int ret = 0;                                              
+	switch (metadata_ptr->op) {                               
+	case metadata_op_frame_rate:                              
+		metadata_ptr->data.panel_frame_rate = 
+			mdp_get_panel_framerate(mfd);                         
+		break;                                                  
+	default:                                                  
+		pr_warn("Unsupported request to MDP META IOCTL.\n");    
+		ret = -EINVAL;                                          
+		break;                                                  
+	}                                                         
+	return ret;                                               
+}                                                          
+
 static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg)
 {
@@ -4058,6 +4078,16 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = msmfb_display_commit(info, argp);
 		sec_debug_mdp_set_value(SEC_DEBUG_DISPLAY_COMMIT, SEC_DEBUG_OUT);
 		break;
+
+	case MSMFB_METADATA_GET:										  
+		ret = copy_from_user(&mdp_metadata, argp, sizeof(mdp_metadata));
+		if (ret)														
+			return ret; 												  
+		ret = msmfb_get_metadata(mfd, &mdp_metadata);					
+		if (!ret)														
+			ret = copy_to_user(argp, &mdp_metadata, 					  
+				sizeof(mdp_metadata));										
+		break;															
 
 	default:
 		MSM_FB_INFO("MDP: unknown ioctl (cmd=%x) received!\n", cmd);

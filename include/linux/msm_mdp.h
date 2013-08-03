@@ -76,6 +76,7 @@
 #define MSMFB_WRITEBACK_SET_MIRRORING_HINT _IOW(MSMFB_IOCTL_MAGIC, 165, \
 						unsigned int)
 #define MSMFB_METADATA_SET  _IOW(MSMFB_IOCTL_MAGIC, 165, struct msmfb_metadata)
+#define MSMFB_METADATA_GET  _IOW(MSMFB_IOCTL_MAGIC, 166, struct msmfb_metadata)
 
 #define FB_TYPE_3D_PANEL 0x10101010
 #define MDP_IMGTYPE2_START 0x10000
@@ -319,6 +320,14 @@ struct mdp_overlay_pp_params {
 	struct mdp_qseed_cfg qseed_cfg[2];
 };
 
+enum {                    
+	BLEND_OP_NOT_DEFINED = 0,
+	BLEND_OP_OPAQUE,         
+	BLEND_OP_PREMULTIPLIED,  
+	BLEND_OP_COVERAGE,       
+	BLEND_OP_MAX,            
+};                        
+
 struct mdp_overlay {
 	struct msmfb_img src;
 	struct mdp_rect src_rect;
@@ -327,6 +336,7 @@ struct mdp_overlay {
 	uint32_t is_fg;		/* control alpha & transp */
 	uint32_t alpha;
 	uint32_t transp_mask;
+	uint32_t blend_op;
 	uint32_t flags;
 	uint32_t id;
 	uint32_t user_data[8];
@@ -499,6 +509,7 @@ struct msmfb_mdp_pp {
 enum {
 	metadata_op_none,
 	metadata_op_base_blend,
+	metadata_op_frame_rate,
 	metadata_op_max
 };
 
@@ -511,6 +522,7 @@ struct msmfb_metadata {
 	uint32_t flags;
 	union {
 		struct mdp_blend_cfg blend_cfg;
+		uint32_t panel_frame_rate;
 	} data;
 };
 

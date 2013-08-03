@@ -2045,7 +2045,7 @@ static int jc_set_af_mode(int status)
 
 	cam_info("Entered, af mode %d\n", status);
 
-	if (status < 1 || status > 6) {
+	if (status < 1 || status > 7) {
 		cam_err("invalid value, %d\n", status);
 		return rc;
 	}
@@ -2104,6 +2104,10 @@ static int jc_set_af_mode(int status)
 			jc_writeb(JC_CATEGORY_LENS,
 					0x02, 0x01);
 		}
+	} else if (status == 7) {
+		cam_info("Infinity\n");
+		jc_writeb(JC_CATEGORY_LENS,
+				0x02, 0x02);
 	}
 
 	return rc;
@@ -3348,6 +3352,10 @@ start:
 	cam_info("nv12 output setting\n");
 	err = jc_writeb(JC_CATEGORY_CAPCTRL,
 			0x0, 0x0f);
+
+	cam_info("GED camera setting\n");
+	err = jc_writeb(JC_CATEGORY_PARM,
+			0xf, 0x01);
 
 	if (jc_ctrl->samsung_app != 1) {
 		cam_info("Set different ratio capture mode\n");

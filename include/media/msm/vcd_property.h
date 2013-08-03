@@ -57,6 +57,10 @@
 #define VCD_I_SET_TURBO_CLK (VCD_START_BASE + 0x29)
 #define VCD_I_ENABLE_DELIMITER_FLAG (VCD_START_BASE + 0x2A)
 #define VCD_I_ENABLE_VUI_TIMING_INFO (VCD_START_BASE + 0x2B)
+#define VCD_I_SET_EXT_METABUFFER (VCD_START_BASE + 0x2C)
+#define VCD_I_FREE_EXT_METABUFFER (VCD_START_BASE + 0x2D)
+#define VCD_I_ENABLE_SEC_METADATA (VCD_START_BASE + 0x2E)
+#define VCD_I_ENABLE_VUI_BITSTREAM_RESTRICT_FLAG (VCD_START_BASE + 0x2F)
 
 
 #define VCD_START_REQ      (VCD_START_BASE + 0x1000)
@@ -384,4 +388,23 @@ struct vcd_property_vui_timing_info_enable {
 	u32 vui_timing_info;
 };
 
+struct vcd_property_meta_buffer {
+	u8 *kernel_virtual_addr;
+	u8 *physical_addr;
+	u32 size;
+	u32 count;
+	int pmem_fd;
+	u32 offset;
+	u8 *dev_addr;
+	void *client_data;
+	u8 *kernel_virt_addr_iommu;
+	u8 *physical_addr_iommu;
+	int pmem_fd_iommu;
+	u8 *dev_addr_iommu;
+	void *client_data_iommu;
+};
+
+struct vcd_property_bitstream_restrict_enable {
+	u32 bitstream_restrict_enable_flag;
+};
 #endif

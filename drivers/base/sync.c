@@ -771,8 +771,9 @@ static int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 	}
 
 	strlcpy(info->obj_name, pt->parent->name, sizeof(info->obj_name));
-	strlcpy(info->driver_name, pt->parent->ops->driver_name,
-		sizeof(info->driver_name));
+	if (pt->parent->ops->driver_name)
+		strlcpy(info->driver_name, pt->parent->ops->driver_name,
+			sizeof(info->driver_name));
 	info->status = pt->status;
 	info->timestamp_ns = ktime_to_ns(pt->timestamp);
 

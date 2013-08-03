@@ -120,6 +120,7 @@ static void initialize_variable(struct ssp_data *data)
 	data->light_device = NULL;
 	data->ges_device = NULL;
 
+	data->step_count_total = 0;
 	initialize_function_pointer(data);
 }
 
