@@ -778,7 +778,7 @@ static ssize_t synaptics_rmi4_f51_enables_store(struct device *dev,
 				__func__, retval);
 		return retval;
 	}
-
+    sysfs_notify(&rmi4_data->input_dev->dev.kobj,  NULL,  "proximity_enables" );    
 	return count;
 }
 #endif
@@ -2610,6 +2610,7 @@ static int synaptics_rmi4_f51_set_enables(struct synaptics_rmi4_data *rmi4_data)
 		synaptics_rmi4_f51_set_custom_rezero(rmi4_data);
 #endif
 
+    sysfs_notify(&rmi4_data->input_dev->dev.kobj,  NULL,  "proximity_enables" );    
 	return 0;
 }
 
