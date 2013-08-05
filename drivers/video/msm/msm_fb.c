@@ -1,4 +1,4 @@
-f/*
+/*
  * drivers/video/msm/msm_fb.c
  *
  * Core MSM framebuffer driver.
