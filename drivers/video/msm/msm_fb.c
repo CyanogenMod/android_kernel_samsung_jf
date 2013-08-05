@@ -1,4 +1,4 @@
-/*
+f/*
  * drivers/video/msm/msm_fb.c
  *
  * Core MSM framebuffer driver.
@@ -138,7 +138,8 @@ struct dentry *msm_fb_debugfs_file[MSM_FB_MAX_DBGFS];
 static int bl_scale, bl_min_lvl;
 
 DEFINE_MUTEX(msm_fb_notify_update_sem);
-static DEFINE_MUTEX(power_state_chagne);
+//static DEFINE_MUTEX(power_state_chagne); LeJay: It's not static in the official source code. Also, it wont compile if it's static. 
+DEFINE_MUTEX(power_state_chagne);
 
 void msmfb_no_update_notify_timer_cb(unsigned long data)
 {
