@@ -778,7 +778,7 @@ static ssize_t synaptics_rmi4_f51_enables_store(struct device *dev,
 				__func__, retval);
 		return retval;
 	}
-
+    sysfs_notify(&rmi4_data->input_dev->dev.kobj,  NULL,  "proximity_enables" );
 	return count;
 }
 #endif
@@ -2610,6 +2610,7 @@ static int synaptics_rmi4_f51_set_enables(struct synaptics_rmi4_data *rmi4_data)
 		synaptics_rmi4_f51_set_custom_rezero(rmi4_data);
 #endif
 
+    sysfs_notify(&rmi4_data->input_dev->dev.kobj,  NULL,  "proximity_enables" );
 	return 0;
 }
 
@@ -3220,7 +3221,7 @@ static int synaptics_rmi4_set_input_device
 			ABS_MT_WIDTH_MAJOR, 0,
 			EDGE_SWIPE_WIDTH_MAX, 0, 0);
 	input_set_abs_params(rmi4_data->input_dev,
-			ABS_MT_ANGLE, 0,
+			ABS_MT_ANGLE, EDGE_SWIPE_ANGLE_MIN,
 			EDGE_SWIPE_ANGLE_MAX, 0, 0);
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_PALM, 0,
