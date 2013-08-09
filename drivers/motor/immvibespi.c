@@ -11,6 +11,7 @@
 **          Copyright (c) 2013 The CyanogenMod Project
 **                        Daniel Hillenbrand <codeworkx@cyanogenmod.com>
 **                        Dan Pasanen <dan.pasanen@gmail.com>
+**                        Shareef Ali <shareefalis@cyanogenmod.org>
 **
 ** This file contains Original Code and/or Modifications of Original Code
 ** as defined in and that are subject to the GNU Public License v2 -
@@ -32,6 +33,11 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include "tspdrv.h"
+
+#define LEVEL_MAX           100
+#define LEVEL_MIN           0
+#define LEVEL_DEFAULT       50
+#define LEVEL_THRESHOLD     75
 
 /*
 ** This SPI supports only one actuator.
@@ -295,8 +301,63 @@ static int32_t ImmVibeSPI_ForceOut_SetSamples(u_int8_t nActuatorIndex,
 	}
 	return VIBE_S_SUCCESS;
 }
+static ssize_t pwm_max_show(struct device *dev,
+                            struct device_attribute *attr, char *buf)
+{
+	int count;
+    
+	count = sprintf(buf, "%d\n", LEVEL_MAX);
+	pr_info("vibrator: pwm max value: %d\n", LEVEL_MAX);
+    
+	return count;
+}
 
-static ssize_t pwm_val_show(struct device *dev, struct device_attribute *attr,
+static DEVICE_ATTR(pwm_max, S_IRUGO | S_IWUSR,
+                   pwm_max_show, NULL);
+
+static ssize_t pwm_min_show(struct device *dev,
+                            struct device_attribute *attr, char *buf)
+{
+	int count;
+    
+	count = sprintf(buf, "%d\n", LEVEL_MIN);
+	pr_info("vibrator: pwm min value: %d\n", LEVEL_MIN);
+    
+	return count;
+}
+
+static DEVICE_ATTR(pwm_min, S_IRUGO | S_IWUSR,
+                   pwm_min_show, NULL);
+
+static ssize_t pwm_default_show(struct device *dev,
+                                struct device_attribute *attr, char *buf)
+{
+	int count;
+    
+	count = sprintf(buf, "%d\n", LEVEL_DEFAULT);
+	pr_info("vibrator: pwm default value: %d\n", LEVEL_DEFAULT);
+    
+	return count;
+}
+
+static DEVICE_ATTR(pwm_default, S_IRUGO | S_IWUSR,
+                   pwm_default_show, NULL);
+
+static ssize_t pwm_threshold_show(struct device *dev,
+                                  struct device_attribute *attr, char *buf)
+{
+	int count;
+    
+	count = sprintf(buf, "%d\n", LEVEL_THRESHOLD);
+	pr_info("vibrator: pwm threshold value: %d\n", LEVEL_THRESHOLD);
+    
+	return count;
+}
+
+static DEVICE_ATTR(pwm_threshold, S_IRUGO | S_IWUSR,
+                   pwm_threshold_show, NULL);
+
+static ssize_t pwm_value_show(struct device *dev, struct device_attribute *attr,
                               char *buf)
 {
 	int count;
@@ -307,7 +368,7 @@ static ssize_t pwm_val_show(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-ssize_t pwm_val_store(struct device *dev, struct device_attribute *attr,
+ssize_t pwm_value_store(struct device *dev, struct device_attribute *attr,
                         const char *buf, size_t size)
 {
 	if (kstrtoul(buf, 0, &pwm_val))
@@ -324,25 +385,8 @@ ssize_t pwm_val_store(struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
-static DEVICE_ATTR(pwm_val, S_IRUGO | S_IWUSR,
-    pwm_val_show, pwm_val_store);
-
-static int create_vibrator_sysfs(void)
-{
-	int ret;
-	struct kobject *vibrator_kobj;
-	vibrator_kobj = kobject_create_and_add("vibrator", NULL);
-	if (unlikely(!vibrator_kobj))
-		return -ENOMEM;
-
-	ret = sysfs_create_file(vibrator_kobj, &dev_attr_pwm_val.attr);
-	if (unlikely(ret < 0)) {
-		pr_err("[VIB] sysfs_create_file failed: %d\n", ret);
-		return ret;
-	}
-
-	return 0;
-}
+static DEVICE_ATTR(pwm_value, S_IRUGO | S_IWUSR,
+    pwm_value_show, pwm_value_store);
 
 /*
 ** Called to get the device name (device name must be returned as ANSI char)
@@ -352,3 +396,4 @@ static int32_t ImmVibeSPI_Device_GetName(
 {
 	return VIBE_S_SUCCESS;
 }
+
