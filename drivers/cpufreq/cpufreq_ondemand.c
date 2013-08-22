@@ -654,8 +654,8 @@ static ssize_t store_powersave_bias(struct kobject *a, struct attribute *b,
 
 	dbs_tuners_ins.powersave_bias = input;
 
-	mutex_lock(&dbs_mutex);
 	get_online_cpus();
+	mutex_lock(&dbs_mutex);
 
 	if (!bypass) {
 		if (reenable_timer) {
@@ -731,8 +731,8 @@ skip_this_cpu_bypass:
 		}
 	}
 
-	put_online_cpus();
 	mutex_unlock(&dbs_mutex);
+	put_online_cpus();
 
 	return count;
 }
@@ -1131,7 +1131,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 				 ((dbs_tuners_ins.up_threshold_multi_core -
 				  dbs_tuners_ins.down_differential_multi_core) *
 				  policy->cur) &&
-				  freq_next < dbs_tuners_ins.optimal_freq)
+				freq_next < dbs_tuners_ins.optimal_freq)
 				freq_next = dbs_tuners_ins.optimal_freq;
 
 		}
@@ -1374,8 +1374,8 @@ static int dbs_sync_thread(void *data)
 
 			/* reschedule the next ondemand sample */
 			mutex_lock(&this_dbs_info->timer_mutex);
-			schedule_delayed_work_on(cpu, &this_dbs_info->work,
-						 delay);
+			queue_delayed_work_on(cpu, dbs_wq,
+					      &this_dbs_info->work, delay);
 			mutex_unlock(&this_dbs_info->timer_mutex);
 			trace_cpufreq_freq_synced(cpu,
 				policy->cur, this_dbs_info->prev_load);
@@ -1665,6 +1665,13 @@ static int __init cpufreq_gov_dbs_init(void)
 		mutex_init(&this_dbs_info->timer_mutex);
 		INIT_WORK(&dbs_work->work, dbs_refresh_callback);
 		dbs_work->cpu = i;
+
+		atomic_set(&this_dbs_info->src_sync_cpu, -1);
+		init_waitqueue_head(&this_dbs_info->sync_wq);
+
+		this_dbs_info->sync_thread = kthread_run(dbs_sync_thread,
+							 (void *)i,
+							 "dbs_sync/%d", i);
 	}
 
 	return cpufreq_register_governor(&cpufreq_gov_ondemand);
