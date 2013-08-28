@@ -1172,12 +1172,6 @@ static void cypress_gpio_init(void)
 */
 #endif
 
-static int apq8064_change_memory_power(u64 start, u64 size,
-	int change_type)
-{
-	return soc_change_memory_power(start, size, change_type);
-}
-
 static char prim_panel_name[PANEL_NAME_MAX_LEN];
 static char ext_panel_name[PANEL_NAME_MAX_LEN];
 
