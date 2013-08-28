@@ -30,6 +30,10 @@
 #ifndef MIPI_SAMSUNG_OLED_H
 #define MIPI_SAMSUNG_OLED_H
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#undef CONFIG_HAS_EARLYSUSPEND
+#endif
+
 #if defined(CONFIG_MIPI_SUPPORT_TFT_IN_HW_00_01)
 #include <mach/apq8064-gpio.h>
 #endif

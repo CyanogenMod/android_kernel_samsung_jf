@@ -12,6 +12,10 @@
 
 #include <linux/lcd.h>
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#undef CONFIG_HAS_EARLYSUSPEND
+#endif
+
 #include "msm_fb.h"
 #include "msm_fb_panel.h"
 #include "mipi_dsi.h"
