@@ -44,6 +44,7 @@
 #define MODE_AMR		0x5
 #define MODE_AMR_WB		0xD
 #define MODE_PCM		0xC
+#define MODE_4GV_NW		0xE
 
 enum format {
 	FORMAT_S16_LE = 2,
@@ -318,7 +319,8 @@ static void voip_process_ul_pkt(uint8_t *voc_pkt,
 		}
 		case MODE_IS127:
 		case MODE_4GV_NB:
-		case MODE_4GV_WB: {
+		case MODE_4GV_WB:
+		case MODE_4GV_NW: {
 			/* Remove the DSP frame info header.
 			 * Header format:
 			 * Bits 0-3: frame rate
@@ -393,7 +395,8 @@ static void voip_process_dl_pkt(uint8_t *voc_pkt,
 		}
 		case MODE_IS127:
 		case MODE_4GV_NB:
-		case MODE_4GV_WB: {
+		case MODE_4GV_WB:
+		case MODE_4GV_NW: {
 			/* Add the DSP frame info header. Header format:
 			 * Bits 0-3 : Frame rate
 			*/
@@ -784,7 +787,7 @@ static int msm_pcm_prepare(struct snd_pcm_substream *substream)
 	if ((runtime->format != FORMAT_SPECIAL) &&
 		 ((prtd->mode == MODE_AMR) || (prtd->mode == MODE_AMR_WB) ||
 		 (prtd->mode == MODE_IS127) || (prtd->mode == MODE_4GV_NB) ||
-		 (prtd->mode == MODE_4GV_WB))) {
+		 (prtd->mode == MODE_4GV_WB) || (prtd->mode == MODE_4GV_NW))) {
 		pr_err("mode:%d and format:%u are not mached\n",
 			prtd->mode, (uint32_t)runtime->format);
 		ret =  -EINVAL;
@@ -1072,6 +1075,23 @@ static int voip_get_rate_type(uint32_t mode, uint32_t rate,
 		}
 		break;
 	}
+	case MODE_4GV_NW: {
+		switch (rate) {
+		case VOC_0_RATE:
+		case VOC_8_RATE:
+		case VOC_4_RATE:
+		case VOC_2_RATE:
+		case VOC_1_RATE:
+		case VOC_8_RATE_NC:
+			*rate_type = rate;
+			break;
+		default:
+			pr_err("wrong rate for 4GV_NW.\n");
+			ret = -EINVAL;
+			break;
+		}
+		break;
+	}
 	default:
 		pr_err("wrong mode type.\n");
 		ret = -EINVAL;
@@ -1110,6 +1130,9 @@ static int voip_get_media_type(uint32_t mode,
 		break;
 	case MODE_4GV_WB: /* EVRC-WB */
 		*media_type = VSS_MEDIA_ID_4GV_WB_MODEM;
+		break;
+	case MODE_4GV_NW: /* EVRC-NW */
+		*media_type = VSS_MEDIA_ID_4GV_NW_MODEM;
 		break;
 	default:
 		pr_debug(" input mode is not supported\n");
