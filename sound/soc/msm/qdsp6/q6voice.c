@@ -958,8 +958,10 @@ static int voice_config_cvs_vocoder(struct voice_data *v)
 		cvs_set_cdma_rate.hdr.token = 0;
 		cvs_set_cdma_rate.hdr.opcode =
 				VSS_ISTREAM_CMD_CDMA_SET_ENC_MINMAX_RATE;
-		cvs_set_cdma_rate.cdma_rate.min_rate = common.mvs_info.rate;
-		cvs_set_cdma_rate.cdma_rate.max_rate = common.mvs_info.rate;
+		cvs_set_cdma_rate.cdma_rate.min_rate =
+				common.mvs_info.evrc_min_rate;
+		cvs_set_cdma_rate.cdma_rate.max_rate =
+				common.mvs_info.evrc_max_rate;
 
 		v->cvs_state = CMD_STATUS_FAIL;
 
@@ -3854,12 +3856,16 @@ void voc_register_mvs_cb(ul_cb_fn ul_cb,
 void voc_config_vocoder(uint32_t media_type,
 			  uint32_t rate,
 			  uint32_t network_type,
-			  uint32_t dtx_mode)
+			  uint32_t dtx_mode,
+			  uint32_t evrc_min_rate,
+			  uint32_t evrc_max_rate)
 {
 	common.mvs_info.media_type = media_type;
 	common.mvs_info.rate = rate;
 	common.mvs_info.network_type = network_type;
 	common.mvs_info.dtx_mode = dtx_mode;
+	common.mvs_info.evrc_min_rate = evrc_min_rate;
+	common.mvs_info.evrc_max_rate = evrc_max_rate;
 }
 
 static int32_t qdsp_mvm_callback(struct apr_client_data *data, void *priv)
