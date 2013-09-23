@@ -32,6 +32,11 @@
 
 #include <trace/events/power.h>
 
+#define CPUS_AVAILABLE	num_possible_cpus()
+
+/* Global placeholder for CPU policies */
+struct cpufreq_policy trmlpolicy[10];
+
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
  * level driver of CPUFreq support, and its spinlock. This lock
@@ -480,10 +485,11 @@ static ssize_t show_scaling_governor(struct cpufreq_policy *policy, char *buf)
 /**
  * store_scaling_governor - store policy for the specified CPU
  */
-static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
+static ssize_t __ref store_scaling_governor(struct cpufreq_policy *policy,
 					const char *buf, size_t count)
 {
 	unsigned int ret = -EINVAL;
+	int cpu;
 	char	str_governor[16];
 	struct cpufreq_policy new_policy;
 	char *envp[3];
@@ -517,6 +523,17 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	envp[1] = buf2;
 	envp[2] = NULL;
 	kobject_uevent_env(cpufreq_global_kobject, KOBJ_ADD, envp);
+
+		/* Set extra CPU cores to same scaling governor */
+		for (cpu = 1; cpu < CPUS_AVAILABLE; cpu++)
+		{
+			if (!cpu_online(cpu)) cpu_up(cpu);
+			if (&trmlpolicy[cpu] != NULL)
+			{
+				ret = cpufreq_get_policy(&new_policy, cpu);
+				__cpufreq_set_policy(&trmlpolicy[cpu], &new_policy);
+			}
+		}
 
 	if (ret)
 		return ret;
