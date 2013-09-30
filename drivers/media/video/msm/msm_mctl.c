@@ -978,7 +978,9 @@ static int msm_mctl_dev_close(struct file *f)
 	    iounmap(pcam_inst->p_avtimer_lsw);
 	    iounmap(pcam_inst->p_avtimer_msw);
 	    //Turn OFF DSP/Enable power collapse
+#ifdef CONFIG_MSM_AVTIMER
 	    avcs_core_disable_power_collapse(0);
+#endif
 	    pcam_inst->avtimerOn = 0;
 	}
 
@@ -1097,10 +1099,12 @@ static int msm_mctl_v4l2_s_ctrl(struct file *f, void *pctx,
 		pcam_inst->avtimerOn = ctrl->value;
 		D("%s: mmap_inst=(0x%p, %d) AVTimer=%d\n",
 			 __func__, pcam_inst, pcam_inst->my_index, ctrl->value);
+#ifdef CONFIG_MSM_AVTIMER
 		/*Kernel drivers to access AVTimer*/
 		avcs_core_open();
 		/*Turn ON DSP/Disable power collapse*/
 		avcs_core_disable_power_collapse(1);
+#endif
 		pcam_inst->p_avtimer_lsw = ioremap(AVTIMER_LSW_PHY_ADDR, 4);
 		pcam_inst->p_avtimer_msw = ioremap(AVTIMER_MSW_PHY_ADDR, 4);
 	} else
