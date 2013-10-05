@@ -3598,7 +3598,7 @@ static void msmfb_set_color_conv(struct mdp_csc *p)
 
 static int msmfb_notify_update(struct fb_info *info, unsigned long *argp)
 {
-	int ret, notify;
+	unsigned int ret = 0, notify = 0;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 
 	ret = copy_from_user(&notify, argp, sizeof(int));
@@ -3858,7 +3858,9 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	struct mdp_buf_sync buf_sync;
 	struct msmfb_metadata mdp_metadata;
 	int ret = 0;
-	msm_fb_pan_idle(mfd);
+
+	if (!info || !info->par)
+		return -EINVAL;
 
 	switch (cmd) {
 #ifdef CONFIG_FB_MSM_OVERLAY
