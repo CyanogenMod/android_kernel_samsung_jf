@@ -463,7 +463,7 @@ static void irda_vdd_onoff(bool onoff)
 		pr_info("%s irda_vreg 1.8V off is finished.\n", __func__);
 	}
 }
-
+#if defined(CONFIG_IRDA_MC96)
 static struct i2c_gpio_platform_data mc96_i2c_gpio_data = {
 	.udelay			= 2,
 	.sda_is_open_drain	= 0,
@@ -489,6 +489,7 @@ static struct i2c_board_info irda_i2c_board_info[] = {
 		.platform_data = &mc96_pdata,
 	},
 };
+#endif /* CONFIG_IRDA_MC96 */
 #endif
 
 #ifdef CONFIG_KERNEL_MSM_CONTIG_MEM_REGION
