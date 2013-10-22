@@ -118,6 +118,7 @@ struct pid_namespace;
 
 extern int pid_ns_prepare_proc(struct pid_namespace *ns);
 extern void pid_ns_release_proc(struct pid_namespace *ns);
+extern int proc_pid_cmdline(struct task_struct *task, char *buffer);
 
 /*
  * proc_tty.c

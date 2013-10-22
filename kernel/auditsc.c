@@ -67,6 +67,7 @@
 #include <linux/syscalls.h>
 #include <linux/capability.h>
 #include <linux/fs_struct.h>
+#include <linux/proc_fs.h>
 
 #include "audit.h"
 
@@ -1158,6 +1159,8 @@ static void audit_log_task_info(struct audit_buffer *ab, struct task_struct *tsk
 	char name[sizeof(tsk->comm)];
 	struct mm_struct *mm = tsk->mm;
 	struct vm_area_struct *vma;
+	unsigned long page;
+	int len;
 
 	/* tsk == current */
 
@@ -1179,6 +1182,27 @@ static void audit_log_task_info(struct audit_buffer *ab, struct task_struct *tsk
 		}
 		up_read(&mm->mmap_sem);
 	}
+
+	/* Get the process cmdline */
+	page = __get_free_page(GFP_TEMPORARY);
+	if (!page)
+		goto out;
+
+	len = proc_pid_cmdline(tsk, (char *)page);
+	if (len <= 0)
+		goto free;
+
+	/*
+	 * Ensure NULL terminated! Application could
+	 * could be using setproctitle(3).
+	 */
+	((char *)page)[len-1] = '\0';
+
+	audit_log_format(ab, " cmdline=");
+	audit_log_untrustedstring(ab, (char *)page);
+free:
+	free_page(page);
+out:
 	audit_log_task_context(ab);
 }
 
