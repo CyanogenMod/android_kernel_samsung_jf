@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linux_osl.c 399215 2013-04-29 12:41:45Z $
+ * $Id: linux_osl.c 412210 2013-07-12 07:12:46Z $
  */
 
 #define LINUX_PORT
@@ -1075,6 +1075,17 @@ osl_delay(uint usec)
 		udelay(d);
 		usec -= d;
 	}
+}
+
+void
+osl_sleep(uint ms)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)
+	if (ms < 20)
+		usleep_range(ms*1000, ms*1000 + 1000);
+	else
+#endif
+	msleep(ms);
 }
 
 
