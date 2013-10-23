@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_cdc.c 391745 2013-03-19 08:35:39Z $
+ * $Id: dhd_cdc.c 424070 2013-09-16 05:39:06Z $
  *
  * BDC is like CDC, except it includes a header for data packets to convey
  * packet priority over the bus, and flags (e.g. to indicate checksum status
@@ -140,7 +140,6 @@ dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uin
 {
 	dhd_prot_t *prot = dhd->prot;
 	cdc_ioctl_t *msg = &prot->msg;
-	void *info;
 	int ret = 0, retries = 0;
 	uint32 id, flags = 0;
 
@@ -210,15 +209,13 @@ retry:
 		goto done;
 	}
 
-	/* Check info buffer */
-	info = (void*)&msg[1];
 
 	/* Copy info buffer */
 	if (buf)
 	{
 		if (ret < (int)len)
 			len = ret;
-		memcpy(buf, info, len);
+		memcpy(buf, (void*) prot->buf, len);
 	}
 
 	/* Check the ERROR flag */
@@ -260,14 +257,18 @@ dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8
 		return -EIO;
 	}
 
-#if defined(CUSTOMER_HW4) && defined(CONFIG_CONTROL_PM)
-	if ((g_pm_control == TRUE) && (cmd == WLC_SET_PM))
-	{
-		DHD_ERROR(("SET PM ignored!!!!!!!!!!!!!!!!!!!!!!\n"));
-		goto done;
+#ifdef CUSTOMER_HW4
+	if (cmd == WLC_SET_PM) {
+#ifdef CONFIG_CONTROL_PM
+		if (g_pm_control == TRUE) {
+			DHD_ERROR(("%s: SET PM ignored!(Requested:%d)\n",
+				__FUNCTION__, *(char *)buf));
+			goto done;
+		}
+#endif /* CONFIG_CONTROL_PM */
+		DHD_ERROR(("%s: SET PM to %d\n", __FUNCTION__, *(char *)buf));
 	}
-#endif /* CUSTOMER_HW4 && CONFIG_CONTROL_PM */
-
+#endif /* CUSTOMER_HW4 */
 	memset(msg, 0, sizeof(cdc_ioctl_t));
 
 	msg->cmd = htol32(cmd);
@@ -1423,9 +1424,8 @@ _dhd_wlfc_mac_entry_update(athost_wl_status_info_t* ctx, wlfc_mac_descriptor_t* 
 		entry->requested_credit = 0;
 		/* enable after packets are queued-deqeued properly.
 		pktq_flush(dhd->osh, &entry->psq, FALSE, NULL, 0);
-		*/
-
-		memset(&entry->ea[0],0, ETHER_ADDR_LEN);
+		 */
+		memset(&entry->ea[0], 0, ETHER_ADDR_LEN);
 		entry->transit_count = 0;
 		entry->suppr_transit_count = 0;
 		entry->suppress_count = 0;

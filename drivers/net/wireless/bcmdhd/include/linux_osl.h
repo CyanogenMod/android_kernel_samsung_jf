@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linux_osl.h 399215 2013-04-29 12:41:45Z $
+ * $Id: linux_osl.h 411129 2013-07-05 01:24:07Z $
  */
 
 #ifndef _linux_osl_h_
@@ -66,6 +66,9 @@ extern void osl_assert(const char *exp, const char *file, int line);
 
 #define	OSL_DELAY(usec)		osl_delay(usec)
 extern void osl_delay(uint usec);
+
+#define OSL_SLEEP(ms)			osl_sleep(ms)
+extern void osl_sleep(uint ms);
 
 #define	OSL_PCMCIA_READ_ATTR(osh, offset, buf, size) \
 	osl_pcmcia_read_attr((osh), (offset), (buf), (size))
