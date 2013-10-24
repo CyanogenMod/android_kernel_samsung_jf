@@ -1805,7 +1805,8 @@ static int adreno_init(struct kgsl_device *device)
 		goto done;
 
 	/* Certain targets need the fixup.  You know who you are */
-	if (adreno_is_a330v2(adreno_dev))
+	if (adreno_is_a330v2(adreno_dev) ||
+	   (adreno_is_a320(adreno_dev) && !soc_class_is_apq8064()))
 		adreno_a3xx_pwron_fixup_init(adreno_dev);
 
 	set_bit(ADRENO_DEVICE_INITIALIZED, &adreno_dev->priv);
