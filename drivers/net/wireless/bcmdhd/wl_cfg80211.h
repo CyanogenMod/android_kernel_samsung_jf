@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfg80211.h 400791 2013-05-07 13:33:03Z $
+ * $Id: wl_cfg80211.h 423745 2013-09-13 04:48:46Z $
  */
 
 #ifndef _wl_cfg80211_h_
@@ -182,7 +182,7 @@ do {									\
 #define WL_SCB_TIMEOUT 20
 #endif
 
-#define WL_PM_ENABLE_TIMEOUT 3000
+#define WL_PM_ENABLE_TIMEOUT 10000
 
 /* driver status */
 enum wl_status {
@@ -266,6 +266,14 @@ enum wl_management_type {
 	WL_PROBE_RESP = 0x2,
 	WL_ASSOC_RESP = 0x4
 };
+
+enum wl_handler_del_type {
+	WL_HANDLER_NOTUSE,
+	WL_HANDLER_DEL,
+	WL_HANDLER_MAINTAIN,
+	WL_HANDLER_PEND
+};
+
 /* beacon / probe_response */
 struct beacon_proberesp {
 	__le64 timestamp;
@@ -604,6 +612,8 @@ struct wl_priv {
 #endif /* WL_HOST_BAND_MGMT */
 	bool pm_enable_work_on;
 	struct delayed_work pm_enable_work;
+	vndr_ie_setbuf_t *ibss_vsie;	/* keep the VSIE for IBSS */
+	int ibss_vsie_len;
 };
 
 
@@ -871,4 +881,10 @@ extern void wl_stop_wait_next_action_frame(struct wl_priv *wl, struct net_device
 #ifdef WL_HOST_BAND_MGMT
 extern s32 wl_cfg80211_set_band(struct net_device *ndev, int band);
 #endif /* WL_HOST_BAND_MGMT */
+extern void wl_cfg80211_ibss_vsie_set_buffer(vndr_ie_setbuf_t *ibss_vsie, int ibss_vsie_len);
+extern s32 wl_cfg80211_ibss_vsie_delete(struct net_device *dev);
+
+/* Action frame specific functions */
+extern u8 wl_get_action_category(void *frame, u32 frame_len);
+extern int wl_get_public_action(void *frame, u32 frame_len, u8 *ret_action);
 #endif				/* _wl_cfg80211_h_ */
