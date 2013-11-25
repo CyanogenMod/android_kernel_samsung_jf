@@ -315,6 +315,8 @@ void msm_restart(char mode, const char *cmd)
 #ifdef CONFIG_SEC_DEBUG
 		} else if (!strncmp(cmd, "sec_debug_hw_reset", 18)) {
 			__raw_writel(0x776655ee, restart_reason);
+		} else if (!strncmp(cmd, "sec_debug_low_panic", 19)) {
+			__raw_writel(0x776655dd, restart_reason);
 #endif
 		} else if (!strncmp(cmd, "download", 8)) {
 			__raw_writel(0x12345671, restart_reason);
@@ -329,6 +331,9 @@ void msm_restart(char mode, const char *cmd)
 				&& !kstrtoul(cmd + 7, 0, &value)) {
 			__raw_writel(0xfedc0000 | value, restart_reason);
 #endif
+		} else if (strlen(cmd) == 0) {
+			printk(KERN_NOTICE "%s : value of cmd is NULL.\n", __func__);
+			__raw_writel(0x12345678, restart_reason);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
@@ -344,6 +349,7 @@ reset:
 		__raw_writel(0x12345678, restart_reason);
 	}
 #endif
+	printk(KERN_NOTICE " msm_restart restart_reason : 0x%08x\n", readl(restart_reason));
 	__raw_writel(0, msm_tmr0_base + WDT0_EN);
 	if (!(machine_is_msm8x60_fusion() || machine_is_msm8x60_fusn_ffa())) {
 		mb();

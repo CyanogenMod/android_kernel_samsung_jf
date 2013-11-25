@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -103,6 +103,7 @@
 #define VIDC_1080P_ERROR_SPS_PARSE_ERROR         129
 #define VIDC_1080P_ERROR_PPS_PARSE_ERROR         130
 #define VIDC_1080P_ERROR_SLICE_PARSE_ERROR       131
+#define VIDC_1080P_ERROR_NON_IDR_FRAME_TYPE      132
 #define VIDC_1080P_ERROR_SYNC_POINT_NOT_RECEIVED  171
 
 #define VIDC_1080P_WARN_COMMAND_FLUSHED                  145
@@ -400,6 +401,10 @@ struct vidc_1080p_enc_frame_start_param{
 	u32 intra_frame;
 	u32 input_flush;
 	u32 slice_enable;
+	u32 store_ltr0;
+	u32 store_ltr1;
+	u32 use_ltr0;
+	u32 use_ltr1;
 	enum vidc_1080p_encode encode;
 };
 struct vidc_1080p_enc_frame_info{
@@ -428,6 +433,23 @@ struct vidc_1080p_enc_slice_batch_out_param {
 	struct vidc_1080p_enc_slice_info slice_info
 		[VIDC_1080P_SLICE_BATCH_MAX_STRM_BFR];
 };
+
+struct vidc_1080P_axi_ctrl {
+	u32 axi_halt_req;
+	u32 axi_reset;
+	u32 axi_halt_on_readerror;
+	u32 axi_halt_on_writeerror;
+	u32 axi_halt_on_watchdog_timeout;
+	u32 axi_watchdog_timeout_value;
+	u32 axi_interrupt_clr;
+};
+struct vidc_1080P_axi_status {
+	u32 axi_halt_ack;
+	u32 axi_idle;
+	u32 axi_error_interrupt;
+	u32 axi_watchdog_error_interrupt;
+};
+
 struct vidc_1080p_dec_disp_info{
 	u32 disp_resl_change;
 	u32 dec_resl_change;
@@ -472,6 +494,12 @@ void vidc_1080p_get_risc2host_cmd(u32 *pn_risc2host_command,
 	u32 *pn_risc2host_arg3, u32 *pn_risc2host_arg4);
 void vidc_1080p_get_risc2host_cmd_status(u32 err_status,
 	u32 *dec_err_status, u32 *disp_err_status);
+void vidc_1080p_get_mgen2maxi_ctrl(struct vidc_1080P_axi_ctrl *ctrl);
+void vidc_1080p_set_mgen2maxi_ctrl(struct vidc_1080P_axi_ctrl *ctrl);
+void vidc_1080p_get_mgenaxi_error_info(u32 *axi_error_info_a,
+	u32 *axi_error_info_b);
+void vidc_1080p_get_mgen2axi_status(struct vidc_1080P_axi_status *axi_a_status,
+	struct vidc_1080P_axi_status *axi_b_status);
 void vidc_1080p_clear_risc2host_cmd(void);
 void vidc_1080p_get_fw_version(u32 *pn_fw_version);
 void vidc_1080p_get_fw_status(u32 *pn_fw_status);
@@ -586,4 +614,6 @@ void vidc_1080p_get_intermedia_stage_debug_counter(
 	u32 *intermediate_stage_counter);
 void vidc_1080p_get_exception_status(u32 *exception_status);
 void vidc_1080p_frame_start_realloc(u32 instance_id);
+void vidc_1080p_set_enc_NV21(u32 enc_nv21);
+
 #endif

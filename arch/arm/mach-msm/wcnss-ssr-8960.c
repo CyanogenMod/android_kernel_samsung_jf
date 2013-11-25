@@ -50,6 +50,8 @@ static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
 
 	pr_err("%s: smsm state changed\n", MODULE_NAME);
 
+	wcnss_riva_dump_pmic_regs();
+
 	if (!(new_state & SMSM_RESET))
 		return;
 
@@ -237,7 +239,7 @@ static int __init riva_ssr_module_init(void)
 		goto out;
 	}
 	ret = request_irq(RIVA_APSS_WDOG_BITE_RESET_RDY_IRQ,
-			riva_wdog_bite_irq_hdlr, IRQF_TRIGGER_HIGH,
+			riva_wdog_bite_irq_hdlr, IRQF_TRIGGER_RISING,
 				"riva_wdog", NULL);
 
 	if (ret < 0) {

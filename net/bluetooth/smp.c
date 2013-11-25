@@ -1,5 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
+   Copyright (c) 2013 The Linux Foundation.  All rights reserved.
    Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 
    This program is free software; you can redistribute it and/or modify
@@ -213,6 +214,7 @@ static __u8 authreq_to_seclevel(__u8 authreq)
 static __u8 seclevel_to_authreq(__u8 level)
 {
 	switch (level) {
+	case BT_SECURITY_VERY_HIGH:
 	case BT_SECURITY_HIGH:
 		return SMP_AUTH_MITM | SMP_AUTH_BONDING;
 
@@ -446,9 +448,12 @@ int le_user_confirm_reply(struct hci_conn *hcon, u16 mgmt_op, void *cp)
 		smp_send_cmd(conn, SMP_CMD_PAIRING_FAIL, sizeof(reason),
 								&reason);
 		del_timer(&hcon->smp_timer);
+		if (hcon->disconn_cfm_cb)
+			hcon->disconn_cfm_cb(hcon, SMP_UNSPECIFIED);
 		clear_bit(HCI_CONN_ENCRYPT_PEND, &hcon->pend);
 		mgmt_auth_failed(hcon->hdev->id, conn->dst, reason);
 		hci_conn_put(hcon);
+		l2cap_conn_del(hcon, EACCES, 0);
 	} else if (hcon->cfm_pending) {
 		BT_DBG("send_pairing_confirm");
 		ret = send_pairing_confirm(conn);
@@ -711,6 +716,10 @@ static u8 smp_cmd_security_req(struct l2cap_conn *conn, struct sk_buff *skb)
 invalid_key:
 	hcon->sec_req = FALSE;
 
+	/* Switch to Pairing Connection Parameters */
+	hci_le_conn_update(hcon, SMP_MIN_CONN_INTERVAL, SMP_MAX_CONN_INTERVAL,
+		SMP_MAX_CONN_LATENCY, SMP_SUPERVISION_TIMEOUT);
+
 	skb_pull(skb, sizeof(*rp));
 
 	memset(&cp, 0, sizeof(cp));
@@ -756,8 +765,7 @@ int smp_conn_security(struct l2cap_conn *conn, __u8 sec_level)
 
 	hcon->smp_conn = conn;
 	hcon->pending_sec_level = sec_level;
-
-	if ((hcon->link_mode & HCI_LM_MASTER) && !hcon->sec_req) {
+	if (hcon->link_mode & HCI_LM_MASTER) {
 		struct link_key *key;
 
 		key = hci_find_link_key_type(hcon->hdev, conn->dst,
@@ -771,6 +779,11 @@ int smp_conn_security(struct l2cap_conn *conn, __u8 sec_level)
 
 	if (hcon->link_mode & HCI_LM_MASTER) {
 		struct smp_cmd_pairing cp;
+
+		/* Switch to Pairing Connection Parameters */
+		hci_le_conn_update(hcon, SMP_MIN_CONN_INTERVAL,
+			SMP_MAX_CONN_INTERVAL, SMP_MAX_CONN_LATENCY,
+			SMP_SUPERVISION_TIMEOUT);
 
 		build_pairing_cmd(conn, &cp, NULL, authreq);
 		hcon->preq[0] = SMP_CMD_PAIRING_REQ;
@@ -1032,6 +1045,12 @@ static int smp_distribute_keys(struct l2cap_conn *conn, __u8 force)
 	return 0;
 }
 
+void smp_conn_security_fail(struct l2cap_conn *conn, u8 code, u8 reason)
+{
+	BT_DBG("smp: %d %d ", code, reason);
+	smp_send_cmd(conn, SMP_CMD_PAIRING_FAIL, sizeof(reason), &reason);
+}
+
 int smp_link_encrypt_cmplt(struct l2cap_conn *conn, u8 status, u8 encrypt)
 {
 	struct hci_conn *hcon = conn->hcon;
@@ -1066,4 +1085,6 @@ void smp_timeout(unsigned long arg)
 	clear_bit(HCI_CONN_ENCRYPT_PEND, &conn->hcon->pend);
 	mgmt_auth_failed(conn->hcon->hdev->id, conn->dst, SMP_UNSPECIFIED);
 	hci_conn_put(conn->hcon);
+	//delete the l2cap connection
+	l2cap_conn_del(conn->hcon, EACCES, 0);
 }

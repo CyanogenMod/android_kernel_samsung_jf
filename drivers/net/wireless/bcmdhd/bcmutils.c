@@ -1,7 +1,7 @@
 /*
  * Driver O/S-independent utility routines
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -20,7 +20,7 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- * $Id: bcmutils.c 367039 2012-11-06 11:31:19Z $
+ * $Id: bcmutils.c 427979 2013-10-07 08:35:57Z $
  */
 
 #include <bcm_cfg.h>
@@ -1025,6 +1025,21 @@ bcm_ether_atoe(const char *p, struct ether_addr *ea)
 
 	return (i == 6);
 }
+
+int
+bcm_atoipv4(const char *p, struct ipv4_addr *ip)
+{
+
+	int i = 0;
+	char *c;
+	for (;;) {
+		ip->addr[i++] = (uint8)bcm_strtoul(p, &c, 0);
+		if (*c++ != '.' || i == IPV4_ADDR_LEN)
+			break;
+		p = c;
+	}
+	return (i == IPV4_ADDR_LEN);
+}
 #endif	/* !BCMROMOFFLOAD_EXCLUDE_BCMUTILS_FUNCS */
 
 
@@ -1176,7 +1191,29 @@ pktsetprio(void *pkt, bool update_vtag)
 	} else if (eh->ether_type == hton16(ETHER_TYPE_IP)) {
 		uint8 *ip_body = pktdata + sizeof(struct ether_header);
 		uint8 tos_tc = IP_TOS46(ip_body);
-		priority = (int)(tos_tc >> IPV4_TOS_PREC_SHIFT);
+		uint8 dscp = tos_tc >> IPV4_TOS_DSCP_SHIFT;
+		switch (dscp) {
+		case DSCP_EF:
+			priority = PRIO_8021D_VO;
+			break;
+		case DSCP_AF31:
+		case DSCP_AF32:
+		case DSCP_AF33:
+			priority = PRIO_8021D_CL;
+			break;
+		case DSCP_AF21:
+		case DSCP_AF22:
+		case DSCP_AF23:
+		case DSCP_AF11:
+		case DSCP_AF12:
+		case DSCP_AF13:
+			priority = PRIO_8021D_EE;
+			break;
+		default:
+			priority = (int)(tos_tc >> IPV4_TOS_PREC_SHIFT);
+			break;
+		}
+
 		rc |= PKTPRIO_DSCP;
 	}
 
@@ -2097,6 +2134,39 @@ bcm_print_bytes(const char *name, const uchar *data, int len)
 	}
 	printf("\n");
 }
+
+/* Look for vendor-specific IE with specified OUI and optional type */
+bcm_tlv_t *
+find_vendor_ie(void *tlvs, int tlvs_len, const char *voui, uint8 *type, int type_len)
+{
+	bcm_tlv_t *ie;
+	uint8 ie_len;
+
+	ie = (bcm_tlv_t*)tlvs;
+
+	/* make sure we are looking at a valid IE */
+	if (ie == NULL ||
+	    !bcm_valid_tlv(ie, tlvs_len))
+		return NULL;
+
+	/* Walk through the IEs looking for an OUI match */
+	do {
+		ie_len = ie->len;
+		if ((ie->id == DOT11_MNG_PROPR_ID) &&
+		    (ie_len >= (DOT11_OUI_LEN + type_len)) &&
+		    !bcmp(ie->data, voui, DOT11_OUI_LEN))
+		{
+			/* compare optional type */
+			if (type_len == 0 ||
+			    !bcmp(&ie->data[DOT11_OUI_LEN], type, type_len)) {
+				return (ie);		/* a match */
+			}
+		}
+	} while ((ie = bcm_next_tlv(ie, &tlvs_len)) != NULL);
+
+	return NULL;
+}
+
 #if defined(WLTINYDUMP) || defined(WLMSG_INFORM) || defined(WLMSG_ASSOC) || \
 	defined(WLMSG_PRPKT) || defined(WLMSG_WSEC)
 #define SSID_FMT_BUF_LEN	((4 * DOT11_MAX_SSID_LEN) + 1)
@@ -2184,3 +2254,93 @@ process_nvram_vars(char *varbuf, unsigned int len)
 
 	return buf_len;
 }
+
+/* calculate a * b + c */
+void
+bcm_uint64_multiple_add(uint32* r_high, uint32* r_low, uint32 a, uint32 b, uint32 c)
+{
+#define FORMALIZE(var) {cc += (var & 0x80000000) ? 1 : 0; var &= 0x7fffffff;}
+	uint32 r1, r0;
+	uint32 a1, a0, b1, b0, t, cc = 0;
+
+	a1 = a >> 16;
+	a0 = a & 0xffff;
+	b1 = b >> 16;
+	b0 = b & 0xffff;
+
+	r0 = a0 * b0;
+	FORMALIZE(r0);
+
+	t = (a1 * b0) << 16;
+	FORMALIZE(t);
+
+	r0 += t;
+	FORMALIZE(r0);
+
+	t = (a0 * b1) << 16;
+	FORMALIZE(t);
+
+	r0 += t;
+	FORMALIZE(r0);
+
+	FORMALIZE(c);
+
+	r0 += c;
+	FORMALIZE(r0);
+
+	r0 |= (cc % 2) ? 0x80000000 : 0;
+	r1 = a1 * b1 + ((a1 * b0) >> 16) + ((b1 * a0) >> 16) + (cc / 2);
+
+	*r_high = r1;
+	*r_low = r0;
+}
+
+/* calculate a / b */
+void
+bcm_uint64_divide(uint32* r, uint32 a_high, uint32 a_low, uint32 b)
+{
+	uint32 a1 = a_high, a0 = a_low, r0 = 0;
+
+	if (b < 2)
+		return;
+
+	while (a1 != 0) {
+		r0 += (0xffffffff / b) * a1;
+		bcm_uint64_multiple_add(&a1, &a0, ((0xffffffff % b) + 1) % b, a1, a0);
+	}
+
+	r0 += a0 / b;
+	*r = r0;
+}
+
+#ifndef setbit     /* As in the header file */
+#ifdef BCMUTILS_BIT_MACROS_USE_FUNCS
+/* Set bit in byte array. */
+void
+setbit(void *array, uint bit)
+{
+	((uint8 *)array)[bit / NBBY] |= 1 << (bit % NBBY);
+}
+
+/* Clear bit in byte array. */
+void
+clrbit(void *array, uint bit)
+{
+	((uint8 *)array)[bit / NBBY] &= ~(1 << (bit % NBBY));
+}
+
+/* Test if bit is set in byte array. */
+bool
+isset(const void *array, uint bit)
+{
+	return (((const uint8 *)array)[bit / NBBY] & (1 << (bit % NBBY)));
+}
+
+/* Test if bit is clear in byte array. */
+bool
+isclr(const void *array, uint bit)
+{
+	return ((((const uint8 *)array)[bit / NBBY] & (1 << (bit % NBBY))) == 0);
+}
+#endif /* BCMUTILS_BIT_MACROS_USE_FUNCS */
+#endif /* setbit */

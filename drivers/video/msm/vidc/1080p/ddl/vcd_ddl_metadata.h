@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,6 +19,7 @@
 #define DDL_METADATA_EXTRAPAD_SIZE      256
 #define DDL_METADATA_HDR_SIZE            20
 #define DDL_METADATA_EXTRADATANONE_SIZE  24
+#define DDL_SECURE_METADATA_DEFAULT_SIZE  8192
 #define DDL_METADATA_ALIGNSIZE(x) ((x) = (((x) + 0x7) & ~0x7))
 #define DDL_METADATA_MANDATORY \
 	(VCD_METADATA_DATANONE | VCD_METADATA_QCOMFILLER)
@@ -26,6 +27,7 @@
 #define DDL_METADATA_SEI_PAYLOAD_SIZE          100
 #define DDL_METADATA_SEI_MAX                     5
 #define DDL_METADATA_VUI_PAYLOAD_SIZE          256
+#define DDL_METADATA_LTR_INFO_PAYLOAD_SIZE     (4)
 #define DDL_METADATA_PASSTHROUGH_PAYLOAD_SIZE   68
 #define DDL_METADATA_EXT_PAYLOAD_SIZE         (640)
 #define DDL_METADATA_USER_PAYLOAD_SIZE        (2048)

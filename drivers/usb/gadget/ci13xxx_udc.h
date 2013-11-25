@@ -57,7 +57,7 @@ struct ci13xxx_td {
 #define TD_CURR_OFFSET        (0x0FFFUL <<  0)
 #define TD_FRAME_NUM          (0x07FFUL <<  0)
 #define TD_RESERVED_MASK      (0x0FFFUL <<  0)
-} __attribute__ ((packed));
+} __attribute__ ((packed, aligned(4)));
 
 /* DMA layout of queue heads */
 struct ci13xxx_qh {
@@ -75,7 +75,14 @@ struct ci13xxx_qh {
 	/* 9 */
 	u32 RESERVED;
 	struct usb_ctrlrequest   setup;
-} __attribute__ ((packed));
+} __attribute__ ((packed, aligned(4)));
+
+/* cache of larger request's original attributes */
+struct ci13xxx_multi_req {
+	unsigned             len;
+	unsigned             actual;
+	void                *buf;
+};
 
 /* Extension of usb_request */
 struct ci13xxx_req {
@@ -86,6 +93,7 @@ struct ci13xxx_req {
 	dma_addr_t           dma;
 	struct ci13xxx_td   *zptr;
 	dma_addr_t           zdma;
+	struct ci13xxx_multi_req multi;
 };
 
 /* Extension of usb_ep */
@@ -113,6 +121,8 @@ struct ci13xxx_ep {
 	unsigned long			      prime_fail_count;
 	int				      prime_timer_count;
 	struct timer_list		      prime_timer;
+
+	bool                                  multi_req;
 };
 
 struct ci13xxx;
@@ -144,7 +154,7 @@ struct ci13xxx {
 	struct dma_pool           *td_pool;   /* DMA pool for transfer descs */
 	struct usb_request        *status;    /* ep0 status request */
 	void                      *status_buf;/* GET_STATUS buffer */
-	
+
 	struct usb_gadget          gadget;     /* USB slave device */
 	struct ci13xxx_ep          ci13xxx_ep[ENDPT_MAX]; /* extended endpts */
 	u32                        ep0_dir;    /* ep0 direction */

@@ -877,8 +877,10 @@ static int msm_ehci_init_clocks(struct msm_hcd *mhcd, u32 init)
 	return 0;
 
 put_clocks:
-	clk_disable_unprepare(mhcd->iface_clk);
-	clk_disable_unprepare(mhcd->core_clk);
+	if (!atomic_read(&mhcd->in_lpm)) {
+		clk_disable_unprepare(mhcd->iface_clk);
+		clk_disable_unprepare(mhcd->core_clk);
+	}
 	clk_put(mhcd->core_clk);
 put_iface_clk:
 	clk_put(mhcd->iface_clk);
@@ -1066,7 +1068,6 @@ static int __devexit ehci_msm2_remove(struct platform_device *pdev)
 		free_irq(mhcd->pmic_gpio_dp_irq, mhcd);
 	}
 	device_init_wakeup(&pdev->dev, 0);
-	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
 
 	usb_remove_hcd(hcd);

@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Copyright (C) 2008 HTC Corporation
- * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -142,10 +142,8 @@ static long audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		} else {
 			uint16_t sce_left = 1, sce_right = 2;
 			aac_config = audio->codec_cfg;
-			if ((aac_config->dual_mono_mode <
-				AUDIO_AAC_DUAL_MONO_PL_PR) ||
-				(aac_config->dual_mono_mode >
-				AUDIO_AAC_DUAL_MONO_PL_SR)) {
+			if (aac_config->dual_mono_mode >
+			    AUDIO_AAC_DUAL_MONO_PL_SR) {
 				pr_err("%s:AUDIO_SET_AAC_CONFIG: Invalid dual_mono mode =%d\n",
 					 __func__, aac_config->dual_mono_mode);
 			} else {
@@ -179,6 +177,25 @@ static long audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					pr_err("%s: asm cmd dualmono failed rc=%d\n",
 								 __func__, rc);
 			}			break;
+		}
+		break;
+	}
+	case AUDIO_SET_AAC_MIX_CONFIG:	{
+		pr_debug("%s, AUDIO_SET_AAC_MIX_CONFIG", __func__);
+		if (copy_from_user(audio->codec_cfg, (void *)arg,
+			sizeof(unsigned long))) {
+			rc = -EFAULT;
+			break;
+		} else {
+			unsigned long *mix_coeff =
+				 (unsigned long *)audio->codec_cfg;
+			pr_debug("%s, value of coeff = %lu",
+				 __func__, *mix_coeff);
+			rc = q6asm_cfg_aac_sel_mix_coef(audio->ac, *mix_coeff);
+			if (rc < 0)
+				pr_err("%s asm aac_sel_mix_coef failed rc=%d\n",
+								__func__, rc);
+			break;
 		}
 		break;
 	}
@@ -260,6 +277,10 @@ static int audio_open(struct inode *inode, struct file *file)
 		goto fail;
 	}
 	rc = audio_aio_open(audio, file);
+	if (rc < 0) {
+		pr_err("audio_aio_open rc=%d\n", rc);
+		goto fail;
+	}
 
 #ifdef CONFIG_DEBUG_FS
 	snprintf(name, sizeof name, "msm_multi_aac_%04x", audio->ac->session);

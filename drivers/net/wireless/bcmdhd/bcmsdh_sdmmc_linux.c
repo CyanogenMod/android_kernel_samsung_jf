@@ -1,7 +1,7 @@
 /*
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc_linux.c 381717 2013-01-29 07:10:21Z $
+ * $Id: bcmsdh_sdmmc_linux.c 425711 2013-09-25 06:40:41Z $
  */
 
 #include <typedefs.h>
@@ -110,6 +110,9 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	int ret = 0;
 	static struct sdio_func sdio_func_0;
 
+	if (!gInstance)
+		return -EINVAL;
+
 	if (func) {
 		sd_trace(("bcmsdh_sdmmc: %s Enter\n", __FUNCTION__));
 		sd_trace(("sdio_bcmsdh: func->class=%x\n", func->class));
@@ -136,7 +139,7 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	#endif
 			sd_trace(("F2 found, calling bcmsdh_probe...\n"));
 			ret = bcmsdh_probe(&func->dev);
-			if (ret < 0 && gInstance)
+			if (ret < 0)
 				gInstance->func[2] = NULL;
 		}
 	} else {
@@ -257,6 +260,10 @@ static struct semaphore *notify_semaphore = NULL;
 static int dummy_probe(struct sdio_func *func,
                               const struct sdio_device_id *id)
 {
+	if (func && (func->num != 2)) {
+		return 0;
+	}
+
 	if (notify_semaphore)
 		up(notify_semaphore);
 	return 0;
@@ -281,6 +288,7 @@ int sdio_func_reg_notify(void* semaphore)
 
 void sdio_func_unreg_notify(void)
 {
+	OSL_SLEEP(15);
 	sdio_unregister_driver(&dummy_sdmmc_driver);
 }
 
@@ -406,7 +414,7 @@ int sdio_function_init(void)
 		return -ENOMEM;
 
 	error = sdio_register_driver(&bcmsdh_sdmmc_driver);
-	if (error && gInstance) {
+	if (error) {
 		kfree(gInstance);
 		gInstance = NULL;
 	}

@@ -1,14 +1,14 @@
 /*
  * Customer HW 4 dependant file
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
- *
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- *
+ * 
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,30 +16,13 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- *
+ * 
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_custom_sec.c 334946 2012-05-24 20:38:00Z $
  */
- 
-/* Function list
-	1. Module Type
-		a. For CID - Use 'USE_CID_CHECK' Feature
-			dhd_write_cid_file(), dhd_dump_cis(), dhd_check_module_cid()
-		b. For MAC - Use 'GET_MAC_FROM_OTP' Feature
-			dhd_write_mac_file(), dhd_check_module_mac()
-	2. COB Type
-		a. For MAC - Use 'READ_MACADDR' Feature
-			dhd_read_macaddr()
-	3. Etc
-		a. Power Save Mode - Use 'CONFIG_CONTROL_PM' Feature
-			sec_control_pm()
-		b. Frame Burst Control (11ac) - Use 'USE_WL_FRAMEBURST' Feature
-			sec_control_frameburst()
- */
- 
 #ifdef CUSTOMER_HW4
 #include <typedefs.h>
 #include <linuxver.h>
@@ -66,7 +49,8 @@ struct cntry_locales_custom {
 
 /* Locale table for sec */
 const struct cntry_locales_custom translate_custom_table[] = {
-#if defined(BCM4334_CHIP) || defined(BCM43241_CHIP) || defined(BCM4335_CHIP)
+#if defined(BCM4334_CHIP) || defined(BCM43241_CHIP) || defined(BCM4335_CHIP) || \
+	defined(BCM4339_CHIP)
 	{"",   "XZ", 11},	/* Universal if Country code is unknown or empty */
 	{"IR", "XZ", 11},	/* Universal if Country code is IRAN, (ISLAMIC REPUBLIC OF) */
 	{"SD", "XZ", 11},	/* Universal if Country code is SUDAN */
@@ -75,7 +59,6 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"PS", "XZ", 11},	/* Universal if Country code is PALESTINIAN TERRITORY, OCCUPIED */
 	{"TL", "XZ", 11},	/* Universal if Country code is TIMOR-LESTE (EAST TIMOR) */
 	{"MH", "XZ", 11},	/* Universal if Country code is MARSHALL ISLANDS */
-	{"PK", "XZ", 11},	/* Universal if Country code is PAKISTAN */
 #endif
 #if defined(BCM4330_CHIP) || defined(BCM4334_CHIP) || defined(BCM43241_CHIP)
 	{"AE", "AE", 1},
@@ -169,7 +152,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"PG", "XZ", 1},
 	{"SA", "XZ", 1},
 #endif /* BCM4330_CHIP */
-#ifdef BCM4335_CHIP
+#if defined(BCM4335_CHIP) || defined(BCM4339_CHIP)
 	{"AL", "AL", 2},
 	{"DZ", "DZ", 1},
 	{"AS", "AS", 12},
@@ -194,7 +177,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"KH", "KH", 2},
 	{"CA", "CA", 31},
 	{"KY", "KY", 3},
-	{"CN", "CN", 24},
+	{"CN", "CN", 38},
 	{"CO", "CO", 17},
 	{"CR", "CR", 17},
 	{"HR", "HR", 4},
@@ -283,7 +266,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"VN", "VN", 4},
 	{"ZM", "ZM", 2},
 	{"EC", "EC", 21},
-	{"SV", "SV", 19},
+	{"SV", "SV", 25},
 	{"KR", "KR", 48},
 	{"RU", "RU", 13},
 	{"UA", "UA", 8},
@@ -291,7 +274,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"FR", "FR", 5},
 	{"MN", "MN", 1},
 	{"NI", "NI", 2},
-#endif /* BCM4335_CHIP */
+#endif /* BCM4335_CHIP || BCM4339_CHIP */
 };
 
 /* Customized Locale convertor
@@ -340,7 +323,7 @@ void get_customized_country_code(char *country_iso_code, wl_country_t *cspec)
 #define CIS_BUF_SIZE            128
 #elif defined(BCM4334_CHIP)
 #define CIS_BUF_SIZE            256
-#else /* BCM4335_CHIP */
+#else /* BCM4335_CHIP || BCM4339_CHIP */
 #define CIS_BUF_SIZE            512
 #endif /* BCM4330_CHIP */
 
@@ -878,7 +861,7 @@ vid_info_t vid_info[] = {
 	{ 6, { 0x00, 0x20, 0xc7, 0x00, 0x00, }, { "murata" } },
 	{ 0, { 0x00, }, { "samsung" } }
 };
-#else /* BCM4335_CHIP */
+#elif defined(BCM4335_CHIP)
 vid_info_t vid_info[] = {
 	{ 3, { 0x33, 0x66, }, { "semcosh" } },		/* B0 Sharp 5G-FEM */
 	{ 3, { 0x33, 0x33, }, { "semco" } },		/* B0 Skyworks 5G-FEM and A0 chip */
@@ -887,6 +870,17 @@ vid_info_t vid_info[] = {
 	{ 3, { 0x00, 0x22, }, { "muratafem2" } },	/* B0 TriQuint 5G-FEM */
 	{ 3, { 0x00, 0x33, }, { "muratafem3" } },	/* 3rd FEM: Reserved */
 	{ 0, { 0x00, }, { "murata" } }	/* Default: for Murata A0 module */
+};
+#elif defined(BCM4339_CHIP)
+vid_info_t vid_info[] = {
+	{ 3, { 0x33, 0x33, }, { "semco" } },		/* 2G Skyworks + 5G Sharp FEM */
+	{ 3, { 0x33, 0x66, }, { "semco" } },		/* Not specified yet */
+	{ 3, { 0x33, 0x88, }, { "semco3rd" } },		/* Not specified yet */
+	{ 3, { 0x90, 0x01, }, { "wisol" } },		/* Not specified yet */
+	{ 3, { 0x90, 0x02, }, { "wisolfem1" } },	/* Not specified yet */
+	{ 3, { 0x00, 0x11, }, { "muratafem1" } },	/* Not specified yet */
+	{ 3, { 0x00, 0x22, }, { "muratafem2" } },	/* Not specified yet */
+	{ 0, { 0x00, }, { "samsung" } }				/* Default: Not specified yet */
 };
 #endif /* BCM_CHIP_ID */
 
@@ -1046,11 +1040,11 @@ static int dhd_write_mac_file(const char *filepath, const char *buf, int buf_len
 	return 0;
 }
 
-#ifdef BCM4335_CHIP
+#if defined(BCM4335_CHIP)|| defined(BCM4339_CHIP)
 #define CIS_MAC_OFFSET 31
 #else
 #define CIS_MAC_OFFSET 33
-#endif /* BCM4335_CHIP */
+#endif /* BCM4335_CHIP || BCM4339_CHIP */
 
 int dhd_check_module_mac(dhd_pub_t *dhd, struct ether_addr *mac)
 {
@@ -1216,42 +1210,25 @@ void sec_control_pm(dhd_pub_t *dhd, uint *power_mode)
 {
 	struct file *fp = NULL;
 	char *filepath = PSMINFO;
-	mm_segment_t oldfs = {0};
 	char power_val = 0;
 	char iovbuf[WL_EVENTING_MASK_LEN + 12];
+#ifdef DHD_ENABLE_LPC
 	int ret = 0;
 	uint32 lpc = 0;
+#endif /* DHD_ENABLE_LPC */
 
 	g_pm_control = FALSE;
 
 	fp = filp_open(filepath, O_RDONLY, 0);
-	if (IS_ERR(fp)) {
+	if (IS_ERR(fp) || (fp == NULL)) {
 		/* Enable PowerSave Mode */
 		dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)power_mode,
 			sizeof(uint), TRUE, 0);
-
-		fp = filp_open(filepath, O_RDWR | O_CREAT, 0666);
-		if (IS_ERR(fp) || (fp == NULL)) {
-			DHD_ERROR(("[%s, %d] /data/.psm.info open failed\n",
-				__FUNCTION__, __LINE__));
-			return;
-		} else {
-			oldfs = get_fs();
-			set_fs(get_ds());
-
-			if (fp->f_mode & FMODE_WRITE) {
-				power_val = '1';
-				fp->f_op->write(fp, (const char *)&power_val,
-					sizeof(char), &fp->f_pos);
-			}
-			set_fs(oldfs);
-		}
+		DHD_ERROR(("[%s, %d] /data/.psm.info open failed,"
+			" so set PM to %d\n",
+			__FUNCTION__, __LINE__, *power_mode));
+		return;
 	} else {
-		if (fp == NULL) {
-			DHD_ERROR(("[%s, %d] /data/.psm.info open failed\n",
-				__FUNCTION__, __LINE__));
-			return;
-		}
 		kernel_read(fp, fp->f_pos, &power_val, 1);
 		DHD_ERROR(("POWER_VAL = %c \r\n", power_val));
 
@@ -1276,12 +1253,14 @@ void sec_control_pm(dhd_pub_t *dhd, uint *power_mode)
 			dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
 				sizeof(iovbuf), TRUE, 0);
 #endif
+#ifdef DHD_ENABLE_LPC
 			/* Set lpc 0 */
 			bcm_mkiovar("lpc", (char *)&lpc, 4, iovbuf, sizeof(iovbuf));
 			if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
 				sizeof(iovbuf), TRUE, 0)) < 0) {
 				DHD_ERROR(("%s Set lpc failed  %d\n", __FUNCTION__, ret));
 			}
+#endif /* DHD_ENABLE_LPC */
 		} else {
 			dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)power_mode,
 				sizeof(uint), TRUE, 0);
@@ -1361,30 +1340,98 @@ int dhd_sel_ant_from_file(dhd_pub_t *dhd)
 	return 0;
 }
 #endif /* MIMO_ANTENNA_SETTING */
-#ifdef USE_WL_FRAMEBURST
-uint32 sec_control_frameburst(void)
+
+#ifdef USE_WFA_CERT_CONF
+int sec_get_param(dhd_pub_t *dhd, int mode)
 {
 	struct file *fp = NULL;
-	char *filepath = "/data/.frameburst.info";
-	char frameburst_val = 0;
-	uint32 frameburst = 1; /* default enabled */
-	int ret = 0;
+	char *filepath = NULL;
+	int val, ret = 0;
+
+	if (!dhd || (mode < SET_PARAM_BUS_TXGLOM_MODE) ||
+		(mode >= PARAM_LAST_VALUE)) {
+		DHD_ERROR(("[WIFI] %s: invalid argument\n", __FUNCTION__));
+		return -EINVAL;
+	}
+
+	switch (mode) {
+		case SET_PARAM_BUS_TXGLOM_MODE:
+			filepath = "/data/.bustxglom.info";
+			break;
+		case SET_PARAM_ROAMOFF:
+			filepath = "/data/.roamoff.info";
+			break;
+#ifdef USE_WL_FRAMEBURST
+		case SET_PARAM_FRAMEBURST:
+			filepath = "/data/.frameburst.info";
+			break;
+#endif /* USE_WL_FRAMEBURST */
+#ifdef USE_WL_TXBF
+		case SET_PARAM_TXBF:
+			filepath = "/data/.txbf.info";
+			break;
+#endif /* USE_WL_TXBF */
+		default:
+			return -EINVAL;
+	}
 
 	fp = filp_open(filepath, O_RDONLY, 0);
 	if (IS_ERR(fp) || (fp == NULL)) {
-		DHD_INFO(("[WIFI] %s: File open failed, so enable frameburst as a default.\n",
-			__FUNCTION__));
+		ret = -EIO;
 	} else {
-		ret = kernel_read(fp, fp->f_pos, &frameburst_val, 1);
-		if (ret > 0 && frameburst_val == '0') {
-			/* Set frameburst to disable */
-			frameburst = 0;
-		}
-
-		DHD_INFO(("set frameburst value = %d\n", frameburst));
+		ret = kernel_read(fp, fp->f_pos, (char *)&val, 4);
 		filp_close(fp, NULL);
 	}
-	return frameburst;
-}
+
+	if (ret < 0) {
+		/* File operation is failed so we will return default value */
+		switch (mode) {
+			case SET_PARAM_BUS_TXGLOM_MODE:
+				val = CUSTOM_GLOM_SETTING;
+				break;
+			case SET_PARAM_ROAMOFF:
+#ifdef ROAM_ENABLE
+				val = 0;
+#elif defined(DISABLE_BUILTIN_ROAM)
+				val = 1;
+#else
+				val = 0;
+#endif /* ROAM_ENABLE */
+				break;
+#ifdef USE_WL_FRAMEBURST
+			case SET_PARAM_FRAMEBURST:
+				val = 1;
+				break;
 #endif /* USE_WL_FRAMEBURST */
+#ifdef USE_WL_TXBF
+			case SET_PARAM_TXBF:
+				val = 1;
+				break;
+#endif /* USE_WL_TXBF */
+		}
+
+		DHD_INFO(("[WIFI] %s: File open failed, file path=%s,"
+			" default value=%d\n",
+			__FUNCTION__, filepath, val));
+		return val;
+	}
+
+	val = bcm_atoi((char *)&val);
+	DHD_INFO(("[WIFI] %s: %s = %d\n", __FUNCTION__, filepath, val));
+
+	switch (mode) {
+		case SET_PARAM_ROAMOFF:
+#ifdef USE_WL_FRAMEBURST
+		case SET_PARAM_FRAMEBURST:
+#endif /* USE_WL_FRAMEBURST */
+#ifdef USE_WL_TXBF
+		case SET_PARAM_TXBF:
+#endif /* USE_WL_TXBF */
+			val = val ? 1 : 0;
+			break;
+	}
+
+	return val;
+}
+#endif /* USE_WFA_CERT_CONF */
 #endif /* CUSTOMER_HW4 */

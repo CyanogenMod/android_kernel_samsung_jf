@@ -1,7 +1,7 @@
 /*
  * Linux Wireless Extensions support
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_iw.c 384655 2013-02-12 19:59:43Z $
+ * $Id: wl_iw.c 396420 2013-04-12 06:55:45Z $
  */
 
 #if defined(USE_IW)
@@ -37,7 +37,6 @@
 
 #include <linux/if_arp.h>
 #include <asm/uaccess.h>
-
 
 typedef const struct si_pub	si_t;
 #include <wlioctl.h>
@@ -82,6 +81,11 @@ typedef const struct si_pub	si_t;
 #define IW_AUTH_KEY_MGMT_FT_PSK 0x08
 #endif
 
+#ifndef IW_ENC_CAPA_FW_ROAM_ENABLE
+#define IW_ENC_CAPA_FW_ROAM_ENABLE	0x00000020
+#endif
+
+
 
 #ifndef IW_ENCODE_ALG_PMK
 #define IW_ENCODE_ALG_PMK 4
@@ -123,7 +127,10 @@ extern int dhd_wait_pend8021x(struct net_device *dev);
 #endif 
 
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define DAEMONIZE(a)
+#elif ((LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)) && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)))
 #define DAEMONIZE(a) daemonize(a); \
 	allow_signal(SIGKILL); \
 	allow_signal(SIGTERM);
@@ -437,6 +444,9 @@ wl_iw_set_pm(
 	error = dev_wlc_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm));
 	return error;
 }
+
+#if WIRELESS_EXT > 17
+#endif 
 #endif 
 
 int
@@ -772,6 +782,7 @@ wl_iw_get_range(
 				nrate_list2copy = 3;
 		}
 		range->num_bitrates += 8;
+		ASSERT(range->num_bitrates < IW_MAX_BITRATES);
 		for (k = 0; i < range->num_bitrates; k++, i++) {
 			
 			range->bitrate[i] = (nrate_list[nrate_list2copy][k]) * 500000;
@@ -843,10 +854,15 @@ wl_iw_get_range(
 	
 	if (dev_wlc_intvar_get(dev, "fbt_cap", &fbt_cap) == 0) {
 		if (fbt_cap == WLC_FBT_CAP_DRV_4WAY_AND_REASSOC) {
-
+			
 			range->enc_capa |= IW_ENC_CAPA_4WAY_HANDSHAKE;
 		}
 	}
+
+#ifdef BCMFW_ROAM_ENABLE_WEXT
+	
+	range->enc_capa |= IW_ENC_CAPA_FW_ROAM_ENABLE;
+#endif 
 
 	
 	IW_EVENT_CAPA_SET_KERNEL(range->event_capa);
@@ -2692,7 +2708,7 @@ wl_iw_set_wpaauth(
 		if ((error = dev_wlc_intvar_set(dev, "wsec", val)))
 			return error;
 
-
+		
 		if (dev_wlc_intvar_get(dev, "fbt_cap", &fbt_cap) == 0) {
 			if (fbt_cap == WLC_FBT_CAP_DRV_4WAY_AND_REASSOC) {
 				if ((paramid == IW_AUTH_CIPHER_PAIRWISE) && (val & AES_ENABLED)) {
@@ -3018,13 +3034,19 @@ static const iw_handler wl_iw_handler[] =
 enum {
 	WL_IW_SET_LEDDC = SIOCIWFIRSTPRIV,
 	WL_IW_SET_VLANMODE,
-	WL_IW_SET_PM
+	WL_IW_SET_PM,
+#if WIRELESS_EXT > 17
+#endif 
+	WL_IW_SET_LAST
 };
 
 static iw_handler wl_iw_priv_handler[] = {
 	wl_iw_set_leddc,
 	wl_iw_set_vlanmode,
-	wl_iw_set_pm
+	wl_iw_set_pm,
+#if WIRELESS_EXT > 17
+#endif 
+	NULL
 };
 
 static struct iw_priv_args wl_iw_priv_args[] = {
@@ -3045,7 +3067,10 @@ static struct iw_priv_args wl_iw_priv_args[] = {
 		IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
 		0,
 		"set_pm"
-	}
+	},
+#if WIRELESS_EXT > 17
+#endif 
+	{ 0, 0, 0, { 0 } }
 };
 
 const struct iw_handler_def wl_iw_handler_def =
@@ -3647,7 +3672,7 @@ static void wl_iw_send_scan_complete(iscan_info_t *iscan)
 
 	memset(&wrqu, 0, sizeof(wrqu));
 
-
+	
 	wireless_send_event(iscan->dev, SIOCGIWSCAN, &wrqu, NULL);
 }
 

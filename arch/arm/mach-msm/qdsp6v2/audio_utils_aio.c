@@ -1,6 +1,6 @@
 /* Copyright (C) 2008 Google, Inc.
  * Copyright (C) 2008 HTC Corporation
- * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -222,23 +222,29 @@ static int audio_aio_flush(struct q6audio_aio  *audio)
 		   it is not in pause state */
 		if (!(audio->drv_status & ADRV_STATUS_PAUSE)) {
 			rc = audio_aio_pause(audio);
-			if (rc < 0)
+			if (rc < 0) {
 				pr_err("%s[%p}: pause cmd failed rc=%d\n",
 					__func__, audio,
 					rc);
+				goto fail;
+			}
 			else
 				audio->drv_status |= ADRV_STATUS_PAUSE;
 		}
 		rc = q6asm_cmd(audio->ac, CMD_FLUSH);
-		if (rc < 0)
+		if (rc < 0) {
 			pr_err("%s[%p]: flush cmd failed rc=%d\n",
 				__func__, audio, rc);
+			goto fail;
+		}
 		/* Not in stop state, reenable the stream */
 		if (audio->stopped == 0) {
 			rc = audio_aio_enable(audio);
-			if (rc)
+			if (rc) {
 				pr_err("%s[%p]:audio re-enable failed\n",
 					__func__, audio);
+				goto fail;
+			}
 			else {
 				audio->enabled = 1;
 				if (audio->drv_status & ADRV_STATUS_PAUSE)
@@ -253,6 +259,8 @@ static int audio_aio_flush(struct q6audio_aio  *audio)
 	atomic_set(&audio->in_bytes, 0);
 	atomic_set(&audio->in_samples, 0);
 	return 0;
+fail:
+	return -EINVAL;
 }
 
 static int audio_aio_outport_flush(struct q6audio_aio *audio)
@@ -468,9 +476,9 @@ int audio_aio_release(struct inode *inode, struct file *file)
 	audio->wflush = 0;
 	audio->drv_ops.out_flush(audio);
 	audio->drv_ops.in_flush(audio);
-	audio_aio_unmap_ion_region(audio);
 	audio_aio_disable(audio);
-	audio_aio_unmap_ion_region(audio);
+	if (audio->stopped == 1)
+		audio_aio_unmap_ion_region(audio);
 	audio_aio_reset_ion_region(audio);
 	ion_client_destroy(audio->client);
 	audio->event_abort = 1;
@@ -644,7 +652,13 @@ static long audio_aio_process_event_req(struct q6audio_aio *audio,
 	if (audio->eos_rsp && !list_empty(&audio->in_queue)) {
 		pr_debug("%s[%p]:Send flush command to release read buffers"\
 			" held up in DSP\n", __func__, audio);
-		audio_aio_flush(audio);
+		audio->rflush = 1;
+		audio->wflush = 1;
+		rc = audio_aio_flush(audio);
+		if (rc < 0) {
+			audio->rflush = 0;
+			audio->wflush = 0;
+		}
 	}
 
 	if (copy_to_user(arg, &usr_evt, sizeof(usr_evt)))
@@ -803,6 +817,11 @@ static void audio_aio_async_write(struct q6audio_aio *audio,
 	struct audio_client *ac;
 	struct audio_aio_write_param param;
 
+        if (!audio || !buf_node) {
+                pr_err("%s: NULL pointer audio=[0x%p], buf_node=[0x%p]\n",
+                        __func__, audio, buf_node);
+                return;
+        }
 	pr_debug("%s[%p]: Send write buff %p phy %lx len %d meta_enable = %d\n",
 		__func__, audio, buf_node, buf_node->paddr,
 		buf_node->buf.data_len,
@@ -829,8 +848,7 @@ static void audio_aio_async_write(struct q6audio_aio *audio,
 	else
 		param.flags = 0xFF00;
 
-	if ((buf_node != NULL) &&
-		(buf_node->meta_info.meta_in.nflags & AUDIO_DEC_EOF_SET))
+	if (buf_node->meta_info.meta_in.nflags & AUDIO_DEC_EOF_SET)
 		param.flags |= AUDIO_DEC_EOF_SET;
 
 	param.uid = param.paddr;
@@ -968,7 +986,8 @@ static int audio_aio_buf_add(struct q6audio_aio *audio, unsigned dir,
 			return -EINVAL;
 		}
 		/* No EOS reached */
-		if (!audio->eos_rsp) {
+		/* No flush in progress */
+		if (!audio->eos_rsp && !audio->rflush) {
 			spin_lock_irqsave(&audio->dsp_lock, flags);
 			audio_aio_async_read(audio, buf_node);
 			/* EOS buffer handled in driver */
@@ -993,7 +1012,7 @@ static int audio_aio_buf_add(struct q6audio_aio *audio, unsigned dir,
 	return 0;
 }
 
-static void audio_aio_ioport_reset(struct q6audio_aio *audio)
+void audio_aio_ioport_reset(struct q6audio_aio *audio)
 {
 	if (audio->drv_status & ADRV_STATUS_AIO_INTF) {
 		/* If fsync is in progress, make sure
@@ -1056,6 +1075,8 @@ int audio_aio_open(struct q6audio_aio *audio, struct file *file)
 
 	audio->drv_ops.out_flush(audio);
 	audio->opened = 1;
+	audio->rflush = 0;
+	audio->wflush = 0;
 	file->private_data = audio;
 	audio->codec_ioctl = audio_aio_ioctl;
 
@@ -1078,9 +1099,6 @@ int audio_aio_open(struct q6audio_aio *audio, struct file *file)
 	pr_debug("Ion client create in audio_aio_open %p", audio->client);
 	return 0;
 fail:
-	q6asm_audio_client_free(audio->ac);
-	kfree(audio->codec_cfg);
-	kfree(audio);
 	return rc;
 }
 
@@ -1154,15 +1172,19 @@ long audio_aio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				audio, audio->ac->session);
 		mutex_lock(&audio->lock);
 		audio->stopped = 1;
-		audio_aio_flush(audio);
-		audio->enabled = 0;
-		audio->drv_status &= ~ADRV_STATUS_PAUSE;
+		audio->rflush = 1;
+		audio->wflush = 1;
+		rc = audio_aio_flush(audio);
 		if (rc < 0) {
 			pr_err("%s[%p]:Audio Stop procedure failed rc=%d\n",
 				__func__, audio, rc);
+			audio->rflush = 0;
+			audio->wflush = 0;
 			mutex_unlock(&audio->lock);
 			break;
 		}
+		audio->enabled = 0;
+		audio->drv_status &= ~ADRV_STATUS_PAUSE;
 		mutex_unlock(&audio->lock);
 		break;
 	}
@@ -1201,8 +1223,6 @@ long audio_aio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		audio->wflush = 1;
 		/* Flush DSP */
 		rc = audio_aio_flush(audio);
-		/* Flush input / Output buffer in software*/
-		audio_aio_ioport_reset(audio);
 		if (rc < 0) {
 			pr_err("%s[%p]:AUDIO_FLUSH interrupted\n",
 				__func__, audio);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,14 +17,24 @@
 
 #define PM8XXX_CCADC_DEV_NAME "pm8xxx-ccadc"
 
+struct pm8xxx_ccadc_core_data {
+	unsigned int	batt_temp_channel;
+};
+
 /**
  * struct pm8xxx_ccadc_platform_data -
- * @r_sense:		sense resistor value in (mOhms)
+ * @ccadc_cdata:	core data for the ccadc driver containing channel info
+ * @r_sense_uohm:		sense resistor value in (micro Ohms)
  * @calib_delay_ms:	how often should the adc calculate gain and offset
+ * @periodic_wakeup:	a flag to indicate that this system wakeups periodically
+ *			for calibration/other housekeeping activities. The ccadc
+ *			does a quick calibration while resuming
  */
 struct pm8xxx_ccadc_platform_data {
-	int		r_sense;
-	unsigned int	calib_delay_ms;
+	struct pm8xxx_ccadc_core_data	ccadc_cdata;
+	int				r_sense_uohm;
+	unsigned int			calib_delay_ms;
+	bool				periodic_wakeup;
 };
 
 #define CCADC_READING_RESOLUTION_N	542535

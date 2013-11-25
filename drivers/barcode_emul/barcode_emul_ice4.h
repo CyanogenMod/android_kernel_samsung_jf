@@ -20,7 +20,14 @@
 #define _BARCODE_EMULATOR_H_
 
 extern struct class *sec_class;
-
+/* JINHO */
+#define IR_IOCTL_BASE       0xEE
+#define IR_IOCTL_SET_FREQ   _IOW(IR_IOCTL_BASE, 1, int)
+#define IR_IOCTL_SET_SIZE   _IOW(IR_IOCTL_BASE, 2, int)
+#define IR_IOCTL_SET_DATA   _IOW(IR_IOCTL_BASE, 3, int*)
+#define IR_IOCTL_START      _IO(IR_IOCTL_BASE, 4)
+#define IR_IOCTL_STOP       _IO(IR_IOCTL_BASE, 5)
+/* JINHO */
 #define CONFIGURATION_SIZE	32216
 
 #if defined(CONFIG_MACH_JF_DCM)

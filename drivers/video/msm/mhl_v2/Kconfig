@@ -48,4 +48,13 @@ config MHL_NEW_CBUS_MSC_CMD
 	To distinguish TA and USB charger, mhl_version2 support new msc cmd
 	different from mhl_v1.
 
+config MHL_VERSION
+	hex "Number of MHL Version"
+	default 0x20
+	---help---
+	MHL Version
+	For example, those device compliant
+	with MHL Specification version 2.0 
+	shell set this MHL_VERSION to 0x20
+
 endmenu

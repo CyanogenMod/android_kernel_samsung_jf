@@ -3,7 +3,7 @@
  * Contents are wifi-specific, used by any kernel or app-level
  * software that might want wifi things as it grows.
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -27,10 +27,10 @@
 
 #include <bcm_cfg.h>
 #include <typedefs.h>
+#include <bcmutils.h>
 
 #ifdef BCMDRIVER
 #include <osl.h>
-#include <bcmutils.h>
 #define strtoul(nptr, endptr, base) bcm_strtoul((nptr), (endptr), (base))
 #define tolower(c) (bcm_isupper((c)) ? ((c) + 'a' - 'A') : (c))
 #else
@@ -763,6 +763,10 @@ wf_chspec_valid(chanspec_t chanspec)
 
 				if (i == num_ch) {
 					
+					if (chspec_ch == 165)
+						i = 0;
+
+					
 					if (chspec_ch == 34 || chspec_ch == 38 ||
 					    chspec_ch == 42 || chspec_ch == 46)
 						i = 0;
@@ -884,7 +888,7 @@ wf_channel2chspec(uint ctl_ch, uint bw)
 		}
 	}
 
-
+	
 	if (sb < 0) {
 		return 0;
 	}
@@ -983,4 +987,100 @@ wf_channel2mhz(uint ch, uint start_factor)
 		freq = ch * 5 + start_factor / 2;
 
 	return freq;
+}
+
+
+static const struct chan_info {
+	uint16	chan;	
+	uint16	freq;	
+} chan_info[] = {
+	
+		{1,	2412},
+		{2,	2417},
+		{3,	2422},
+		{4,	2427},
+		{5,	2432},
+		{6,	2437},
+		{7,	2442},
+		{8,	2447},
+		{9,	2452},
+		{10,	2457},
+	{11,	2462},
+	{12,	2467},
+	{13,	2472},
+	{14,	2484},
+
+#ifdef BAND5G
+
+	{34,	5170},
+	{38,	5190},
+	{42,	5210},
+	{46,	5230},
+
+
+	{36,	5180},
+	{40,	5200},
+	{44,	5220},
+	{48,	5240},
+	{52,	5260},
+	{56,	5280},
+	{60,	5300},
+	{64,	5320},
+
+
+	{100,	5500},
+	{104,	5520},
+	{108,	5540},
+	{112,	5560},
+	{116,	5580},
+	{120,	5600},
+	{124,	5620},
+	{128,	5640},
+	{132,	5660},
+	{136,	5680},
+	{140,	5700},
+
+
+	{149,	5745},
+	{153,	5765},
+	{157,	5785},
+	{161,	5805},
+	{165,	5825},
+
+
+	{184,	4920},
+	{188,	4940},
+	{192,	4960},
+	{196,	4980},
+	{200,	5000},
+	{204,	5020},
+	{208,	5040},
+	{212,	5060},
+	{216,	5080}
+#endif 
+};
+
+
+uint
+wf_freq2channel(uint freq)
+{
+	uint i;
+
+	for (i = 0; i < ARRAYSIZE(chan_info); i++) {
+		if (chan_info[i].freq == freq)
+			return (chan_info[i].chan);
+	}
+	return (0);
+}
+
+
+uint
+wf_channel2freq(uint channel)
+{
+	uint i;
+
+	for (i = 0; i < ARRAYSIZE(chan_info); i++)
+		if (chan_info[i].chan == channel)
+			return (chan_info[i].freq);
+	return (0);
 }

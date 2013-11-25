@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -107,7 +107,7 @@ void vidc_sm_set_extended_encoder_control(
 	enum VIDC_SM_frame_skip  frame_skip_mode, u32 seq_hdr_in_band,
 	u32 vbv_buffer_size, u32 cpcfc_enable, u32 sps_pps_control,
 	u32 closed_gop_enable, u32 au_delim_enable, u32 vui_timing_info_enable,
-	u32 restrict_bitstream_enable);	
+	u32 restrict_bitstream_enable, u32 ltr_enable);
 void vidc_sm_set_encoder_param_change(struct ddl_buf_addr *shared_mem,
 	u32 bit_rate_chg, u32 frame_rate_chg, u32 i_period_chg);
 void vidc_sm_set_encoder_vop_time(struct ddl_buf_addr *shared_mem,
@@ -202,5 +202,7 @@ void vidc_sm_set_mp2datadumpbuffer(struct ddl_buf_addr *shared_mem,
 	u32 mp2datadumpaddr, u32 mp2datadumpsize);
 void vidc_sm_set_h264_encoder_timing_info(struct ddl_buf_addr *shared_mem,
 	u32 num_units_in_tick, u32 time_scale);
+void vidc_sm_get_mp2common_status(struct ddl_buf_addr *shared_mem,
+	u32 *seq_end_code_present);
 
 #endif

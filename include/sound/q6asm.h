@@ -71,10 +71,12 @@
 /* Enable Sample_Rate/Channel_Mode notification event from Decoder */
 #define SR_CM_NOTIFY_ENABLE	0x0004
 
-#define ASYNC_IO_MODE	0x0002
-#define SYNC_IO_MODE	0x0001
-#define NO_TIMESTAMP    0xFF00
-#define SET_TIMESTAMP   0x0000
+#define TUN_WRITE_IO_MODE 0x0008 /* tunnel read write mode */
+#define TUN_READ_IO_MODE  0x0004 /* tunnel read write mode */
+#define ASYNC_IO_MODE	  0x0002
+#define SYNC_IO_MODE	  0x0001
+#define NO_TIMESTAMP      0xFF00
+#define SET_TIMESTAMP     0x0000
 
 #define MODULE_ID_PP_SA                             0x10001fa0
 #define PARAM_ID_PP_SA_PARAMS                       0x10001fa1
@@ -99,7 +101,7 @@
 
 #define SESSION_MAX	0x08
 
-#define SOFT_PAUSE_PERIOD       30   /* ramp up/down for 30ms    */
+#define SOFT_PAUSE_PERIOD       30   /* ramp up/down for 30ms */
 #define SOFT_PAUSE_STEP_LINEAR  0    /* Step value 0ms or 0us */
 #define SOFT_PAUSE_STEP         100 /* Step value 2000ms or 2000us */
 enum {
@@ -108,7 +110,7 @@ enum {
 	SOFT_PAUSE_CURVE_LOG,
 };
 
-#define SOFT_VOLUME_PERIOD       30   /* ramp up/down for 30ms    */
+#define SOFT_VOLUME_PERIOD       30   /* ramp up/down for 30ms */
 #define SOFT_VOLUME_STEP_LINEAR  0    /* Step value 0ms or 0us */
 #define SOFT_VOLUME_STEP         100 /* Step value 2000ms or 2000us */
 enum {
@@ -246,6 +248,8 @@ int q6asm_open_read_write(struct audio_client *ac,
 			uint32_t rd_format,
 			uint32_t wr_format);
 
+int q6asm_open_loopack(struct audio_client *ac);
+
 int q6asm_write(struct audio_client *ac, uint32_t len, uint32_t msw_ts,
 				uint32_t lsw_ts, uint32_t flags);
 int q6asm_write_nolock(struct audio_client *ac, uint32_t len, uint32_t msw_ts,
@@ -311,6 +315,8 @@ int q6asm_enable_sbrps(struct audio_client *ac,
 
 int q6asm_cfg_dual_mono_aac(struct audio_client *ac,
 			uint16_t sce_left, uint16_t sce_right);
+
+int q6asm_cfg_aac_sel_mix_coef(struct audio_client *ac, uint32_t mix_coeff);
 
 int q6asm_set_encdec_chan_map(struct audio_client *ac,
 			uint32_t num_channels);

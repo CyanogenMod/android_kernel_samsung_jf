@@ -2182,6 +2182,8 @@ static int mxt_suspend(struct device *dev)
 	struct input_dev *input_dev = data->input_dev;
 	int error;
 
+	disable_irq(data->irq);
+
 	mutex_lock(&input_dev->mutex);
 
 	if (input_dev->users) {
@@ -2195,6 +2197,7 @@ static int mxt_suspend(struct device *dev)
 	}
 
 	mutex_unlock(&input_dev->mutex);
+	mxt_release_all(data);
 
 	/* put regulators in low power mode */
 	error = mxt_regulator_lpm(data, true);
@@ -2219,7 +2222,9 @@ static int mxt_resume(struct device *dev)
 		dev_err(dev, "failed to enter high power mode\n");
 		return error;
 	}
-
+	mxt_write_object(data, MXT_GEN_COMMAND_T6,
+			MXT_COMMAND_RESET, 1);
+	msleep(MXT_RESET_TIME);
 	mutex_lock(&input_dev->mutex);
 
 	if (input_dev->users) {
@@ -2232,6 +2237,8 @@ static int mxt_resume(struct device *dev)
 	}
 
 	mutex_unlock(&input_dev->mutex);
+
+	enable_irq(data->irq);
 
 	return 0;
 }

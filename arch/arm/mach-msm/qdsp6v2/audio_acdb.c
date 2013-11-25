@@ -770,7 +770,7 @@ static long acdb_ioctl(struct file *f,
 		goto done;
 	}
 
-	if (size <= 0) {
+	if ((size <= 0) || (size > sizeof(data))) {
 		pr_err("%s: Invalid size sent to driver: %d\n",
 			__func__, size);
 		result = -EFAULT;
@@ -868,7 +868,7 @@ done:
 static int acdb_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int result = 0;
-	int size = vma->vm_end - vma->vm_start;
+	uint32_t size = vma->vm_end - vma->vm_start;
 
 	pr_debug("%s\n", __func__);
 

@@ -167,7 +167,9 @@ struct kgsl_device {
 	struct completion hwaccess_gate;
 	const struct kgsl_functable *ftbl;
 	struct work_struct idle_check_ws;
+	struct work_struct hang_check_ws;
 	struct timer_list idle_timer;
+	struct timer_list hang_timer;
 	struct kgsl_pwrctrl pwrctrl;
 	int open_count;
 
@@ -185,6 +187,7 @@ struct kgsl_device {
 	struct dentry *d_debugfs;
 	struct idr context_idr;
 	struct early_suspend display_off;
+	rwlock_t context_lock;
 
 	void *snapshot;		/* Pointer to the snapshot memory region */
 	int snapshot_maxsize;   /* Max size of the snapshot region */
@@ -233,6 +236,8 @@ void kgsl_check_fences(struct work_struct *work);
 	.ft_gate = COMPLETION_INITIALIZER((_dev).ft_gate),\
 	.idle_check_ws = __WORK_INITIALIZER((_dev).idle_check_ws,\
 			kgsl_idle_check),\
+	.hang_check_ws = __WORK_INITIALIZER((_dev).hang_check_ws,\
+			kgsl_hang_check),\
 	.ts_expired_ws  = __WORK_INITIALIZER((_dev).ts_expired_ws,\
 			kgsl_process_events),\
 	.context_idr = IDR_INIT((_dev).context_idr),\
@@ -272,8 +277,23 @@ struct kgsl_context {
 	struct list_head events_list;
 };
 
+/**
+ * struct kgsl_process_private -  Private structure for a KGSL process (across
+ * all devices)
+ * @priv: Internal flags, use KGSL_PROCESS_* values
+ * @pid: ID for the task owner of the process
+ * @mem_lock: Spinlock to protect the process memory lists
+ * @refcount: kref object for reference counting the process
+ * @process_private_mutex: Mutex to synchronize access to the process struct
+ * @mem_rb: RB tree node for the memory owned by this process
+ * @idr: Iterator for assigning IDs to memory allocations
+ * @pagetable: Pointer to the pagetable owned by this process
+ * @kobj: Pointer to a kobj for the sysfs directory for this process
+ * @debug_root: Pointer to the debugfs root for this process
+ * @stats: Memory allocation statistics for this process
+ */
 struct kgsl_process_private {
-	unsigned int refcnt;
+	unsigned long priv;
 	pid_t pid;
 	spinlock_t mem_lock;
 
@@ -293,6 +313,14 @@ struct kgsl_process_private {
 		unsigned int cur;
 		unsigned int max;
 	} stats[KGSL_MEM_ENTRY_MAX];
+};
+
+/**
+ * enum kgsl_process_priv_flags - Private flags for kgsl_process_private
+ * @KGSL_PROCESS_INIT: Set if the process structure has been set up
+ */
+enum kgsl_process_priv_flags {
+	KGSL_PROCESS_INIT = 0,
 };
 
 struct kgsl_device_private {
@@ -465,12 +493,14 @@ static inline struct kgsl_context *kgsl_context_get(struct kgsl_device *device,
 {
 	struct kgsl_context *context = NULL;
 
-	rcu_read_lock();
+	read_lock(&device->context_lock);
+
 	context = idr_find(&device->context_idr, id);
 
 	_kgsl_context_get(context);
 
-	rcu_read_unlock();
+	read_unlock(&device->context_lock);
+
 	return context;
 }
 

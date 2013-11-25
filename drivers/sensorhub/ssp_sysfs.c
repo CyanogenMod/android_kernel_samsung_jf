@@ -246,8 +246,9 @@ static ssize_t set_sensors_enable(struct device *dev,
 			if (!(uNewEnable & (1 << uChangedSensor)))
 				ssp_remove_sensor(data, uChangedSensor,
 					uNewEnable); /* disable */
-			/* In case of enabling */
-			/* we will sensor instruction on change_sensor_delay. */			
+			else
+				data->aiCheckStatus[uChangedSensor] = ADD_SENSOR_STATE;
+				/* Change to ADD_SENSOR_STATE from KitKat */
 			break;
 		}
 

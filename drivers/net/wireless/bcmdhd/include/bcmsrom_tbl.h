@@ -1,7 +1,7 @@
 /*
  * Table that encodes the srom formats for PCI/PCIe NICs.
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsrom_tbl.h 368874 2012-11-15 02:39:03Z $
+ * $Id: bcmsrom_tbl.h 381260 2013-01-25 22:07:55Z $
  */
 
 #ifndef	_bcmsrom_tbl_h_
@@ -69,7 +69,7 @@ static const sromvar_t pci_sromvars[] = {
 	{"devid",	0xffffff00,	SRFL_PRHEX,	PCI_F0DEVID,	0xffff},
 #else
 	{"devid",	0xffffff00,	SRFL_PRHEX|SRFL_NOVAR,	PCI_F0DEVID,	0xffff},
-#endif
+#endif 
 	{"boardrev",	0x0000000e,	SRFL_PRHEX,	SROM_AABREV,		SROM_BR_MASK},
 	{"boardrev",	0x000000f0,	SRFL_PRHEX,	SROM4_BREV,		0xffff},
 	{"boardrev",	0xffffff00,	SRFL_PRHEX,	SROM8_BREV,		0xffff},
@@ -494,7 +494,20 @@ static const sromvar_t pci_sromvars[] = {
 	{"tempsense_slope",	0xfffff800,	SRFL_PRHEX, 	SROM11_TS_SLP_OPT_CORRX, 0x00ff},
 	{"tempcorrx",		0xfffff800,	SRFL_PRHEX, 	SROM11_TS_SLP_OPT_CORRX, 0xfc00},
 	{"tempsense_option",	0xfffff800,	SRFL_PRHEX,	SROM11_TS_SLP_OPT_CORRX, 0x0300},
-	{"xtalfreq",		0xfffff800,	0,		SROM11_XTAL_FREQ,	0xffff},
+	{"xtalfreq",		0xfffff800,	0,		SROM11_XTAL_FREQ, 	0xffff},
+	/* Special PA Params for 4350 5G Band, 40/80 MHz BW Ant #1 */
+	{"pa5gbw4080a1", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_5GB0_4080_W0_A1, 0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_5GB0_4080_W1_A1,                 0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_5GB0_4080_W2_A1,                 0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_5GB1_4080_W0_A1,                 0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB1_4080_PA,     0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB1_4080_PA + 1, 0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_4080_PA,     0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_4080_PA + 1, 0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_4080_PA + 2, 0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB3_4080_PA,     0xffff},
+	{"", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB3_4080_PA + 1, 0xffff},
+	{"", 0xfffff800, SRFL_PRHEX,              SROM11_PATH2 + SROM11_5GB3_4080_PA + 2, 0xffff},
 	{"phycal_tempdelta",	0xfffff800,	0,		SROM11_PHYCAL_TEMPDELTA, 0x00ff},
 	{"temps_period",	0xfffff800,	0,		SROM11_PHYCAL_TEMPDELTA, 0x0f00},
 	{"temps_hysteresis",	0xfffff800,	0,		SROM11_PHYCAL_TEMPDELTA, 0xf000},
@@ -513,6 +526,50 @@ static const sromvar_t pci_sromvars[] = {
 	{"pdoffset80ma2",      	0xfffff800,	0,		SROM11_PDOFF_80M_A2,   	0xffff},
 
 	{"subband5gver",	0xfffff800, 	SRFL_PRHEX,	SROM11_SUBBAND5GVER, 	0xffff},
+	{"paparambwver",	0xfffff800, 	0,		SROM11_MCSLR5GLPO, 	0xf000},
+	/* Special PA Params for 4350 5G Band, 40/80 MHz BW Ant #0 */
+	{"pa5gbw4080a0", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 +SROM11_5GB0_PA, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB0_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB0_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB1_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB1_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB1_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB3_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB3_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX,              SROM11_PATH2 + SROM11_5GB3_PA + 2, 0xffff},
+	/* Special PA Params for 4335 5G Band, 40 MHz BW */
+	{"pa5gbw40a0", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB0_PA, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB0_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB0_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB1_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB1_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB1_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB2_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB2_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB2_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB3_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_5GB3_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX,              SROM11_PATH1 + SROM11_5GB3_PA + 2, 0xffff},
+	/* Special PA Params for 4335 5G Band, 80 MHz BW */
+	{"pa5gbw80a0", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB0_PA, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB0_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB0_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB1_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB1_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB1_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB2_PA + 2, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB3_PA,     0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH2 + SROM11_5GB3_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX,              SROM11_PATH2 + SROM11_5GB3_PA + 2, 0xffff},
+	/* Special PA Params for 4335 2G Band, CCK */
+	{"pa2gccka0", 0xfffff800, SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_2G_PA, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX | SRFL_ARRAY, SROM11_PATH1 + SROM11_2G_PA + 1, 0xffff},
+	{"", 0xfffff800,	SRFL_PRHEX,              SROM11_PATH1 + SROM11_2G_PA + 2, 0xffff},
 
 	/* power per rate */
 	{"cckbw202gpo",		0xfffff800,	0,		SROM11_CCKBW202GPO, 	0xffff},
@@ -541,10 +598,10 @@ static const sromvar_t pci_sromvars[] = {
 	{"",           		0xfffff800, 	0,   		SROM11_MCSBW405GHPO_1, 	0xffff},
 	{"mcsbw805ghpo",	0xfffff800,	SRFL_MORE,	SROM11_MCSBW805GHPO, 	0xffff},
 	{"",           		0xfffff800, 	0,    		SROM11_MCSBW805GHPO_1, 	0xffff},
-	{"mcslr5glpo",		0xfffff800,	0,		SROM11_MCSLR5GLPO, 	0xffff},
+	{"mcslr5glpo",		0xfffff800,	0,		SROM11_MCSLR5GLPO, 	0x0fff},
 	{"mcslr5gmpo",		0xfffff800,	0,		SROM11_MCSLR5GMPO, 	0xffff},
 	{"mcslr5ghpo",		0xfffff800,	0,		SROM11_MCSLR5GHPO, 	0xffff},
-	{"sb20in40hrpo",	0xfffff800,	0,	SROM11_SB20IN40HRPO,		0xffff},
+	{"sb20in40hrpo", 	0xfffff800,	0,	SROM11_SB20IN40HRPO,		0xffff},
 	{"sb20in80and160hr5glpo", 0xfffff800, 	0, 	SROM11_SB20IN80AND160HR5GLPO, 	0xffff},
 	{"sb40and80hr5glpo",	  0xfffff800, 	0,	SROM11_SB40AND80HR5GLPO,	0xffff},
 	{"sb20in80and160hr5gmpo", 0xfffff800, 	0,	SROM11_SB20IN80AND160HR5GMPO, 	0xffff},
@@ -596,11 +653,13 @@ static const sromvar_t pci_sromvars[] = {
 	{"",      		0xfffff800, 	SRFL_ARRAY,    	SROM11_RXGAINERR_5GM,   0xf800},
 	{"",      		0xfffff800, 	SRFL_ARRAY,    	SROM11_RXGAINERR_5GH,   0xf800},
 	{"",      		0xfffff800, 	0,    		SROM11_RXGAINERR_5GU,   0xf800},
-	{"rpcal2g",		0xfffff800,	0,		SROM11_RPCAL_2G,    0xffff},
-	{"rpcal5gb0",		0xfffff800,	0,		SROM11_RPCAL_5GL,   0xffff},
-	{"rpcal5gb1",		0xfffff800,	0,		SROM11_RPCAL_5GM,   0xffff},
-	{"rpcal5gb2",		0xfffff800,	0,		SROM11_RPCAL_5GH,   0xffff},
-	{"rpcal5gb3",		0xfffff800,	0,		SROM11_RPCAL_5GU,   0xffff},
+	{"rpcal2g",      	0xfffff800, 	0,		SROM11_RPCAL_2G,        0xffff},
+	{"rpcal5gb0",      	0xfffff800, 	0,		SROM11_RPCAL_5GL,       0xffff},
+	{"rpcal5gb1",      	0xfffff800, 	0,		SROM11_RPCAL_5GM,       0xffff},
+	{"rpcal5gb2",      	0xfffff800, 	0,		SROM11_RPCAL_5GH,       0xffff},
+	{"rpcal5gb3",      	0xfffff800, 	0,		SROM11_RPCAL_5GU,       0xffff},
+	{"txidxcap2g",      	0xfffff800, 	0,		SROM11_TXIDXCAP2G,      0x0ff0},
+	{"txidxcap5g",      	0xfffff800, 	0,		SROM11_TXIDXCAP5G,      0x0ff0},
 
 	{NULL,		0,		0,		0,			0}
 };
@@ -741,6 +800,30 @@ static const pavars_t pavars[] = {
 	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  0, "pa5ga0"},
 	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  1, "pa5ga1"},
 	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  2, "pa5ga2"},
+	{PHY_TYPE_NULL, 0, 0, ""}
+};
+
+/* pavars table when paparambwver is 1 */
+static const pavars_t pavars_bwver_1[] = {
+	/* ACPHY */
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_2G,  0, "pa2ga0"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_2G,  1, "pa2gccka0"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_2G,  1, "pa2ga2"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  0, "pa5ga0"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  1, "pa5gbw40a0"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  2, "pa5gbw80a0"},
+	{PHY_TYPE_NULL, 0, 0, ""}
+};
+
+/* pavars table when paparambwver is 2 */
+static const pavars_t pavars_bwver_2[] = {
+	/* ACPHY */
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_2G,  0, "pa2ga0"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_2G,  1, "pa2ga1"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  0, "pa5ga0"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  1, "pa5ga1"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  2, "pa5gbw4080a0"},
+	{PHY_TYPE_AC, WL_CHAN_FREQ_RANGE_5G_4BAND,  3, "pa5gbw4080a1"},
 	{PHY_TYPE_NULL, 0, 0, ""}
 };
 
@@ -903,10 +986,14 @@ static const cis_tuple_t cis_hnbuvars[] = {
 	"0rxgains5gelnagaina2 0rxgains2gtrelnabypa2 0rxgains2gtrisoa2 0rxgains2gelnagaina2 "
 	"0rxgains5ghtrelnabypa2 0rxgains5ghtrisoa2 0rxgains5ghelnagaina2 0rxgains5gmtrelnabypa2 "
 	"0rxgains5gmtrisoa2 0rxgains5gmelnagaina2"},	/* special case */
-	{HNBU_TXDUTY,		0xfffff800, 9,	"2tx_duty_cycle_ofdm_40_5g "
+	{HNBU_TXDUTY, 		0xfffff800, 9,	"2tx_duty_cycle_ofdm_40_5g "
 	"2tx_duty_cycle_thresh_40_5g 2tx_duty_cycle_ofdm_80_5g 2tx_duty_cycle_thresh_80_5g"},
 	{HNBU_PDOFF_2G,		0xfffff800, 3,	"0pdoffset2g40ma0 0pdoffset2g40ma1 "
 	"0pdoffset2g40ma2 0pdoffset2g40mvalid"},
+	{HNBU_ACPA_CCK,		0xfffff800, 7,	"2*3pa2gccka0"},
+	{HNBU_ACPA_40,		0xfffff800, 25,	"2*12pa5gbw40a0"},
+	{HNBU_ACPA_80,		0xfffff800, 25,	"2*12pa5gbw80a0"},
+	{HNBU_ACPA_4080,	0xfffff800, 49,	"2*12pa5gbw4080a0 2*12pa5gbw4080a1"},
 	{0xFF,			0xffffffff, 0, ""}
 };
 

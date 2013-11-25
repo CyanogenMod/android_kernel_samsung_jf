@@ -3,7 +3,7 @@
  * MSM 7k High speed uart driver
  *
  * Copyright (c) 2008 Google Inc.
- * Copyright (c) 2007-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2007-2013, The Linux Foundation. All rights reserved.
  * Modified: Nick Pelly <npelly@google.com>
  *
  * All source code in this file is licensed under the following license
@@ -42,6 +42,7 @@
 #include <linux/ioport.h>
 #include <linux/kernel.h>
 #include <linux/timer.h>
+#include <linux/delay.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -54,6 +55,7 @@
 #include <linux/device.h>
 #include <linux/wakelock.h>
 #include <linux/debugfs.h>
+#include <linux/gpio.h>
 #include <asm/atomic.h>
 #include <asm/irq.h>
 
@@ -122,6 +124,8 @@ struct msm_hs_rx {
 	struct wake_lock wake_lock;
 	struct delayed_work flip_insert_work;
 	struct tasklet_struct tlet;
+	bool dma_in_flight;
+	bool cmd_exec;
 };
 
 enum buffer_states {
@@ -141,9 +145,18 @@ struct msm_hs_wakeup {
 	char rx_to_inject;
 };
 
+/*
+ * UART can be used in 2-wire or 4-wire mode.
+ * Use uart_func_mode to set 2-wire or 4-wire mode.
+ */
+enum uart_func_mode {
+	UART_TWO_WIRE, /* can't support HW Flow control. */
+	UART_FOUR_WIRE,/* can support HW Flow control. */
+};
+
 struct msm_hs_port {
 	struct uart_port uport;
-	unsigned long imr_reg;  /* shadow value of UARTDM_IMR */
+	unsigned int imr_reg;  /* shadow value of UARTDM_IMR */
 	struct clk *clk;
 	struct clk *pclk;
 	struct msm_hs_tx tx;
@@ -168,6 +181,12 @@ struct msm_hs_port {
 	struct work_struct clock_off_w; /* work for actual clock off */
 	struct workqueue_struct *hsuart_wq; /* hsuart workqueue */
 	struct mutex clk_mutex; /* mutex to guard against clock off/clock on */
+	bool tty_flush_receive;
+	bool rx_discard_flush_issued;
+	enum uart_func_mode func_mode;
+	bool is_shutdown;
+	bool termios_in_progress;
+	int rx_buf_size;
 };
 
 #define MSM_UARTDM_BURST_SIZE 16   /* DM burst size (in bytes) */
@@ -175,12 +194,14 @@ struct msm_hs_port {
 #define UARTDM_RX_BUF_SIZE 512
 #define RETRY_TIMEOUT 5
 #define UARTDM_NR 256
+#define RX_FLUSH_COMPLETE_TIMEOUT 300 /* In jiffies */
 
 static struct dentry *debug_base;
 static struct msm_hs_port q_uart_port[UARTDM_NR];
 static struct platform_driver msm_serial_hs_platform_driver;
 static struct uart_driver msm_hs_driver;
 static struct uart_ops msm_hs_ops;
+static void msm_hs_start_rx_locked(struct uart_port *uport);
 
 #define UARTDM_TO_MSM(uart_port) \
 	container_of((uart_port), struct msm_hs_port, uport)
@@ -269,6 +290,31 @@ static inline void msm_hs_write(struct uart_port *uport, unsigned int offset,
 				 unsigned int value)
 {
 	writel_relaxed(value, uport->membase + offset);
+}
+
+/*
+ * This API read and provides UART Core registers information.
+ */
+static void print_uart_registers(struct msm_hs_port *msm_uport)
+{
+	struct uart_port *uport = &(msm_uport->uport);
+
+	pr_info("============= UART Registers ================\n");
+
+	pr_info("UART_DM_MR1:%x\n", msm_hs_read(uport, UARTDM_MR1_ADDR));
+	pr_info("UART_DM_MR2:%x\n", msm_hs_read(uport, UARTDM_MR2_ADDR));
+	pr_info("UART_DM_IPR:%x\n", msm_hs_read(uport, UARTDM_IPR_ADDR));
+	pr_info("UART_DM_TFWR:%x\n", msm_hs_read(uport, UARTDM_TFWR_ADDR));
+	pr_info("UART_DM_RFWR:%x\n", msm_hs_read(uport, UARTDM_RFWR_ADDR));
+	pr_info("UART_DM_DMEN:%x\n", msm_hs_read(uport, UARTDM_DMEN_ADDR));
+	pr_info("UART_DM_SR:%x\n", msm_hs_read(uport, UARTDM_SR_ADDR));
+	pr_info("UART_DM_ISR:%x\n", msm_hs_read(uport, UARTDM_ISR_ADDR));
+	pr_info("UART_DM_TXFS:%x\n", msm_hs_read(uport, UARTDM_TXFS_ADDR));
+	pr_info("UART_DM_RXFS:%x\n", msm_hs_read(uport, UARTDM_RXFS_ADDR));
+	pr_info("UART_DM_IMR:%x\n", msm_uport->imr_reg);
+
+	pr_info("=============================================\n");
+
 }
 
 static void msm_hs_release_port(struct uart_port *port)
@@ -453,6 +499,133 @@ static int __devexit msm_hs_remove(struct platform_device *pdev)
 	return 0;
 }
 
+/**
+ * msm_hs_config_uart_tx_rx_gpios - Configures UART Tx and RX GPIOs
+ * @port: uart port
+ */
+static int msm_hs_config_uart_tx_rx_gpios(struct uart_port *uport)
+{
+	struct platform_device *pdev = to_platform_device(uport->dev);
+	const struct msm_serial_hs_platform_data *pdata =
+					pdev->dev.platform_data;
+	int ret = -EINVAL;
+
+
+	ret = gpio_request(pdata->uart_tx_gpio, "UART_TX_GPIO");
+	if (unlikely(ret)) {
+		pr_err("gpio request failed for:%d\n",
+				pdata->uart_tx_gpio);
+		goto exit_uart_config;
+	}
+
+	ret = gpio_request(pdata->uart_rx_gpio, "UART_RX_GPIO");
+	if (unlikely(ret)) {
+		pr_err("gpio request failed for:%d\n",
+				pdata->uart_rx_gpio);
+		gpio_free(pdata->uart_tx_gpio);
+		goto exit_uart_config;
+	}
+
+exit_uart_config:
+	return ret;
+}
+
+/**
+ * msm_hs_unconfig_uart_tx_rx_gpios: Unconfigures UART Tx and RX GPIOs
+ * @port: uart port
+ */
+static void msm_hs_unconfig_uart_tx_rx_gpios(struct uart_port *uport)
+{
+	struct platform_device *pdev = to_platform_device(uport->dev);
+	const struct msm_serial_hs_platform_data *pdata =
+						pdev->dev.platform_data;
+
+
+	gpio_free(pdata->uart_tx_gpio);
+	gpio_free(pdata->uart_rx_gpio);
+
+}
+
+/**
+ * msm_hs_config_uart_hwflow_gpios: Configures UART HWFlow GPIOs
+ * @port: uart port
+ */
+static int msm_hs_config_uart_hwflow_gpios(struct uart_port *uport)
+{
+	struct platform_device *pdev = to_platform_device(uport->dev);
+	const struct msm_serial_hs_platform_data *pdata =
+						pdev->dev.platform_data;
+	int ret = -EINVAL;
+
+	ret = gpio_request(pdata->uart_cts_gpio, "UART_CTS_GPIO");
+	if (unlikely(ret)) {
+		pr_err("gpio request failed for:%d\n", pdata->uart_cts_gpio);
+		goto exit_config_uart;
+	}
+
+	ret = gpio_request(pdata->uart_rfr_gpio, "UART_RFR_GPIO");
+	if (unlikely(ret)) {
+		pr_err("gpio request failed for:%d\n", pdata->uart_rfr_gpio);
+		gpio_free(pdata->uart_cts_gpio);
+		goto exit_config_uart;
+	}
+
+exit_config_uart:
+	return ret;
+}
+
+/**
+ * msm_hs_unconfig_uart_hwflow_gpios: Unonfigures UART HWFlow GPIOs
+ * @port: uart port
+ */
+static void msm_hs_unconfig_uart_hwflow_gpios(struct uart_port *uport)
+{
+	struct platform_device *pdev = to_platform_device(uport->dev);
+	const struct msm_serial_hs_platform_data *pdata =
+						pdev->dev.platform_data;
+
+	gpio_free(pdata->uart_cts_gpio);
+	gpio_free(pdata->uart_rfr_gpio);
+
+}
+
+/**
+ * msm_hs_config_uart_gpios: Configures UART GPIOs and returns success or
+ * Failure
+ * @port: uart port
+ */
+static int msm_hs_config_uart_gpios(struct uart_port *uport)
+{
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+	int ret;
+
+	/* Configure UART Tx and Rx GPIOs */
+	ret = msm_hs_config_uart_tx_rx_gpios(uport);
+	if (!ret) {
+		if (msm_uport->func_mode == UART_FOUR_WIRE) {
+			/*if 4-wire uart, configure CTS and RFR GPIOs */
+			ret = msm_hs_config_uart_hwflow_gpios(uport);
+			if (ret)
+				msm_hs_unconfig_uart_tx_rx_gpios(uport);
+		}
+	}
+
+	return ret;
+}
+
+/**
+ * msm_hs_unconfig_uart_gpios: Unconfigures UART GPIOs
+ * @port: uart port
+ */
+static void msm_hs_unconfig_uart_gpios(struct uart_port *port)
+{
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(port);
+
+	msm_hs_unconfig_uart_tx_rx_gpios(port);
+	if (msm_uport->func_mode == UART_FOUR_WIRE)
+		msm_hs_unconfig_uart_hwflow_gpios(port);
+}
+
 static int msm_hs_init_clk(struct uart_port *uport)
 {
 	int ret;
@@ -499,6 +672,7 @@ static unsigned long msm_hs_set_bps_locked(struct uart_port *uport,
 {
 	unsigned long rxstale;
 	unsigned long data;
+	unsigned int curr_uartclk;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
 	switch (bps) {
@@ -589,6 +763,7 @@ static unsigned long msm_hs_set_bps_locked(struct uart_port *uport,
 	 * dsb requires here.
 	 */
 	mb();
+	curr_uartclk = uport->uartclk;
 	if (bps > 460800) {
 		uport->uartclk = bps * 16;
 	} else {
@@ -596,11 +771,15 @@ static unsigned long msm_hs_set_bps_locked(struct uart_port *uport,
 	}
 
 	spin_unlock_irqrestore(&uport->lock, flags);
+
+	if (curr_uartclk != uport->uartclk) {
 	if (clk_set_rate(msm_uport->clk, uport->uartclk)) {
-		printk(KERN_WARNING "Error setting clock rate on UART\n");
+			pr_err("%s(): Error setting clock rate on UART\n",
+								__func__);
 		WARN_ON(1);
 		spin_lock_irqsave(&uport->lock, flags);
 		return flags;
+	}
 	}
 
 	spin_lock_irqsave(&uport->lock, flags);
@@ -608,13 +787,6 @@ static unsigned long msm_hs_set_bps_locked(struct uart_port *uport,
 	data |= UARTDM_IPR_STALE_TIMEOUT_MSB_BMSK & (rxstale << 2);
 
 	msm_hs_write(uport, UARTDM_IPR_ADDR, data);
-	/*
-	 * It is suggested to do reset of transmitter and receiver after
-	 * changing any protocol configuration. Here Baud rate and stale
-	 * timeout are getting updated. Hence reset transmitter and receiver.
-	 */
-	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_TX);
-	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_RX);
 	return flags;
 }
 
@@ -678,27 +850,71 @@ static void msm_hs_set_termios(struct uart_port *uport,
 				   struct ktermios *termios,
 				   struct ktermios *oldtermios)
 {
+	int ret;
 	unsigned int bps;
 	unsigned long data;
 	unsigned long flags;
 	unsigned int c_cflag = termios->c_cflag;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+	bool error_case = false;
 
 	mutex_lock(&msm_uport->clk_mutex);
 	spin_lock_irqsave(&uport->lock, flags);
 
+	msm_uport->termios_in_progress = true;
+
+	/* Disable RxStale Event Mechanism */
+	msm_hs_write(uport, UARTDM_CR_ADDR, STALE_EVENT_DISABLE);
+
+	/* Disable all UART interrupts */
+	msm_hs_write(uport, UARTDM_IMR_ADDR, 0);
+
+	/* Enable RFR so remote UART doesn't send any data. */
+	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_HIGH);
+
 	/*
-	 * Disable Rx channel of UARTDM
-	 * DMA Rx Stall happens if enqueue and flush of Rx command happens
-	 * concurrently. Hence before changing the baud rate/protocol
-	 * configuration and sending flush command to ADM, disable the Rx
-	 * channel of UARTDM.
-	 * Note: should not reset the receiver here immediately as it is not
-	 * suggested to do disable/reset or reset/disable at the same time.
+	 * It is quite possible that previous graceful flush is not
+	 * completed and set_termios() request has been received.
+	 * Hence wait here to make sure that it is completed and
+	 * queued one more UART RX CMD with ADM.
 	 */
-	data = msm_hs_read(uport, UARTDM_DMEN_ADDR);
-	data &= ~UARTDM_RX_DM_EN_BMSK;
-	msm_hs_write(uport, UARTDM_DMEN_ADDR, data);
+	if (msm_uport->rx.dma_in_flight &&
+			msm_uport->rx.flush == FLUSH_DATA_READY) {
+		spin_unlock_irqrestore(&uport->lock, flags);
+		ret = wait_event_timeout(msm_uport->rx.wait,
+			msm_uport->rx.flush == FLUSH_NONE,
+			RX_FLUSH_COMPLETE_TIMEOUT);
+		if (!ret) {
+			pr_err("%s(): timeout for Rx cmd completion\n",
+							__func__);
+			spin_lock_irqsave(&uport->lock, flags);
+			print_uart_registers(msm_uport);
+			spin_unlock_irqrestore(&uport->lock, flags);
+			BUG_ON(1);
+		}
+
+		spin_lock_irqsave(&uport->lock, flags);
+	}
+
+	/*
+	 * Wait for queued Rx CMD to ADM driver to be programmed
+	 * with ADM hardware before going and changing UART baud rate.
+	 * Below udelay(500) is required as exec_cmd callback is called
+	 * before actually programming ADM hardware with cmd.
+	 */
+	if (msm_uport->rx.dma_in_flight) {
+		spin_unlock_irqrestore(&uport->lock, flags);
+		ret = wait_event_timeout(msm_uport->rx.wait,
+			msm_uport->rx.cmd_exec == true,
+			RX_FLUSH_COMPLETE_TIMEOUT);
+		if (!ret)
+			pr_err("%s(): timeout for rx cmd to be program\n",
+								__func__);
+		else
+			udelay(500);
+
+		spin_lock_irqsave(&uport->lock, flags);
+	}
 
 	/* 300 is the minimum baud support by the driver  */
 	bps = uart_get_baud_rate(uport, termios, oldtermios, 200, 4000000);
@@ -754,11 +970,27 @@ static void msm_hs_set_termios(struct uart_port *uport,
 	/* write parity/bits per char/stop bit configuration */
 	msm_hs_write(uport, UARTDM_MR2_ADDR, data);
 
-	/* Configure HW flow control */
+	uport->ignore_status_mask = termios->c_iflag & INPCK;
+	uport->ignore_status_mask |= termios->c_iflag & IGNPAR;
+	uport->ignore_status_mask |= termios->c_iflag & IGNBRK;
+
+	uport->read_status_mask = (termios->c_cflag & CREAD);
+
+	/* Wait for baud rate and UART protocol parameters to set. */
+	udelay(200);
+
+	/* Set Transmit software time out */
+	uart_update_timeout(uport, c_cflag, bps);
+
+	/*
+	 * Configure HW flow control
+	 * UART Core would see status of CTS line when it is sending data
+	 * to remote uart to confirm that it can receive or not.
+	 * UART Core would trigger RFR if it is not having any space with
+	 * RX FIFO.
+	 */
 	data = msm_hs_read(uport, UARTDM_MR1_ADDR);
-
 	data &= ~(UARTDM_MR1_CTS_CTL_BMSK | UARTDM_MR1_RX_RDY_CTL_BMSK);
-
 	if (c_cflag & CRTSCTS) {
 		data |= UARTDM_MR1_CTS_CTL_BMSK;
 		data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
@@ -766,33 +998,56 @@ static void msm_hs_set_termios(struct uart_port *uport,
 
 	msm_hs_write(uport, UARTDM_MR1_ADDR, data);
 
-	uport->ignore_status_mask = termios->c_iflag & INPCK;
-	uport->ignore_status_mask |= termios->c_iflag & IGNPAR;
-	uport->read_status_mask = (termios->c_cflag & CREAD);
+	/* Enable previously enabled all UART interrupts. */
+	msm_hs_write(uport, UARTDM_IMR_ADDR, msm_uport->imr_reg);
 
-	msm_hs_write(uport, UARTDM_IMR_ADDR, 0);
+	/*
+	 * Invoke Force RxStale Interrupt
+	 * On receiving this interrupt, send discard flush request
+	 * to ADM driver and ignore all received data.
+	 */
+	wake_lock(&msm_uport->rx.wake_lock);
+	msm_hs_write(uport, UARTDM_CR_ADDR, FORCE_STALE_EVENT);
+	mb();
 
-	/* Set Transmit software time out */
-	uart_update_timeout(uport, c_cflag, bps);
+	msm_uport->rx_discard_flush_issued = true;
 
-	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_RX);
-	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_TX);
-
-	if (msm_uport->rx.flush == FLUSH_NONE) {
-		wake_lock(&msm_uport->rx.wake_lock);
-		msm_uport->rx.flush = FLUSH_IGNORE;
 		/*
-		 * Before using dmov APIs make sure that
-		 * previous writel are completed. Hence
-		 * dsb requires here.
+	 * Wait for above discard flush request for UART RX CMD to be
+	 * completed. completion would be signal from rx_tlet without
+	 * queueing any next UART RX CMD.
 		 */
-		mb();
-		/* do discard flush */
-		msm_dmov_flush(msm_uport->dma_rx_channel, 0);
+	if (msm_uport->rx.dma_in_flight) {
+		spin_unlock_irqrestore(&uport->lock, flags);
+		ret = wait_event_timeout(msm_uport->rx.wait,
+			msm_uport->rx_discard_flush_issued == false,
+			msecs_to_jiffies(300));
+			if (!ret) {
+				pr_err("%s(): timeout for rx discard flush\n",
+								__func__);
+				spin_lock_irqsave(&uport->lock, flags);
+				print_uart_registers(msm_uport);
+				error_case = true;
+			}
+		if (!error_case)
+			spin_lock_irqsave(&uport->lock, flags);
+	} else {
+		spin_unlock_irqrestore(&uport->lock, flags);
+		pr_err("%s(): called with rx.dma_in_flight:%d\n",
+				__func__, msm_uport->rx.dma_in_flight);
+		print_uart_registers(msm_uport);
+		spin_lock_irqsave(&uport->lock, flags);
 	}
 
-	msm_hs_write(uport, UARTDM_IMR_ADDR, msm_uport->imr_reg);
+	/* Start Rx Transfer */
+	msm_hs_start_rx_locked(&msm_uport->uport);
+
+	/* Disable RFR so remote UART can send data. */
+	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_LOW);
 	mb();
+
+	msm_uport->termios_in_progress = false;
+
 	spin_unlock_irqrestore(&uport->lock, flags);
 	mutex_unlock(&msm_uport->clk_mutex);
 }
@@ -837,21 +1092,30 @@ static void msm_hs_stop_tx_locked(struct uart_port *uport)
 static void msm_hs_stop_rx_locked(struct uart_port *uport)
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	unsigned int data;
 
-	/* disable dlink */
-	data = msm_hs_read(uport, UARTDM_DMEN_ADDR);
-	data &= ~UARTDM_RX_DM_EN_BMSK;
-	msm_hs_write(uport, UARTDM_DMEN_ADDR, data);
+	/* Disable RxStale Event Mechanism */
+	msm_hs_write(uport, UARTDM_CR_ADDR, STALE_EVENT_DISABLE);
 
-	/* calling DMOV or CLOCK API. Hence mb() */
-	mb();
-	/* Disable the receiver */
+	/* Enable RFR so remote UART doesn't send any data. */
+	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_HIGH);
+
+	/* Allow to receive all pending data from UART RX FIFO */
+	udelay(100);
+
 	if (msm_uport->rx.flush == FLUSH_NONE) {
 		wake_lock(&msm_uport->rx.wake_lock);
-		/* do discard flush */
-		msm_dmov_flush(msm_uport->dma_rx_channel, 0);
+
+		msm_uport->rx_discard_flush_issued = true;
+
+		/*
+		 * Invoke Force RxStale Interrupt
+		 * On receiving this interrupt, send discard flush request
+		 * to ADM driver and ignore all received data.
+		 */
+		msm_hs_write(uport, UARTDM_CR_ADDR, FORCE_STALE_EVENT);
+		mb();
 	}
+
 	if (msm_uport->rx.flush != FLUSH_SHUTDOWN)
 		msm_uport->rx.flush = FLUSH_STOP;
 }
@@ -867,6 +1131,9 @@ static void msm_hs_submit_tx_locked(struct uart_port *uport)
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	struct msm_hs_tx *tx = &msm_uport->tx;
 	struct circ_buf *tx_buf = &msm_uport->uport.state->xmit;
+
+	if (tx->dma_in_flight || msm_uport->is_shutdown)
+		return;
 
 	if (uart_circ_empty(tx_buf) || uport->state->port.tty->stopped) {
 		msm_hs_stop_tx_locked(uport);
@@ -926,13 +1193,23 @@ static void msm_hs_start_rx_locked(struct uart_port *uport)
 	unsigned int buffer_pending = msm_uport->rx.buffer_pending;
 	unsigned int data;
 
+	if (msm_uport->rx.dma_in_flight) {
+		pr_err("%s(): RX CMD is already queued.\n", __func__);
+		print_uart_registers(msm_uport);
+		BUG_ON(1);
+	}
+
 	msm_uport->rx.buffer_pending = 0;
 	if (buffer_pending && hs_serial_debug_mask)
 		printk(KERN_ERR "Error: rx started in buffer state = %x",
 		       buffer_pending);
-
+	/*
+	 * Zeroed out UART RX software buffer which would help to
+	 * check how much data is copied if there is any RX stall.
+	 */
+	memset(msm_uport->rx.buffer, 0x00, msm_uport->rx_buf_size);
 	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_STALE_INT);
-	msm_hs_write(uport, UARTDM_DMRX_ADDR, UARTDM_RX_BUF_SIZE);
+	msm_hs_write(uport, UARTDM_DMRX_ADDR, msm_uport->rx_buf_size);
 	msm_hs_write(uport, UARTDM_CR_ADDR, STALE_EVENT_ENABLE);
 	msm_uport->imr_reg |= UARTDM_ISR_RXLEV_BMSK;
 
@@ -948,8 +1225,18 @@ static void msm_hs_start_rx_locked(struct uart_port *uport)
 	mb();
 
 	msm_uport->rx.flush = FLUSH_NONE;
-	msm_dmov_enqueue_cmd(msm_uport->dma_rx_channel, &msm_uport->rx.xfer);
-
+	msm_uport->rx.dma_in_flight = true;
+	msm_uport->rx.cmd_exec = false;
+	msm_dmov_enqueue_cmd_ext(msm_uport->dma_rx_channel,
+					&msm_uport->rx.xfer);
+	/*
+	 * wake up set_termios() process if it is waiting for
+	 * completion of previous UART RX CMD and queueing of
+	 * new UART RX CMD before going ahead with baud rate
+	 * change process.
+	 */
+	if (msm_uport->termios_in_progress)
+		wake_up(&msm_uport->rx.wait);
 }
 
 static void flip_insert_work(struct work_struct *work)
@@ -1030,6 +1317,9 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 
 	msm_hs_write(uport, UARTDM_CR_ADDR, STALE_EVENT_DISABLE);
 
+	/* Rx DMA cmd is completed here. */
+	msm_uport->rx.dma_in_flight = false;
+
 	/* overflow is not connect to data in a FIFO */
 	if (unlikely((status & UARTDM_SR_OVERRUN_BMSK) &&
 		     (uport->read_status_mask & CREAD))) {
@@ -1045,12 +1335,27 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 
 	if (unlikely(status & UARTDM_SR_PAR_FRAME_BMSK)) {
 		/* Can not tell difference between parity & frame error */
+		if (hs_serial_debug_mask)
+			printk(KERN_WARNING "msm_serial_hs: parity error\n");
 		uport->icount.parity++;
 		error_f = 1;
-		if (uport->ignore_status_mask & IGNPAR) {
+		if (!(uport->ignore_status_mask & IGNPAR)) {
 			retval = tty_insert_flip_char(tty, 0, TTY_PARITY);
 			if (!retval)
 				msm_uport->rx.buffer_pending |= TTY_PARITY;
+		}
+	}
+
+	if (unlikely(status & UARTDM_SR_RX_BREAK_BMSK)) {
+		if (hs_serial_debug_mask)
+			printk(KERN_WARNING "msm_serial_hs: Rx break\n");
+		uport->icount.brk++;
+		error_f = 1;
+		msm_hs_write(uport, UARTDM_CR_ADDR, RESET_BREAK_INT);
+		if (!(uport->ignore_status_mask & IGNBRK)) {
+			retval = tty_insert_flip_char(tty, 0, TTY_BREAK);
+			if (!retval)
+				msm_uport->rx.buffer_pending |= TTY_BREAK;
 		}
 	}
 
@@ -1060,14 +1365,30 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 	if (msm_uport->clk_req_off_state == CLK_REQ_OFF_FLUSH_ISSUED)
 		msm_uport->clk_req_off_state = CLK_REQ_OFF_RXSTALE_FLUSHED;
 	flush = msm_uport->rx.flush;
-	if (flush == FLUSH_IGNORE)
-		if (!msm_uport->rx.buffer_pending)
-			msm_hs_start_rx_locked(uport);
 
+	/*
+	 * Part hs_isr() sets the flush as FLUSH_IGNORE if it is explictily
+	 * trigger from set_termios().
+	 */
+	if (flush == FLUSH_IGNORE) {
+		if (!msm_uport->rx_discard_flush_issued &&
+					!msm_uport->rx.buffer_pending) {
+			msm_hs_start_rx_locked(uport);
+		} else {
+			msm_uport->rx_discard_flush_issued = false;
+			wake_up(&msm_uport->rx.wait);
+			goto out;
+		}
+	}
+
+	/* Part of stop_rx sets the flush as FLUSH_STOP */
 	if (flush == FLUSH_STOP) {
+		if (msm_uport->rx_discard_flush_issued)
+			msm_uport->rx_discard_flush_issued = false;
 		msm_uport->rx.flush = FLUSH_SHUTDOWN;
 		wake_up(&msm_uport->rx.wait);
 	}
+
 	if (flush >= FLUSH_DATA_INVALID)
 		goto out;
 
@@ -1115,6 +1436,9 @@ static void msm_hs_start_tx_locked(struct uart_port *uport )
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
+	if (msm_uport->is_shutdown)
+		return;
+
 	if (msm_uport->tx.tx_ready_int_en == 0) {
 		msm_uport->tx.tx_ready_int_en = 1;
 		if (msm_uport->tx.dma_in_flight == 0)
@@ -1151,8 +1475,11 @@ static void msm_serial_hs_tx_tlet(unsigned long tlet_ptr)
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = container_of((struct tasklet_struct *)
 				tlet_ptr, struct msm_hs_port, tx.tlet);
+	struct msm_hs_tx *tx = &msm_uport->tx;
 
 	spin_lock_irqsave(&(msm_uport->uport.lock), flags);
+
+	tx->dma_in_flight = 0;
 	if (msm_uport->tx.flush == FLUSH_STOP) {
 		msm_uport->tx.flush = FLUSH_SHUTDOWN;
 		wake_up(&msm_uport->tx.wait);
@@ -1169,6 +1496,26 @@ static void msm_serial_hs_tx_tlet(unsigned long tlet_ptr)
 }
 
 /*
+ * This routine is called when ADM driver is about to program queued UART
+ * RX CMD with ADM hardware.
+ */
+static void msm_hs_dmov_rx_exec_callback(struct msm_dmov_cmd *cmd_ptr)
+{
+	struct msm_hs_port *msm_uport;
+	struct msm_hs_rx *rx;
+
+	msm_uport = container_of(cmd_ptr, struct msm_hs_port, rx.xfer);
+	rx = &msm_uport->rx;
+
+	rx->cmd_exec = true;
+	/*
+	 * wakeup set_termios() as  it waits for UART RX CMD to be programmed
+	 * with ADM hardware.
+	 */
+	wake_up(&msm_uport->rx.wait);
+}
+
+/*
  * This routine is called when we are done with a DMA transfer or the
  * a flush has been sent to the data mover driver.
  *
@@ -1180,6 +1527,9 @@ static void msm_hs_dmov_rx_callback(struct msm_dmov_cmd *cmd_ptr,
 					struct msm_dmov_errdata *err)
 {
 	struct msm_hs_port *msm_uport;
+
+	if (result & DMOV_RSLT_ERROR)
+		pr_err("%s(): DMOV_RSLT_ERROR\n", __func__);
 
 	msm_uport = container_of(cmd_ptr, struct msm_hs_port, rx.xfer);
 
@@ -1259,6 +1609,14 @@ static void msm_hs_enable_ms_locked(struct uart_port *uport)
 
 }
 
+static void msm_hs_flush_buffer_locked(struct uart_port *uport)
+{
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+
+	if (msm_uport->tx.dma_in_flight)
+		msm_uport->tty_flush_receive = true;
+}
+
 /*
  *  Standard API, Break Signal
  *
@@ -1319,6 +1677,7 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 {
 	unsigned long sr_status;
 	unsigned long flags;
+	int ret;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	struct circ_buf *tx_buf = &uport->state->xmit;
 
@@ -1347,6 +1706,7 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	switch (msm_uport->clk_req_off_state) {
 	case CLK_REQ_OFF_START:
 		msm_uport->clk_req_off_state = CLK_REQ_OFF_RXSTALE_ISSUED;
+		wake_lock(&msm_uport->rx.wake_lock);
 		msm_hs_write(uport, UARTDM_CR_ADDR, FORCE_STALE_EVENT);
 		/*
 		 * Before returning make sure that device writel completed.
@@ -1366,10 +1726,23 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	}
 
 	if (msm_uport->rx.flush != FLUSH_SHUTDOWN) {
-		if (msm_uport->rx.flush == FLUSH_NONE)
+		if (msm_uport->rx.flush == FLUSH_NONE) {
 			msm_hs_stop_rx_locked(uport);
+			msm_uport->rx_discard_flush_issued = true;
+		}
 
 		spin_unlock_irqrestore(&uport->lock, flags);
+		if (msm_uport->rx_discard_flush_issued) {
+			pr_debug("%s(): wainting for flush completion.\n",
+								__func__);
+			ret = wait_event_timeout(msm_uport->rx.wait,
+				msm_uport->rx_discard_flush_issued == false,
+				RX_FLUSH_COMPLETE_TIMEOUT);
+			if (!ret)
+				pr_err("%s(): Flush complete pending.\n",
+								__func__);
+		}
+
 		mutex_unlock(&msm_uport->clk_mutex);
 		return 0;  /* come back later to really clock off */
 	}
@@ -1436,6 +1809,13 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 
 	spin_lock_irqsave(&uport->lock, flags);
 
+	if (msm_uport->is_shutdown) {
+		pr_err("%s(): Received UART interrupt after shutdown.\n",
+								__func__);
+		spin_unlock_irqrestore(&uport->lock, flags);
+		return IRQ_HANDLED;
+	}
+
 	isr_status = msm_hs_read(uport, UARTDM_MISR_ADDR);
 
 	/* Uart RX starting */
@@ -1461,10 +1841,28 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 				CLK_REQ_OFF_FLUSH_ISSUED;
 
 		if (rx->flush == FLUSH_NONE) {
+			if (!msm_uport->termios_in_progress) {
 			rx->flush = FLUSH_DATA_READY;
+				/* Graceful Flush */
 			msm_dmov_flush(msm_uport->dma_rx_channel, 1);
+			} else {
+				rx->flush = FLUSH_IGNORE;
+				/* Discard Flush */
+				msm_dmov_flush(msm_uport->dma_rx_channel, 0);
+			}
+		}
+
+		/*
+		 * Force RxStale is performed from msm_hs_stop_rx_locked() and
+		 * change rx.flush to FLUSH_STOP.
+		 */
+		if (rx->flush == FLUSH_STOP) {
+			if (msm_uport->rx_discard_flush_issued)
+				/* Discard Flush */
+				msm_dmov_flush(msm_uport->dma_rx_channel, 0);
 		}
 	}
+
 	/* tx ready interrupt */
 	if (isr_status & UARTDM_ISR_TX_READY_BMSK) {
 		/* Clear  TX Ready */
@@ -1481,9 +1879,14 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 		 */
 		mb();
 		/* Complete DMA TX transactions and submit new transactions */
-		tx_buf->tail = (tx_buf->tail + tx->tx_count) & ~UART_XMIT_SIZE;
 
-		tx->dma_in_flight = 0;
+		/* Do not update tx_buf.tail if uart_flush_buffer already
+						called in serial core */
+		if (!msm_uport->tty_flush_receive)
+			tx_buf->tail = (tx_buf->tail +
+					tx->tx_count) & ~UART_XMIT_SIZE;
+		else
+			msm_uport->tty_flush_receive = false;
 
 		uport->icount.tx += tx->tx_count;
 		if (tx->tx_ready_int_en)
@@ -1552,19 +1955,19 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 		spin_unlock_irqrestore(&uport->lock, flags);
 		ret = clk_prepare_enable(msm_uport->clk);
 		if (ret) {
-			wake_unlock(&msm_uport->dma_wake_lock);
 			dev_err(uport->dev, "Clock ON Failure"
 			"For UART CLK Stalling HSUART\n");
+			wake_unlock(&msm_uport->dma_wake_lock);
 			break;
 		}
 
 		if (msm_uport->pclk) {
 			ret = clk_prepare_enable(msm_uport->pclk);
 			if (unlikely(ret)) {
-				wake_unlock(&msm_uport->dma_wake_lock);
 				clk_disable_unprepare(msm_uport->clk);
 				dev_err(uport->dev, "Clock ON Failure"
 				"For UART Pclk Stalling HSUART\n");
+				wake_unlock(&msm_uport->dma_wake_lock);
 				break;
 			}
 		}
@@ -1655,6 +2058,10 @@ static int msm_hs_startup(struct uart_port *uport)
 					pdev->dev.platform_data;
 	struct circ_buf *tx_buf = &uport->state->xmit;
 	struct msm_hs_tx *tx = &msm_uport->tx;
+	struct msm_hs_rx *rx = &msm_uport->rx;
+
+	msm_uport->is_shutdown = false;
+	msm_uport->termios_in_progress = false;
 
 	rfr_level = uport->fifosize;
 	if (rfr_level > 16)
@@ -1673,9 +2080,17 @@ static int msm_hs_startup(struct uart_port *uport)
 		return ret;
 	}
 
-	if (pdata && pdata->gpio_config)
-		if (unlikely(pdata->gpio_config(1)))
-			dev_err(uport->dev, "Cannot configure gpios\n");
+	/* Stop remote UART to send data by setting RFR GPIO to LOW. */
+	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_HIGH);
+
+
+	if (pdata && pdata->config_gpio) {
+		ret = msm_hs_config_uart_gpios(uport);
+		if (ret)
+			goto deinit_uart_clk;
+	} else {
+		pr_debug("%s(): UART GPIOs not specified.\n", __func__);
+	}
 
 	/* Set auto RFR Level */
 	data = msm_hs_read(uport, UARTDM_MR1_ADDR);
@@ -1696,14 +2111,19 @@ static int msm_hs_startup(struct uart_port *uport)
 	data = UARTDM_TX_DM_EN_BMSK | UARTDM_RX_DM_EN_BMSK;
 	msm_hs_write(uport, UARTDM_DMEN_ADDR, data);
 
-	/* Reset TX */
-	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_TX);
-	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_RX);
+
+	/* Reset both RX and TX HW state machine */
+	msm_hs_write(uport, UARTDM_CR_ADDR, (RESET_RX | RESET_TX));
+	/*
+	 * Rx and Tx reset operation takes few clock cycles, hence as
+	 * safe side adding 10us delay.
+	 */
+	udelay(10);
+
 	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_ERROR_STATUS);
 	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_BREAK_INT);
 	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_STALE_INT);
 	msm_hs_write(uport, UARTDM_CR_ADDR, RESET_CTS);
-	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_LOW);
 	/* Turn on Uart Receiver */
 	msm_hs_write(uport, UARTDM_CR_ADDR, UARTDM_CR_RX_EN_BMSK);
 
@@ -1713,6 +2133,8 @@ static int msm_hs_startup(struct uart_port *uport)
 	/* Initialize the tx */
 	tx->tx_ready_int_en = 0;
 	tx->dma_in_flight = 0;
+	rx->dma_in_flight = false;
+	rx->cmd_exec = false;
 
 	tx->xfer.complete_func = msm_hs_dmov_tx_callback;
 
@@ -1742,7 +2164,7 @@ static int msm_hs_startup(struct uart_port *uport)
 		ret = irq_set_irq_wake(msm_uport->wakeup.irq, 1);
 		if (unlikely(ret)) {
 			pr_err("%s():Err setting wakeup irq\n", __func__);
-			goto deinit_uart_clk;
+			goto unconfigure_uart_gpio;
 		}
 	}
 
@@ -1770,10 +2192,11 @@ static int msm_hs_startup(struct uart_port *uport)
 
 	msm_hs_start_rx_locked(uport);
 
+	/* Allow remote UART to send data by setting RFR GPIO to HIGH. */
+	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_LOW);
+
 	spin_unlock_irqrestore(&uport->lock, flags);
-	ret = pm_runtime_set_active(uport->dev);
-	if (ret)
-		dev_err(uport->dev, "set active error:%d\n", ret);
+
 	pm_runtime_enable(uport->dev);
 
 	return 0;
@@ -1782,6 +2205,9 @@ free_uart_irq:
 	free_irq(uport->irq, msm_uport);
 free_wake_irq:
 	irq_set_irq_wake(msm_uport->wakeup.irq, 0);
+unconfigure_uart_gpio:
+	if (pdata && pdata->config_gpio)
+		msm_hs_unconfig_uart_gpios(uport);
 deinit_uart_clk:
 	clk_disable_unprepare(msm_uport->clk);
 	if (msm_uport->pclk)
@@ -1832,7 +2258,7 @@ static int uartdm_init_port(struct uart_port *uport)
 			(unsigned long) &tx->tlet);
 
 	rx->pool = dma_pool_create("rx_buffer_pool", uport->dev,
-				   UARTDM_RX_BUF_SIZE, 16, 0);
+				   msm_uport->rx_buf_size, 16, 0);
 	if (!rx->pool) {
 		pr_err("%s(): cannot allocate rx_buffer_pool", __func__);
 		ret = -ENOMEM;
@@ -1861,8 +2287,8 @@ static int uartdm_init_port(struct uart_port *uport)
 		goto free_rx_command_ptr;
 	}
 
-	rx->command_ptr->num_rows = ((UARTDM_RX_BUF_SIZE >> 4) << 16) |
-					 (UARTDM_RX_BUF_SIZE >> 4);
+	rx->command_ptr->num_rows = ((msm_uport->rx_buf_size >> 4) << 16) |
+					 (msm_uport->rx_buf_size >> 4);
 
 	rx->command_ptr->dst_row_addr = rx->rbuffer;
 
@@ -1870,6 +2296,7 @@ static int uartdm_init_port(struct uart_port *uport)
 	msm_hs_write(uport, UARTDM_RFWR_ADDR, 0);
 
 	rx->xfer.complete_func = msm_hs_dmov_rx_callback;
+	rx->xfer.exec_func = msm_hs_dmov_rx_exec_callback;
 
 	rx->command_ptr->cmd = CMD_LC |
 	    CMD_SRC_CRCI(msm_uport->dma_rx_crci) | CMD_MODE_BOX;
@@ -1923,6 +2350,7 @@ static int __devinit msm_hs_probe(struct platform_device *pdev)
 	int ret;
 	struct uart_port *uport;
 	struct msm_hs_port *msm_uport;
+	unsigned int data;
 	struct resource *resource;
 	struct msm_serial_hs_platform_data *pdata = pdev->dev.platform_data;
 
@@ -1961,6 +2389,43 @@ static int __devinit msm_hs_probe(struct platform_device *pdev)
 			return -ENXIO;
 
 	}
+
+	/* Identify UART functional mode as 2-wire or 4-wire. */
+	if (pdata && pdata->config_gpio) {
+		switch (pdata->config_gpio) {
+		case 4:
+			if (gpio_is_valid(pdata->uart_tx_gpio)
+				&& gpio_is_valid(pdata->uart_rx_gpio)
+				&& gpio_is_valid(pdata->uart_cts_gpio)
+				&& gpio_is_valid(pdata->uart_rfr_gpio)) {
+					msm_uport->func_mode = UART_FOUR_WIRE;
+			} else {
+				pr_err("%s(): Wrong GPIO Number for 4-Wire.\n",
+								__func__);
+				return -EINVAL;
+			}
+			break;
+		case 2:
+			if (gpio_is_valid(pdata->uart_tx_gpio)
+				&& gpio_is_valid(pdata->uart_rx_gpio)) {
+					msm_uport->func_mode = UART_TWO_WIRE;
+			} else {
+				pr_err("%s(): Wrong GPIO Number for 2-Wire.\n",
+								__func__);
+				return -EINVAL;
+			}
+			break;
+		default:
+			pr_err("%s(): Invalid number of GPIOs.\n", __func__);
+			pdata->config_gpio = 0;
+			return -EINVAL;
+		}
+	}
+
+	if (pdata && pdata->uartdm_rx_buf_size)
+		msm_uport->rx_buf_size = pdata->uartdm_rx_buf_size;
+	else
+		msm_uport->rx_buf_size = UARTDM_RX_BUF_SIZE;
 
 	resource = platform_get_resource_byname(pdev, IORESOURCE_DMA,
 						"uartdm_channels");
@@ -2027,16 +2492,27 @@ static int __devinit msm_hs_probe(struct platform_device *pdev)
 	/* configure the CR Protection to Enable */
 	msm_hs_write(uport, UARTDM_CR_ADDR, CR_PROTECTION_EN);
 
-	clk_disable_unprepare(msm_uport->clk);
-	if (msm_uport->pclk)
-		clk_disable_unprepare(msm_uport->pclk);
-
 	/*
 	 * Enable Command register protection before going ahead as this hw
 	 * configuration makes sure that issued cmd to CR register gets complete
 	 * before next issued cmd start. Hence mb() requires here.
 	 */
 	mb();
+
+	/*
+	 * Set RX_BREAK_ZERO_CHAR_OFF and RX_ERROR_CHAR_OFF
+	 * so any rx_break and character having parity of framing
+	 * error don't enter inside UART RX FIFO.
+	 */
+	data = msm_hs_read(uport, UARTDM_MR2_ADDR);
+	data |= (UARTDM_MR2_RX_BREAK_ZERO_CHAR_OFF |
+			UARTDM_MR2_RX_ERROR_CHAR_OFF);
+	msm_hs_write(uport, UARTDM_MR2_ADDR, data);
+	mb();
+
+	clk_disable_unprepare(msm_uport->clk);
+	if (msm_uport->pclk)
+		clk_disable_unprepare(msm_uport->pclk);
 
 	msm_uport->clk_state = MSM_HS_CLK_PORT_OFF;
 	hrtimer_init(&msm_uport->clk_off_timer, CLOCK_MONOTONIC,
@@ -2101,48 +2577,86 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	const struct msm_serial_hs_platform_data *pdata =
 				pdev->dev.platform_data;
 
-	if (msm_uport->tx.dma_in_flight) {
+
 		spin_lock_irqsave(&uport->lock, flags);
+
+	/* deactivate if any clock off hrtimer is active. */
+	hrtimer_try_to_cancel(&msm_uport->clk_off_timer);
+
 		/* disable UART TX interface to DM */
 		data = msm_hs_read(uport, UARTDM_DMEN_ADDR);
 		data &= ~UARTDM_TX_DM_EN_BMSK;
 		msm_hs_write(uport, UARTDM_DMEN_ADDR, data);
-		/* turn OFF UART Transmitter */
-		msm_hs_write(uport, UARTDM_CR_ADDR, UARTDM_CR_TX_DISABLE_BMSK);
-		/* reset UART TX */
-		msm_hs_write(uport, UARTDM_CR_ADDR, RESET_TX);
-		/* reset UART TX Error */
-		msm_hs_write(uport, UARTDM_CR_ADDR, RESET_TX_ERROR);
+	mb();
+
+	if (msm_uport->tx.dma_in_flight) {
 		msm_uport->tx.flush = FLUSH_STOP;
-		spin_unlock_irqrestore(&uport->lock, flags);
 		/* discard flush */
 		msm_dmov_flush(msm_uport->dma_tx_channel, 0);
+		spin_unlock_irqrestore(&uport->lock, flags);
 		ret = wait_event_timeout(msm_uport->tx.wait,
 			msm_uport->tx.flush == FLUSH_SHUTDOWN, 100);
-		if (!ret)
+		if (!ret) {
 			pr_err("%s():HSUART TX Stalls.\n", __func__);
+			print_uart_registers(msm_uport);
 	}
+	} else {
+		spin_unlock_irqrestore(&uport->lock, flags);
+	}
+
 	tasklet_kill(&msm_uport->tx.tlet);
-	BUG_ON(msm_uport->rx.flush < FLUSH_STOP);
-	wait_event(msm_uport->rx.wait, msm_uport->rx.flush == FLUSH_SHUTDOWN);
+
+	if (msm_uport->rx.dma_in_flight) {
+
+		if (msm_uport->rx.flush < FLUSH_STOP) {
+			pr_err("%s(): rx.flush is not correct.\n",
+							__func__);
+			print_uart_registers(msm_uport);
+			BUG_ON(1);
+		}
+
+		ret = wait_event_timeout(msm_uport->rx.wait,
+			msm_uport->rx.flush == FLUSH_SHUTDOWN,
+			RX_FLUSH_COMPLETE_TIMEOUT);
+		if (!ret) {
+			pr_err("%s(): Rx completion failed.\n", __func__);
+			print_uart_registers(msm_uport);
+		}
+	}
+
 	tasklet_kill(&msm_uport->rx.tlet);
+
+	spin_lock_irqsave(&uport->lock, flags);
+	/* Disable all UART interrupts */
+	msm_uport->imr_reg = 0;
+	msm_hs_write(uport, UARTDM_IMR_ADDR, msm_uport->imr_reg);
+
+	/* Free the UART IRQ line */
+	free_irq(uport->irq, msm_uport);
+
+	msm_uport->is_shutdown = true;
+	spin_unlock_irqrestore(&uport->lock, flags);
+
+	/* disable UART RX interface to DM */
+	data = msm_hs_read(uport, UARTDM_DMEN_ADDR);
+	data &= ~UARTDM_RX_DM_EN_BMSK;
+	msm_hs_write(uport, UARTDM_DMEN_ADDR, data);
+
 	cancel_delayed_work_sync(&msm_uport->rx.flip_insert_work);
 	flush_workqueue(msm_uport->hsuart_wq);
 	pm_runtime_disable(uport->dev);
-	pm_runtime_set_suspended(uport->dev);
 
 	/* Disable the transmitter */
 	msm_hs_write(uport, UARTDM_CR_ADDR, UARTDM_CR_TX_DISABLE_BMSK);
 	/* Disable the receiver */
 	msm_hs_write(uport, UARTDM_CR_ADDR, UARTDM_CR_RX_DISABLE_BMSK);
 
-	msm_uport->imr_reg = 0;
-	msm_hs_write(uport, UARTDM_IMR_ADDR, msm_uport->imr_reg);
 	/*
 	 * Complete all device write before actually disabling uartclk.
 	 * Hence mb() requires here.
 	 */
 	mb();
+
 	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
 		/* to balance clk_state */
 		clk_disable_unprepare(msm_uport->clk);
@@ -2160,13 +2674,11 @@ static void msm_hs_shutdown(struct uart_port *uport)
 		irq_set_irq_wake(msm_uport->wakeup.irq, 0);
 
 	/* Free the interrupt */
-	free_irq(uport->irq, msm_uport);
 	if (use_low_power_wakeup(msm_uport))
 		free_irq(msm_uport->wakeup.irq, msm_uport);
 
-	if (pdata && pdata->gpio_config)
-		if (pdata->gpio_config(0))
-			dev_err(uport->dev, "GPIO config error\n");
+	if (pdata && pdata->config_gpio)
+			msm_hs_unconfig_uart_gpios(uport);
 }
 
 static void __exit msm_serial_hs_exit(void)
@@ -2249,6 +2761,7 @@ static struct uart_ops msm_hs_ops = {
 	.config_port = msm_hs_config_port,
 	.release_port = msm_hs_release_port,
 	.request_port = msm_hs_request_port,
+	.flush_buffer = msm_hs_flush_buffer_locked,
 };
 
 module_init(msm_serial_hs_init);

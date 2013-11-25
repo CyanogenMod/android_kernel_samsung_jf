@@ -1,6 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
-   Copyright (c) 2000-2001, 2010-2012, The Linux Foundation. All rights reserved.
+   Copyright (c) 2000-2001, 2010-2013 The Linux Foundation. All rights reserved.
 
    Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
 
@@ -1567,7 +1567,28 @@ static void hci_cs_disconn_physical_link(struct hci_dev *hdev, __u8 status)
 
 static void hci_cs_le_start_enc(struct hci_dev *hdev, u8 status)
 {
+	struct hci_cp_le_start_enc *cp;
+	struct hci_conn *conn;
+
 	BT_DBG("%s status 0x%x", hdev->name, status);
+	if (!status) {
+		return;
+	}
+
+	BT_DBG("%s Le start enc failed 0x%x", hdev->name, status);
+	cp = hci_sent_cmd_data(hdev, HCI_OP_LE_START_ENC);
+	if (!cp) {
+		BT_DBG("CP is null");
+		return;
+	}
+	hci_dev_lock(hdev);
+
+	conn = hci_conn_hash_lookup_handle(hdev, __le16_to_cpu(cp->handle));
+	if (conn) {
+		BT_DBG("conn exists");
+		hci_conn_put(conn);
+	}
+	hci_dev_unlock(hdev);
 }
 
 static inline void hci_inquiry_complete_evt(struct hci_dev *hdev, struct sk_buff *skb)
@@ -1669,6 +1690,8 @@ static inline void hci_conn_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 		if (conn->type == ACL_LINK) {
 			struct hci_cp_read_remote_version cp;
 			cp.handle = ev->handle;
+			hci_send_cmd(hdev, HCI_OP_READ_CLOCK_OFFSET,
+				sizeof(cp), &cp);
 			hci_send_cmd(hdev, HCI_OP_READ_REMOTE_VERSION,
 				sizeof(cp), &cp);
 		}
@@ -1840,15 +1863,6 @@ static inline void hci_auth_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 			struct hci_cp_auth_requested cp;
 			hci_remove_link_key(hdev, &conn->dst);
 			cp.handle = cpu_to_le16(conn->handle);
-			/*Initiates dedicated bonding as pin or key is missing
-			on remote device*/
-			/*In case if remote device is ssp supported,
-			reduce the security level to MEDIUM if it is HIGH*/
-			if (conn->ssp_mode && conn->auth_initiator &&
-				conn->io_capability != 0x03) {
-				conn->pending_sec_level = BT_SECURITY_HIGH;
-				conn->auth_type = HCI_AT_DEDICATED_BONDING_MITM;
-			}
 			hci_send_cmd(conn->hdev, HCI_OP_AUTH_REQUESTED,
 							sizeof(cp), &cp);
 			hci_dev_unlock(hdev);
@@ -1877,6 +1891,8 @@ static inline void hci_auth_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 			} else {
 				conn->state = BT_CONNECTED;
 				hci_proto_connect_cfm(conn, ev->status);
+				if (ev->status)
+					conn->disc_timeout = HCI_DISCONN_AUTH_FAILED_TIMEOUT;
 				hci_conn_put(conn);
 			}
 		} else {
@@ -2053,7 +2069,7 @@ static inline void hci_remote_features_evt(struct hci_dev *hdev, struct sk_buff 
 							sizeof(cp), &cp);
 		goto unlock;
 	} else  if (!(lmp_ssp_capable(conn)) && conn->auth_initiator &&
-		(conn->pending_sec_level == BT_SECURITY_HIGH)) {
+		(conn->pending_sec_level == BT_SECURITY_VERY_HIGH)) {
 		conn->pending_sec_level = BT_SECURITY_MEDIUM;
 	}
 
@@ -2677,7 +2693,7 @@ static inline void hci_link_key_request_evt(struct hci_dev *hdev, struct sk_buff
 			conn->pending_sec_level, conn->ssp_mode, key->pin_len);
 	}
 	if (conn && (conn->ssp_mode == 0) &&
-		(conn->pending_sec_level == BT_SECURITY_HIGH) &&
+		(conn->pending_sec_level == BT_SECURITY_VERY_HIGH) &&
 		(key->pin_len != 16)) {
 		BT_DBG("Security is high ignoring this key");
 		goto not_found;
@@ -2866,14 +2882,14 @@ static inline void hci_remote_ext_features_evt(struct hci_dev *hdev, struct sk_b
 
 		conn->ssp_mode = (ev->features[0] & 0x01);
 		/*In case if remote device ssp supported/2.0 device
-		reduce the security level to MEDIUM if it is HIGH*/
+		reduce the security level to MEDIUM if it is VERY HIGH*/
 		if (!conn->ssp_mode && conn->auth_initiator &&
-			(conn->pending_sec_level == BT_SECURITY_HIGH))
+			(conn->pending_sec_level == BT_SECURITY_VERY_HIGH))
 			conn->pending_sec_level = BT_SECURITY_MEDIUM;
 
 		if (conn->ssp_mode && conn->auth_initiator &&
 			conn->io_capability != 0x03) {
-			conn->pending_sec_level = BT_SECURITY_HIGH;
+			conn->pending_sec_level = BT_SECURITY_VERY_HIGH;
 			conn->auth_type = HCI_AT_DEDICATED_BONDING_MITM;
 		}
 	}
@@ -2934,12 +2950,13 @@ static inline void hci_sync_conn_complete_evt(struct hci_dev *hdev, struct sk_bu
 	case 0x1a:	/* Unsupported Remote Feature */
 	case 0x1f:	/* Unspecified error */
 		if (conn->out && conn->attempt < 2) {
-			if (!conn->hdev->is_wbs)
+			if (!conn->hdev->is_wbs) {
 				conn->pkt_type =
 					(hdev->esco_type & SCO_ESCO_MASK) |
 					(hdev->esco_type & EDR_ESCO_MASK);
-			hci_setup_sync(conn, conn->link->handle);
-			goto unlock;
+				hci_setup_sync(conn, conn->link->handle);
+				goto unlock;
+			}
 		}
 		/* fall through */
 

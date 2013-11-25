@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -218,15 +218,15 @@ static void vid_enc_output_frame_done(struct video_client_ctx *client_ctx,
 
 	switch (event) {
 	case VCD_EVT_RESP_OUTPUT_DONE:
-	   DBG("Send INPUT_DON message to client = %p\n",
+	   DBG("Send OUTPUT_DON message to client = %p\n",
 			client_ctx);
 	   break;
 	case VCD_EVT_RESP_OUTPUT_FLUSHED:
-	   DBG("Send INPUT_FLUSHED message to client = %p\n",
+	   DBG("Send OUTPUT_FLUSHED message to client = %p\n",
 		   client_ctx);
 	   break;
 	default:
-	   ERR("QVD: vid_enc_output_frame_done invalid cmd type: %d\n", event);
+	   ERR("vid_enc_output_frame_done invalid cmd type: %d\n", event);
 	   venc_msg->venc_msg_info.statuscode = VEN_S_EFATAL;
 	   break;
 	}
@@ -254,6 +254,15 @@ static void vid_enc_output_frame_done(struct video_client_ctx *client_ctx,
 			vcd_frame_data->time_stamp;
 		venc_msg->venc_msg_info.buf.sz =
 			vcd_frame_data->alloc_len;
+		/* Metadata length */
+		venc_msg->venc_msg_info.buf.metadata_len =
+			vcd_frame_data->metadata_len;
+		/* Metadata offset */
+		venc_msg->venc_msg_info.buf.metadata_offset =
+			vcd_frame_data->metadata_offset;
+		/* Current ltr id */
+		venc_msg->venc_msg_info.buf.metadata_ltrid =
+			vcd_frame_data->curr_ltr_id;
 
 		/* Decoded picture width and height */
 		venc_msg->venc_msg_info.msgdata_size =
@@ -270,7 +279,7 @@ static void vid_enc_output_frame_done(struct video_client_ctx *client_ctx,
 		if (ion_flag == ION_FLAG_CACHED && buff_handle) {
 			msm_ion_do_cache_op(client_ctx->user_ion_client,
 				buff_handle,
-				(unsigned long *) kernel_vaddr,
+				(unsigned long *) NULL,
 				(unsigned long)venc_msg->venc_msg_info.buf.sz,
 				ION_IOC_CLEAN_INV_CACHES);
 		}
@@ -337,6 +346,13 @@ static void vid_enc_lean_event(struct video_client_ctx *client_ctx,
 			VEN_MSG_PAUSE;
 		break;
 
+	case VCD_EVT_IND_INFO_LTRUSE_FAILED:
+		INFO("\n msm_vidc_enc: Sending VEN_MSG_LTRUSE_FAILED"\
+			" to client");
+		venc_msg->venc_msg_info.msgcode =
+			VEN_MSG_LTRUSE_FAILED;
+		break;
+
 	default:
 		ERR("%s() : unknown event type %u\n",
 			__func__, event);
@@ -394,6 +410,7 @@ void vid_enc_vcd_cb(u32 event, u32 status,
 	case VCD_EVT_IND_OUTPUT_RECONFIG:
 	case VCD_EVT_IND_HWERRFATAL:
 	case VCD_EVT_IND_RESOURCES_LOST:
+	case VCD_EVT_IND_INFO_LTRUSE_FAILED:
 		vid_enc_lean_event(client_ctx, event, status);
 		break;
 
@@ -550,7 +567,7 @@ static int vid_enc_open_client(struct video_client_ctx **vid_clnt_ctx,
 
 	client_index = vid_enc_get_empty_client_index();
 
-	if (client_index == -1) {
+	if (client_index < 0) {
 		ERR("%s() : No free clients client_index == -1\n",
 			__func__);
 		rc = -ENODEV;
@@ -618,6 +635,8 @@ static int vid_enc_release(struct inode *inode, struct file *file)
 {
 	struct video_client_ctx *client_ctx = file->private_data;
 	INFO("\n msm_vidc_enc: Inside %s()", __func__);
+	vidc_cleanup_addr_table(client_ctx, BUFFER_TYPE_OUTPUT);
+	vidc_cleanup_addr_table(client_ctx, BUFFER_TYPE_INPUT);
 	vid_enc_close_client(client_ctx);
 	vidc_release_firmware();
 #ifndef USE_RES_TRACKER
@@ -799,8 +818,8 @@ static int __init vid_enc_init(void)
 			goto error_vid_enc_cdev_add;
 		}
 	}
-	vid_enc_vcd_init();
-	return 0;
+	rc = vid_enc_vcd_init();
+	return rc;
 
 error_vid_enc_cdev_add:
 	for (j = i-1; j >= 0; j--)
@@ -1408,6 +1427,12 @@ static long vid_enc_ioctl(struct file *file,
 			return -EFAULT;
 
 		DBG("VEN_IOCTL_GET_SEQUENCE_HDR\n");
+		if (!access_ok(VERIFY_WRITE, seq_header.hdrbufptr,
+			seq_header.bufsize)) {
+			ERR("VEN_IOCTL_GET_SEQUENCE_HDR:"\
+				" Userspace address verification failed.\n");
+			return -EFAULT;
+		}
 		result = vid_enc_get_sequence_header(client_ctx,
 				&seq_header);
 		if (!result) {
@@ -1752,7 +1777,162 @@ static long vid_enc_ioctl(struct file *file,
 			return -EIO;
 		}
 		break;
-	}	
+	}
+	case VEN_IOCTL_GET_PERF_LEVEL:
+	{
+		u32 curr_perf_level;
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		result = vid_enc_get_curr_perf_level(client_ctx,
+			&curr_perf_level);
+		if (!result) {
+			ERR("get_curr_perf_level failed!!");
+			return -EIO;
+		}
+		DBG("VEN_IOCTL_GET_PERF_LEVEL %u\n",
+			curr_perf_level);
+		if (copy_to_user(venc_msg.out,
+			&curr_perf_level, sizeof(u32)))
+			return -EFAULT;
+		break;
+	}
+	case VEN_IOCTL_SET_LTRMODE:
+	case VEN_IOCTL_GET_LTRMODE:
+	{
+		struct venc_ltrmode encoder_ltrmode;
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		if (cmd == VEN_IOCTL_SET_LTRMODE) {
+			DBG("VEN_IOCTL_SET_LTRMODE\n");
+			if (copy_from_user(&encoder_ltrmode, venc_msg.in,
+				sizeof(encoder_ltrmode)))
+				return -EFAULT;
+			result = vid_enc_set_get_ltrmode(client_ctx,
+				&encoder_ltrmode, true);
+		} else {
+			DBG("VEN_IOCTL_GET_LTRMODE\n");
+			result = vid_enc_set_get_ltrmode(client_ctx,
+				&encoder_ltrmode, false);
+			if (result) {
+				if (copy_to_user(venc_msg.out, &encoder_ltrmode,
+					sizeof(encoder_ltrmode)))
+					return -EFAULT;
+			}
+		}
+		if (!result) {
+			ERR("VEN_IOCTL_(G)SET_LTRMODE failed\n");
+			return -EIO;
+		}
+		break;
+	}
+	case VEN_IOCTL_SET_LTRCOUNT:
+	case VEN_IOCTL_GET_LTRCOUNT:
+	{
+		struct venc_ltrcount encoder_ltrcount;
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		if (cmd == VEN_IOCTL_SET_LTRCOUNT) {
+			DBG("VEN_IOCTL_SET_LTRCOUNT\n");
+			if (copy_from_user(&encoder_ltrcount, venc_msg.in,
+				sizeof(encoder_ltrcount)))
+				return -EFAULT;
+			result = vid_enc_set_get_ltrcount(client_ctx,
+				&encoder_ltrcount, true);
+		} else {
+			DBG("VEN_IOCTL_GET_LTRCOUNT\n");
+			result = vid_enc_set_get_ltrcount(client_ctx,
+				&encoder_ltrcount, false);
+			if (result) {
+				if (copy_to_user(venc_msg.out,
+					&encoder_ltrcount,
+					sizeof(encoder_ltrcount)))
+					return -EFAULT;
+			}
+		}
+		if (!result) {
+			ERR("VEN_IOCTL_(G)SET_LTRCOUNT failed\n");
+			return -EIO;
+		}
+		break;
+	}
+	case VEN_IOCTL_SET_LTRPERIOD:
+	case VEN_IOCTL_GET_LTRPERIOD:
+	{
+		struct venc_ltrperiod encoder_ltrperiod;
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		if (cmd == VEN_IOCTL_SET_LTRPERIOD) {
+			DBG("VEN_IOCTL_SET_LTRPERIOD\n");
+			if (copy_from_user(&encoder_ltrperiod, venc_msg.in,
+				sizeof(encoder_ltrperiod)))
+				return -EFAULT;
+			result = vid_enc_set_get_ltrperiod(client_ctx,
+				&encoder_ltrperiod, true);
+		} else {
+			DBG("VEN_IOCTL_GET_LTRPERIOD\n");
+			result = vid_enc_set_get_ltrperiod(client_ctx,
+				&encoder_ltrperiod, false);
+			if (result) {
+				if (copy_to_user(venc_msg.out,
+					&encoder_ltrperiod,
+					sizeof(encoder_ltrperiod)))
+					return -EFAULT;
+			}
+		}
+		if (!result) {
+			ERR("VEN_IOCTL_(G)SET_LTRPERIOD failed\n");
+			return -EIO;
+		}
+		break;
+	}
+	case VEN_IOCTL_GET_CAPABILITY_LTRCOUNT:
+	{
+		struct venc_range venc_capltrcount;
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+			DBG("VEN_IOCTL_GET_CAPABILITY_LTRCOUNT\n");
+			result = vid_enc_get_capability_ltrcount(client_ctx,
+				&venc_capltrcount);
+			if (result) {
+				if (copy_to_user(venc_msg.out, &venc_capltrcount,
+					sizeof(venc_capltrcount)))
+					return -EFAULT;
+			} else {
+				ERR("VEN_IOCTL_GET_CAPABILITY_LTRCOUNT failed\n");
+				return -EIO;
+			}
+			break;
+	}
+	case VEN_IOCTL_SET_LTRUSE:
+	case VEN_IOCTL_GET_LTRUSE:
+	{
+		struct venc_ltruse encoder_ltruse;
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		if (cmd == VEN_IOCTL_SET_LTRUSE) {
+			DBG("VEN_IOCTL_SET_LTRUSE\n");
+			if (copy_from_user(&encoder_ltruse, venc_msg.in,
+				sizeof(encoder_ltruse)))
+				return -EFAULT;
+			result = vid_enc_set_get_ltruse(client_ctx,
+				&encoder_ltruse, true);
+		} else {
+			DBG("VEN_IOCTL_GET_LTRUSE\n");
+			result = vid_enc_set_get_ltruse(client_ctx,
+				&encoder_ltruse, false);
+			if (result) {
+				if (copy_to_user(venc_msg.out,
+					&encoder_ltruse,
+					sizeof(encoder_ltruse)))
+					return -EFAULT;
+			}
+		}
+		if (!result) {
+			ERR("VEN_IOCTL_(G)SET_LTRUSE failed\n");
+			return -EIO;
+		}
+		break;
+	}
 	case VEN_IOCTL_SET_AC_PREDICTION:
 	case VEN_IOCTL_GET_AC_PREDICTION:
 	case VEN_IOCTL_SET_RVLC:

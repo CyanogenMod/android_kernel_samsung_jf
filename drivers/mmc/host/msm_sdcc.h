@@ -255,6 +255,12 @@ extern struct class *sec_class;	/* Sysfs about SD Card Detection */
 #define MMC_MAX_DMA_CMDS (MAX_NR_SG_DMA_PIO * (MMC_MAX_REQ_SIZE / \
 		MMC_MAX_DMA_BOX_LENGTH))
 
+/*
+ * Peripheral bus clock scaling vote rates
+ */
+#define MSMSDCC_BUS_VOTE_MAX_RATE	64000000 /* Hz */
+#define MSMSDCC_BUS_VOTE_MIN_RATE	32000000 /* Hz */
+
 struct clk;
 
 struct msmsdcc_nc_dmadata {
@@ -355,6 +361,7 @@ struct msmsdcc_host {
 	struct clk		*clk;		/* main MMC bus clock */
 	struct clk		*pclk;		/* SDCC peripheral bus clock */
 	struct clk		*bus_clk;	/* SDCC bus voter clock */
+	unsigned long		bus_clk_rate;	/* peripheral bus clk rate */
 	atomic_t		clks_on;	/* set if clocks are enabled */
 
 	unsigned int		eject;		/* eject state */
@@ -363,7 +370,6 @@ struct msmsdcc_host {
 
 	unsigned int		clk_rate;	/* Current clock rate */
 	unsigned int		pclk_rate;
-	unsigned int		ddr_doubled_clk_rate;
 
 	u32			pwr;
 	struct mmc_platform_data *plat;

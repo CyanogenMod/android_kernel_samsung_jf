@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -66,7 +66,9 @@ enum {
 	MSM_FRONTEND_DAI_AFE_TX,
 	MSM_FRONTEND_DAI_VOICE_STUB,
 	MSM_FRONTEND_DAI_VOLTE,
-	MSM_FRONTEND_DAI_SGLTE,
+	MSM_FRONTEND_DAI_VOICE2,
+	MSM_FRONTEND_DAI_VOLTE_STUB,
+	MSM_FRONTEND_DAI_VOICE2_STUB,
 	MSM_FRONTEND_DAI_MAX,
 };
 
@@ -107,6 +109,11 @@ enum {
 	MSM_BACKEND_DAI_MAX,
 };
 
+enum msm_pcm_routing_event {
+	MSM_PCM_RT_EVT_BUF_RECFG,
+	MSM_PCM_RT_EVT_DEVSWITCH,
+	MSM_PCM_RT_EVT_MAX,
+};
 /* dai_id: front-end ID,
  * dspst_id:  DSP audio stream ID
  * stream_type: playback or capture
@@ -115,6 +122,15 @@ void msm_pcm_routing_reg_phy_stream(int fedai_id, bool perf_mode,
 				int dspst_id, int stream_type);
 void msm_pcm_routing_reg_psthr_stream(int fedai_id, int dspst_id,
 		int stream_type, int enable);
+
+struct msm_pcm_routing_evt {
+	void (*event_func)(enum msm_pcm_routing_event, void *);
+	void *priv_data;
+};
+
+void msm_pcm_routing_reg_phy_stream_v2(int fedai_id, bool perf_mode,
+				       int dspst_id, int stream_type,
+				       struct msm_pcm_routing_evt event_info);
 
 void msm_pcm_routing_dereg_phy_stream(int fedai_id, int stream_type);
 

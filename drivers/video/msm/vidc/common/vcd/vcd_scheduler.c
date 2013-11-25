@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -88,8 +88,13 @@ u32 vcd_sched_add_client(struct vcd_clnt_ctxt *cctxt)
 			prop_hdr.sz = sizeof(cctxt->frm_p_units);
 			rc = ddl_get_property(cctxt->ddl_handle, &prop_hdr,
 						  &cctxt->frm_p_units);
-			VCD_FAILED_RETURN(rc,
-				"Failed: Get DDL_I_FRAME_PROC_UNITS");
+			if (VCD_FAILED(rc)) {
+				kfree(sched_cctxt);
+				VCD_MSG_ERROR(
+					"Failed: Get DDL_I_FRAME_PROC_UNITS");
+				return rc;
+			}
+
 			if (cctxt->decoding) {
 				cctxt->frm_rate.fps_numerator =
 					VCD_DEC_INITIAL_FRAME_RATE;
@@ -99,14 +104,21 @@ u32 vcd_sched_add_client(struct vcd_clnt_ctxt *cctxt)
 				prop_hdr.sz = sizeof(cctxt->frm_rate);
 				rc = ddl_get_property(cctxt->ddl_handle,
 						&prop_hdr, &cctxt->frm_rate);
-				VCD_FAILED_RETURN(rc,
-					"Failed: Get VCD_I_FRAME_RATE");
+				if (VCD_FAILED(rc)) {
+					kfree(sched_cctxt);
+					VCD_MSG_ERROR(
+						"Failed: Get VCD_I_FRAME_RATE");
+					return rc;
+				}
 			}
 			if (!cctxt->perf_set_by_client)
 				cctxt->reqd_perf_lvl = cctxt->frm_p_units *
 					cctxt->frm_rate.fps_numerator /
 					cctxt->frm_rate.fps_denominator;
-
+			VCD_MSG_HIGH("%s: client perf level = %u, "\
+				"perf_set_by_client = %u", __func__,
+				cctxt->reqd_perf_lvl,
+				cctxt->perf_set_by_client);
 			cctxt->sched_clnt_hdl = sched_cctxt;
 			memset(sched_cctxt, 0,
 				sizeof(struct vcd_sched_clnt_ctx));
@@ -215,8 +227,13 @@ u32 vcd_sched_mark_client_eof(struct vcd_sched_clnt_ctx *sched_cctxt)
 		buffer = list_entry(sched_cctxt->ip_frm_list.prev,
 			struct vcd_buffer_entry, sched_list);
 		buffer->frame.flags |= VCD_FRAME_FLAG_EOS;
-	} else
+		VCD_MSG_LOW("%s: added EOS flag to last buffer entry",
+			__func__);
+	} else {
 		rc = VCD_ERR_QEMPTY;
+		VCD_MSG_HIGH("%s: EOS need to be processed as last buffer",
+			__func__);
+	}
 	return rc;
 }
 

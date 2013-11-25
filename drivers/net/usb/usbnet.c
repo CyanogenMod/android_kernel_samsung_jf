@@ -33,8 +33,6 @@
 // #define	DEBUG			// error path messages, extra info
 // #define	VERBOSE			// more; success messages
 
-#define FD_WAKELOCK	/* define fast dormancy wakelock */
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/if_arp.h>
@@ -49,11 +47,6 @@
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/pm_runtime.h>
-
-#ifdef FD_WAKELOCK
-#include <linux/wakelock.h>
-#include <linux/sec_class.h>
-#endif
 
 #define DRIVER_VERSION		"22-Aug-2005"
 
@@ -94,7 +87,7 @@ static u8	node_id [ETH_ALEN];
 
 static const char driver_name [] = "usbnet";
 
-static struct workqueue_struct	*usbnet_wq;
+struct workqueue_struct	*usbnet_wq;
 
 static DECLARE_WAIT_QUEUE_HEAD(unlink_wakeup);
 
@@ -104,10 +97,6 @@ module_param (msg_level, int, 0);
 MODULE_PARM_DESC (msg_level, "Override default message level");
 
 /*-------------------------------------------------------------------------*/
-#ifdef FD_WAKELOCK
-static struct wake_lock fd_wakelock;
-static unsigned int fdwakelock_time;
-#endif
 
 /* handles CDC Ethernet and many other network "bulk data" interfaces */
 int usbnet_get_endpoints(struct usbnet *dev, struct usb_interface *intf)
@@ -265,14 +254,6 @@ void usbnet_skb_return (struct usbnet *dev, struct sk_buff *skb)
 	if (status != NET_RX_SUCCESS)
 		netif_dbg(dev, rx_err, dev->net,
 			  "netif_rx status %d\n", status);
-#ifdef FD_WAKELOCK
-	if (dev->udev->descriptor.idProduct == 0x9048 ||
-		dev->udev->descriptor.idProduct == 0x904c) {
-		pr_debug("rx fast dormancy wakelock\n");
-		wake_lock_timeout(&fd_wakelock, fdwakelock_time);
-	}
-#endif
-
 }
 EXPORT_SYMBOL_GPL(usbnet_skb_return);
 
@@ -354,21 +335,20 @@ void usbnet_defer_kevent (struct usbnet *dev, int work)
 	set_bit (work, &dev->flags);
 	if (!schedule_work (&dev->kevent)) {
 		if (net_ratelimit())
-		netdev_err(dev->net, "kevent %d may have been dropped\n", work);
+			netdev_err(dev->net, "kevent %d may have been dropped\n", work);
 	} else {
 		netdev_dbg(dev->net, "kevent %d scheduled\n", work);
-        }
+	}
 }
 EXPORT_SYMBOL_GPL(usbnet_defer_kevent);
 
 /*-------------------------------------------------------------------------*/
 
-static void rx_complete (struct urb *urb);
-
 static int rx_submit (struct usbnet *dev, struct urb *urb, gfp_t flags)
 {
 	struct sk_buff		*skb;
 	struct skb_data		*entry;
+	usb_complete_t		complete_fn;
 	int			retval = 0;
 	unsigned long		lockflags;
 	size_t			size = dev->rx_urb_size;
@@ -389,8 +369,13 @@ static int rx_submit (struct usbnet *dev, struct urb *urb, gfp_t flags)
 	entry->dev = dev;
 	entry->length = 0;
 
+	if (dev->driver_info->rx_complete)
+		complete_fn = dev->driver_info->rx_complete;
+	else
+		complete_fn = rx_complete;
+
 	usb_fill_bulk_urb (urb, dev->udev, dev->in,
-		skb->data, size, rx_complete, skb);
+		skb->data, size, complete_fn, skb);
 
 	spin_lock_irqsave (&dev->rxq.lock, lockflags);
 
@@ -464,7 +449,7 @@ done:
 
 /*-------------------------------------------------------------------------*/
 
-static void rx_complete (struct urb *urb)
+void rx_complete(struct urb *urb)
 {
 	struct sk_buff		*skb = (struct sk_buff *) urb->context;
 	struct skb_data		*entry = (struct skb_data *) skb->cb;
@@ -550,6 +535,7 @@ block:
 	}
 	netif_dbg(dev, rx_err, dev->net, "no read resubmitted\n");
 }
+EXPORT_SYMBOL_GPL(rx_complete);
 
 static void intr_complete (struct urb *urb)
 {
@@ -685,7 +671,7 @@ EXPORT_SYMBOL_GPL(usbnet_unlink_rx_urbs);
 /*-------------------------------------------------------------------------*/
 
 // precondition: never called in_interrupt
-static void usbnet_terminate_urbs(struct usbnet *dev)
+void usbnet_terminate_urbs(struct usbnet *dev)
 {
 	DECLARE_WAITQUEUE(wait, current);
 	int temp;
@@ -710,6 +696,7 @@ static void usbnet_terminate_urbs(struct usbnet *dev)
 	dev->wait = NULL;
 	remove_wait_queue(&unlink_wakeup, &wait);
 }
+EXPORT_SYMBOL_GPL(usbnet_terminate_urbs);
 
 int usbnet_stop (struct net_device *net)
 {
@@ -1059,13 +1046,6 @@ static void tx_complete (struct urb *urb)
 		if (!(dev->driver_info->flags & FLAG_MULTI_PACKET))
 			dev->net->stats.tx_packets++;
 		dev->net->stats.tx_bytes += entry->length;
-#ifdef FD_WAKELOCK
-		if (dev->udev->descriptor.idProduct == 0x9048 ||
-			dev->udev->descriptor.idProduct == 0x904c) {
-			pr_debug("tx fast dormancy wakelock\n");
-			wake_lock_timeout(&fd_wakelock, fdwakelock_time);
-		}
-#endif
 	} else {
 		dev->net->stats.tx_errors++;
 
@@ -1628,40 +1608,6 @@ EXPORT_SYMBOL_GPL(usbnet_resume);
 
 
 /*-------------------------------------------------------------------------*/
-#ifdef FD_WAKELOCK
-	struct device *fdwakelock_dev;
-
-static ssize_t show_waketime(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	unsigned int msec;
-
-	if (!fdwakelock_dev)
-		return 0;
-
-	msec = jiffies_to_msecs(fdwakelock_time);
-
-	return snprintf(buf, sizeof(buf) + 1, "%u\n", msec);
-}
-
-static ssize_t store_waketime(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	int r;
-	unsigned long msec;
-	if (!fdwakelock_dev)
-		return count;
-
-	r = kstrtoul(buf, 10, &msec);
-
-	if (r)
-		return count;
-	fdwakelock_time = msecs_to_jiffies(msec);
-	return count;
-}
-
-static DEVICE_ATTR(waketime, 0660, show_waketime, store_waketime);
-#endif
 
 static int __init usbnet_init(void)
 {
@@ -1676,20 +1622,6 @@ static int __init usbnet_init(void)
 		pr_err("%s: Unable to create workqueue:usbnet\n", __func__);
 		return -ENOMEM;
 	}
-
-#ifdef FD_WAKELOCK
-	fdwakelock_dev = device_create(sec_class, NULL, 0, NULL, "mdm_hsic_pm");
-	if (IS_ERR(fdwakelock_dev))
-		pr_err("%s: Failed to create device(fdwakelock_dev)!\n",
-			__func__);
-
-	if (device_create_file(fdwakelock_dev, &dev_attr_waketime) < 0)
-		pr_err("%s: Failed to create device file(%s)!\n",
-			__func__, dev_attr_waketime.attr.name);
-
-	fdwakelock_time = 0;
-	wake_lock_init(&fd_wakelock, WAKE_LOCK_SUSPEND, "fast_dormancy");
-#endif
 
 	return 0;
 }

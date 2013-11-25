@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -153,5 +153,11 @@
 #define VIDC_SM_ERR_CONCEALMENT_ENABLE				1
 #define VIDC_SM_ERR_CONCEALMENT_INTER_SLICE_MB_COPY		2
 #define VIDC_SM_ERR_CONCEALMENT_INTRA_SLICE_COLOR_CONCEALMENT	1
+
+#define DDL_MAX_P_FRAMES_IN_INTRA_INTERVAL 0xffff
+
+#define DDL_SATURATE_P_FRAMES_IN_INTRA_INTERVAL(p_rames) \
+	(((p_rames) > (DDL_MAX_P_FRAMES_IN_INTRA_INTERVAL - 1)) ? \
+	(DDL_MAX_P_FRAMES_IN_INTRA_INTERVAL) : (p_rames))
 
 #endif

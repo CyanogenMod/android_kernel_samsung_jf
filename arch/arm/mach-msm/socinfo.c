@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -35,6 +35,7 @@ enum {
 	HW_PLATFORM_LIQUID  = 9,
 	/* Dragonboard platform id is assigned as 10 in CDT */
 	HW_PLATFORM_DRAGON	= 10,
+	HW_PLATFORM_QRD	= 11,
 	HW_PLATFORM_INVALID
 };
 
@@ -47,7 +48,8 @@ const char *hw_platform[] = {
 	[HW_PLATFORM_SVLTE_SURF] = "SLVTE_SURF",
 	[HW_PLATFORM_MTP] = "MTP",
 	[HW_PLATFORM_LIQUID] = "Liquid",
-	[HW_PLATFORM_DRAGON] = "Dragon"
+	[HW_PLATFORM_DRAGON] = "Dragon",
+	[HW_PLATFORM_QRD] = "QRD",
 };
 
 enum {
@@ -234,6 +236,7 @@ static enum msm_cpu cpu_of_id[] = {
 	[117] = MSM_CPU_8930,
 	[118] = MSM_CPU_8930,
 	[119] = MSM_CPU_8930,
+	[179] = MSM_CPU_8930,
 
 	/* 8627 IDs */
 	[120] = MSM_CPU_8627,
@@ -279,6 +282,7 @@ static enum msm_cpu cpu_of_id[] = {
 	[143] = MSM_CPU_8930AA,
 	[144] = MSM_CPU_8930AA,
 	[160] = MSM_CPU_8930AA,
+	[180] = MSM_CPU_8930AA,
 
 	/* 8226 IDs */
 	[145] = MSM_CPU_8226,
@@ -294,6 +298,7 @@ static enum msm_cpu cpu_of_id[] = {
 	[155] = MSM_CPU_8930AB,
 	[156] = MSM_CPU_8930AB,
 	[157] = MSM_CPU_8930AB,
+	[181] = MSM_CPU_8930AB,
 
 	/* 8064AA IDs */
 	[172] = MSM_CPU_8064AA,

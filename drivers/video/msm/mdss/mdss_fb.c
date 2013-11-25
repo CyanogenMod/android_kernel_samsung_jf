@@ -1,4 +1,4 @@
-/*
+*
  * Core MDSS framebuffer driver.
  *
  * Copyright (C) 2007 Google Incorporated

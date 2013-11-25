@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/mfd/pm8xxx/pm8921-bms.h>
+#include <linux/mfd/pm8xxx/batterydata-lib.h>
 
 static struct single_row_lut desay_5200_fcc_temp = {
 	.x		= {-20, 0, 25, 40},
@@ -76,11 +76,12 @@ static struct sf_lut desay_5200_pc_sf = {
 	},
 };
 
-struct pm8921_bms_battery_data desay_5200_data = {
+struct bms_battery_data desay_5200_data = {
 	.fcc			= 5200,
 	.fcc_temp_lut		= &desay_5200_fcc_temp,
 	.fcc_sf_lut		= &desay_5200_fcc_sf,
 	.pc_temp_ocv_lut	= &desay_5200_pc_temp_ocv,
 	.pc_sf_lut		= &desay_5200_pc_sf,
 	.default_rbatt_mohm	= 156,
+	.rbatt_capacitive_mohm	= 50,
 };

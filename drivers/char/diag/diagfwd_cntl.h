@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,6 +29,15 @@
 #define DIAG_CTRL_MSG_EVENT_MASK_V2	10
 /* Send Diag F3 mask */
 #define DIAG_CTRL_MSG_F3_MASK_V2	11
+#define DIAG_CTRL_MSG_NUM_PRESETS	12
+#define DIAG_CTRL_MSG_SET_PRESET_ID	13
+#define DIAG_CTRL_MSG_LOG_MASK_WITH_PRESET_ID	14
+#define DIAG_CTRL_MSG_EVENT_MASK_WITH_PRESET_ID	15
+#define DIAG_CTRL_MSG_F3_MASK_WITH_PRESET_ID	16
+#define DIAG_CTRL_MSG_LAST DIAG_CTRL_MSG_F3_MASK_WITH_PRESET_ID
+
+/* Denotes that we support sending/receiving the feature mask */
+#define F_DIAG_INT_FEATURE_MASK	0x01
 
 struct cmd_code_range {
 	uint16_t cmd_code_lo;
@@ -77,16 +86,35 @@ struct diag_ctrl_msg_mask {
 	/* Copy msg mask here */
 } __packed;
 
+struct diag_ctrl_feature_mask {
+	uint32_t ctrl_pkt_id;
+	uint32_t ctrl_pkt_data_len;
+	uint32_t feature_mask_len;
+	/* Copy feature mask here */
+} __packed;
+
+struct diag_ctrl_msg_diagmode {
+	uint32_t ctrl_pkt_id;
+	uint32_t ctrl_pkt_data_len;
+	uint32_t version;
+	uint32_t sleep_vote;
+	uint32_t real_time;
+	uint32_t use_nrt_values;
+	uint32_t commit_threshold;
+	uint32_t sleep_threshold;
+	uint32_t sleep_time;
+	uint32_t drain_timer_val;
+	uint32_t event_stale_timer_val;
+} __packed;
+
 void diagfwd_cntl_init(void);
 void diagfwd_cntl_exit(void);
 void diag_read_smd_cntl_work_fn(struct work_struct *);
-void diag_read_smd_lpass_cntl_work_fn(struct work_struct *);
-void diag_read_smd_wcnss_cntl_work_fn(struct work_struct *);
-void diag_smd_cntl_notify(void *ctxt, unsigned event);
-void diag_smd_lpass_cntl_notify(void *ctxt, unsigned event);
-void diag_smd_wcnss_cntl_notify(void *ctxt, unsigned event);
-void diag_clean_modem_reg_fn(struct work_struct *);
-void diag_clean_lpass_reg_fn(struct work_struct *);
-void diag_clean_wcnss_reg_fn(struct work_struct *);
+void diag_clean_reg_fn(struct work_struct *work);
+int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
+								int total_recd);
+void diag_send_diag_mode_update(int real_time);
+void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
+							int real_time);
 
 #endif

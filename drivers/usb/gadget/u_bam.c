@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -567,17 +567,24 @@ static void gbam_start_io(struct gbam_port *port)
 			gbam_epout_complete, GFP_ATOMIC);
 	if (ret) {
 		pr_err("%s: rx req allocation failed\n", __func__);
+		spin_unlock_irqrestore(&port->port_lock_ul, flags);
 		return;
 	}
 
 	spin_unlock_irqrestore(&port->port_lock_ul, flags);
 	spin_lock_irqsave(&port->port_lock_dl, flags);
+	if (!port->port_usb) {
+		gbam_free_requests(ep, &d->rx_idle);
+		spin_unlock_irqrestore(&port->port_lock_dl, flags);
+		return;
+	}
 	ep = port->port_usb->in;
 	ret = gbam_alloc_requests(ep, &d->tx_idle, bam_mux_tx_q_size,
 			gbam_epin_complete, GFP_ATOMIC);
 	if (ret) {
 		pr_err("%s: tx req allocation failed\n", __func__);
 		gbam_free_requests(ep, &d->rx_idle);
+		spin_unlock_irqrestore(&port->port_lock_dl, flags);
 		return;
 	}
 

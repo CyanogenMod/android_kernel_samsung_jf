@@ -147,6 +147,8 @@ struct jc_ctrl_t {
 	bool samsung_app;
 	bool factory_bin;
 	int fw_retry_cnt;
+	int fps_mode;
+	int max_fps;
 };
 
 static struct jc_ctrl_t *jc_ctrl;
@@ -2530,6 +2532,70 @@ static int jc_set_shot_mode(int mode)
 	return rc;
 }
 
+static int jc_set_fps(int mode, int min, int max)
+{
+	int32_t rc = 0;
+
+	cam_info("Entered, fps mode : %d, min : %d, max : %d\n",
+		mode, min, max);
+
+	jc_ctrl->fps_mode = mode;
+	jc_ctrl->max_fps = max;
+
+	if (mode == 0) {
+		cam_info("Auto fps mode\n");
+		jc_writeb(0x02, 0xCF, 0x01);	/*zsl mode*/
+
+		if (min == 10000 && max == 30000) { /*LLS*/
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x15);
+		} else if (max == 24000) {
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x0C);
+		} else {
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x00);
+		}
+	} else if (mode == 1) {
+		cam_info("Fixed fps mode\n");
+		jc_writeb(0x02, 0xCF, 0x00);	/*non-zsl mode*/
+
+		if (max == 7000) {
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x09);
+		} else if (max == 15000) {
+			if (jc_ctrl->shot_mode == 0x0F) {/*CinePic*/
+				cam_info("CinePic FPS\n");
+				jc_writeb(JC_CATEGORY_AE,
+						JC_AE_EP_MODE_CAP, 0x17);
+			} else {
+				jc_writeb(JC_CATEGORY_AE,
+						JC_AE_EP_MODE_CAP, 0x04);
+			}
+		} else if (max == 24000) {
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x05);
+		} else if (max == 30000) {
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x02);
+		} else if (max == 60000) {
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x07);
+		} else if (max == 90000) {
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x0B);
+		} else if (max == 120) { /*120fps*/
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x08);
+		}
+	} else if (mode == 2) {
+		cam_info("Drama shot mode\n");
+		jc_writeb(JC_CATEGORY_AE,
+				JC_AE_EP_MODE_CAP, 0x16);
+	}
+	return rc;
+}
+
 static int jc_set_scene_mode(int mode)
 {
 	int32_t rc = 0;
@@ -2538,6 +2604,7 @@ static int jc_set_scene_mode(int mode)
 	jc_readb(JC_CATEGORY_SYS, JC_SYS_MODE, &isp_mode);
 
 	cam_info("Entered, scene mode %d / %d\n", mode, isp_mode);
+	cam_info("fps info %d / %d\n", jc_ctrl->fps_mode, jc_ctrl->max_fps);
 
 	if (isp_mode == JC_MONITOR_MODE) {
 		cam_info("monitor mode\n");
@@ -2547,18 +2614,29 @@ static int jc_set_scene_mode(int mode)
 		if (mode == 0) {
 			cam_info("auto scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x01);
+			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
 		} else if (mode == 5) {
 			cam_info("party scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x15);
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x20);
 		} else if (mode == 7) {
 			cam_info("sunset scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x16);
+			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
 		} else if (mode == 10) {
 			cam_info("night scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x17);
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x21);
 		} else if (mode == 20) {
 			cam_info("action scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x11);
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x11);
+		} else {
+			cam_info("etc scene\n");
+			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
 		}
 
 		jc_set_mode(JC_MONITOR_MODE);
@@ -2597,18 +2675,29 @@ static int jc_set_scene_mode(int mode)
 		if (mode == 0) {
 			cam_info("auto scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x01);
+			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
 		} else if (mode == 5) {
 			cam_info("party scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x15);
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x20);
 		} else if (mode == 7) {
 			cam_info("sunset scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x16);
+			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
 		} else if (mode == 10) {
 			cam_info("night scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x17);
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x21);
 		} else if (mode == 20) {
 			cam_info("action scene\n");
 			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x11);
+			jc_writeb(JC_CATEGORY_AE,
+					JC_AE_EP_MODE_CAP, 0x11);
+		} else {
+			cam_info("etc scene\n");
+			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
 		}
 	}
 
@@ -2673,67 +2762,6 @@ static int jc_set_softlanding(void)
 		}
 	}
 
-	return rc;
-}
-
-static int jc_set_fps(int mode, int min, int max)
-{
-	int32_t rc = 0;
-
-	cam_info("Entered, fps mode : %d, min : %d, max : %d\n",
-		mode, min, max);
-
-	if (mode == 0) {
-		cam_info("Auto fps mode\n");
-		jc_writeb(0x02, 0xCF, 0x01);	/*zsl mode*/
-
-		if (min == 10000 && max == 30000) { /*LLS*/
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x15);
-		} else if (max == 24000) {
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x0C);
-		} else {
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x00);
-		}
-	} else if (mode == 1) {
-		cam_info("Fixed fps mode\n");
-		jc_writeb(0x02, 0xCF, 0x00);	/*non-zsl mode*/
-
-		if (max == 7000) {
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x09);
-		} else if (max == 15000) {
-			if (jc_ctrl->shot_mode == 0x0F) {/*CinePic*/
-				cam_info("CinePic FPS\n");
-				jc_writeb(JC_CATEGORY_AE,
-						JC_AE_EP_MODE_CAP, 0x17);
-			} else {
-				jc_writeb(JC_CATEGORY_AE,
-						JC_AE_EP_MODE_CAP, 0x04);
-			}
-		} else if (max == 24000) {
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x05);
-		} else if (max == 30000) {
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x02);
-		} else if (max == 60000) {
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x07);
-		} else if (max == 90000) {
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x0B);
-		} else if (max == 120) { /*120fps*/
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x08);
-		}
-	} else if (mode == 2) {
-		cam_info("Drama shot mode\n");
-		jc_writeb(JC_CATEGORY_AE,
-				JC_AE_EP_MODE_CAP, 0x16);
-	}
 	return rc;
 }
 
@@ -3199,6 +3227,8 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	jc_ctrl->isp_null_read_sensor_fw = false;
 	jc_ctrl->touch_af_mode = false;
 	jc_ctrl->fw_retry_cnt = 0;
+	jc_ctrl->fps_mode = 0;
+	jc_ctrl->max_fps = 0;
 
 	rc = msm_camera_request_gpio_table(data, 1);
 	if (rc < 0)

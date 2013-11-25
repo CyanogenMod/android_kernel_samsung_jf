@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,6 +14,7 @@
 #include <linux/diagchar.h>
 #include <linux/platform_device.h>
 #include <linux/kmemleak.h>
+#include <linux/delay.h>
 #include "diagchar.h"
 #include "diagfwd.h"
 #include "diagfwd_cntl.h"
@@ -21,251 +22,231 @@
 static uint16_t reg_dirty;
 #define HDR_SIZ 8
 
-void diag_clean_modem_reg_fn(struct work_struct *work)
+void diag_clean_reg_fn(struct work_struct *work)
 {
-	pr_debug("diag: clean modem registration\n");
-	reg_dirty |= DIAG_CON_MPSS;
-	diag_clear_reg(MODEM_PROC);
-	reg_dirty ^= DIAG_CON_MPSS;
-}
-
-void diag_clean_lpass_reg_fn(struct work_struct *work)
-{
-	pr_debug("diag: clean lpass registration\n");
-	reg_dirty |= DIAG_CON_LPASS;
-	diag_clear_reg(LPASS_PROC);
-	reg_dirty ^= DIAG_CON_LPASS;
-}
-
-void diag_clean_wcnss_reg_fn(struct work_struct *work)
-{
-	pr_debug("diag: clean wcnss registration\n");
-	reg_dirty |= DIAG_CON_WCNSS;
-	diag_clear_reg(WCNSS_PROC);
-	reg_dirty ^= DIAG_CON_WCNSS;
-}
-
-void diag_smd_cntl_notify(void *ctxt, unsigned event)
-{
-	int r1, r2;
-
-	if (!(driver->ch_cntl))
+	struct diag_smd_info *smd_info = container_of(work,
+						struct diag_smd_info,
+						diag_notify_update_smd_work);
+	if (!smd_info)
 		return;
 
-	switch (event) {
-	case SMD_EVENT_DATA:
-		r1 = smd_read_avail(driver->ch_cntl);
-		r2 = smd_cur_packet_size(driver->ch_cntl);
-		if (r1 > 0 && r1 == r2)
-			queue_work(driver->diag_wq,
-				 &(driver->diag_read_smd_cntl_work));
-		else
-			pr_debug("diag: incomplete pkt on Modem CNTL ch\n");
-		break;
-	case SMD_EVENT_OPEN:
-		queue_work(driver->diag_cntl_wq,
-			 &(driver->diag_modem_mask_update_work));
-		break;
-	}
+	pr_debug("diag: clean registration for peripheral: %d\n",
+		smd_info->peripheral);
+
+	reg_dirty |= smd_info->peripheral_mask;
+	diag_clear_reg(smd_info->peripheral);
+	reg_dirty ^= smd_info->peripheral_mask;
+
+	smd_info->notify_context = 0;
 }
 
-void diag_smd_lpass_cntl_notify(void *ctxt, unsigned event)
+/* Process the data read from the smd control channel */
+int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
+								int total_recd)
 {
-	int r1, r2;
-
-	if (!(driver->chlpass_cntl))
-		return;
-
-	switch (event) {
-	case SMD_EVENT_DATA:
-		r1 = smd_read_avail(driver->chlpass_cntl);
-		r2 = smd_cur_packet_size(driver->chlpass_cntl);
-		if (r1 > 0 && r1 == r2)
-			queue_work(driver->diag_wq,
-				 &(driver->diag_read_smd_lpass_cntl_work));
-		else
-			pr_debug("diag: incomplete pkt on LPASS CNTL ch\n");
-		break;
-	case SMD_EVENT_OPEN:
-		queue_work(driver->diag_cntl_wq,
-			 &(driver->diag_lpass_mask_update_work));
-		break;
-	}
-}
-
-void diag_smd_wcnss_cntl_notify(void *ctxt, unsigned event)
-{
-	int r1, r2;
-
-	if (!(driver->ch_wcnss_cntl))
-		return;
-
-	switch (event) {
-	case SMD_EVENT_DATA:
-		r1 = smd_read_avail(driver->ch_wcnss_cntl);
-		r2 = smd_cur_packet_size(driver->ch_wcnss_cntl);
-		if (r1 > 0 && r1 == r2)
-			queue_work(driver->diag_wq,
-				 &(driver->diag_read_smd_wcnss_cntl_work));
-		else
-			pr_debug("diag: incomplete pkt on WCNSS CNTL ch\n");
-		break;
-	case SMD_EVENT_OPEN:
-		queue_work(driver->diag_cntl_wq,
-			 &(driver->diag_wcnss_mask_update_work));
-		break;
-	}
-}
-
-static void diag_smd_cntl_send_req(int proc_num)
-{
-	int data_len = 0, type = -1, count_bytes = 0, j, r, flag = 0;
+	int data_len = 0, type = -1, count_bytes = 0, j, flag = 0;
+	int feature_mask_len;
 	struct bindpkt_params_per_process *pkt_params =
-		 kzalloc(sizeof(struct bindpkt_params_per_process), GFP_KERNEL);
+		kzalloc(sizeof(struct bindpkt_params_per_process), GFP_KERNEL);
 	struct diag_ctrl_msg *msg;
 	struct cmd_code_range *range;
 	struct bindpkt_params *temp;
-	void *buf = NULL;
-	smd_channel_t *smd_ch = NULL;
-	/* tracks which peripheral is sending registration */
-	uint16_t reg_mask = 0;
 
 	if (pkt_params == NULL) {
-		pr_alert("diag: Memory allocation failure\n");
-		return;
+		pr_alert("diag: In %s, Memory allocation failure\n",
+			__func__);
+		return 0;
 	}
 
-	if (proc_num == MODEM_PROC) {
-		buf = driver->buf_in_cntl;
-		smd_ch = driver->ch_cntl;
-		reg_mask = DIAG_CON_MPSS;
-	} else if (proc_num == LPASS_PROC) {
-		buf = driver->buf_in_lpass_cntl;
-		smd_ch = driver->chlpass_cntl;
-		reg_mask = DIAG_CON_LPASS;
-	} else if (proc_num == WCNSS_PROC) {
-		buf = driver->buf_in_wcnss_cntl;
-		smd_ch = driver->ch_wcnss_cntl;
-		reg_mask = DIAG_CON_WCNSS;
-	}
-
-	if (!smd_ch || !buf) {
+	if (!smd_info) {
+		pr_err("diag: In %s, No smd info. Not able to read.\n",
+			__func__);
 		kfree(pkt_params);
-		return;
+		return 0;
 	}
 
-	r = smd_read_avail(smd_ch);
-	if (r > IN_BUF_SIZE) {
-		if (r < MAX_IN_BUF_SIZE) {
-			pr_err("diag: SMD CNTL sending pkt upto %d bytes", r);
-			buf = krealloc(buf, r, GFP_KERNEL);
-		} else {
-			pr_err("diag: CNTL pkt > %d bytes", MAX_IN_BUF_SIZE);
-			kfree(pkt_params);
-			return;
+	while (count_bytes + HDR_SIZ <= total_recd) {
+		type = *(uint32_t *)(buf);
+		data_len = *(uint32_t *)(buf + 4);
+		if (type < DIAG_CTRL_MSG_REG ||
+				 type > DIAG_CTRL_MSG_LAST) {
+			pr_alert("diag: In %s, Invalid Msg type %d proc %d",
+				 __func__, type, smd_info->peripheral);
+			break;
 		}
-	}
-	if (buf && r > 0) {
-		smd_read(smd_ch, buf, r);
-		while (count_bytes + HDR_SIZ <= r) {
-			type = *(uint32_t *)(buf);
-			data_len = *(uint32_t *)(buf + 4);
-			if (type < DIAG_CTRL_MSG_REG ||
-					 type > DIAG_CTRL_MSG_F3_MASK_V2) {
-				pr_alert("diag: Invalid Msg type %d proc %d",
-					 type, proc_num);
-				break;
-			}
-			if (data_len < 0 || data_len > r) {
-				pr_alert("diag: Invalid data len %d proc %d",
-					 data_len, proc_num);
-				break;
-			}
-			count_bytes = count_bytes+HDR_SIZ+data_len;
-			if (type == DIAG_CTRL_MSG_REG && r >= count_bytes) {
-				msg = buf+HDR_SIZ;
-				range = buf+HDR_SIZ+
-						sizeof(struct diag_ctrl_msg);
-				pkt_params->count = msg->count_entries;
-				temp = kzalloc(pkt_params->count * sizeof(struct
-						 bindpkt_params), GFP_KERNEL);
-				if (temp == NULL) {
-					pr_alert("diag: Memory alloc fail\n");
-					kfree(pkt_params);
-					return;
-				}
-				for (j = 0; j < pkt_params->count; j++) {
-					temp->cmd_code = msg->cmd_code;
-					temp->subsys_id = msg->subsysid;
-					temp->client_id = proc_num;
-					temp->proc_id = proc_num;
-					temp->cmd_code_lo = range->cmd_code_lo;
-					temp->cmd_code_hi = range->cmd_code_hi;
-					range++;
-					temp++;
-				}
-				temp -= pkt_params->count;
-				pkt_params->params = temp;
-				flag = 1;
-				/* peripheral undergoing SSR should not
-				 * record new registration
-				 */
-				if (!(reg_dirty & reg_mask))
-					diagchar_ioctl(NULL,
-					 DIAG_IOCTL_COMMAND_REG, (unsigned long)
-								pkt_params);
-				else
-					pr_err("diag: drop reg proc %d\n",
-								 proc_num);
-				kfree(temp);
-			}
-			buf = buf + HDR_SIZ + data_len;
+		if (data_len < 0 || data_len > total_recd) {
+			pr_alert("diag: In %s, Invalid data len %d, total_recd: %d, proc %d",
+				 __func__, data_len, total_recd,
+				 smd_info->peripheral);
+			break;
 		}
+		count_bytes = count_bytes+HDR_SIZ+data_len;
+		if (type == DIAG_CTRL_MSG_REG && total_recd >= count_bytes) {
+			msg = buf+HDR_SIZ;
+			range = buf+HDR_SIZ+
+					sizeof(struct diag_ctrl_msg);
+			pkt_params->count = msg->count_entries;
+			pkt_params->params = kzalloc(pkt_params->count *
+				sizeof(struct bindpkt_params), GFP_KERNEL);
+			if (ZERO_OR_NULL_PTR(pkt_params->params)) {
+				pr_alert("diag: In %s, Memory alloc fail\n",
+					__func__);
+				kfree(pkt_params);
+				return flag;
+			}
+			temp = pkt_params->params;
+			for (j = 0; j < pkt_params->count; j++) {
+				temp->cmd_code = msg->cmd_code;
+				temp->subsys_id = msg->subsysid;
+				temp->client_id = smd_info->peripheral;
+				temp->proc_id = NON_APPS_PROC;
+				temp->cmd_code_lo = range->cmd_code_lo;
+				temp->cmd_code_hi = range->cmd_code_hi;
+				range++;
+				temp++;
+			}
+			flag = 1;
+			/* peripheral undergoing SSR should not
+			 * record new registration
+			 */
+			if (!(reg_dirty & smd_info->peripheral_mask))
+				diagchar_ioctl(NULL, DIAG_IOCTL_COMMAND_REG,
+						(unsigned long)pkt_params);
+			else
+				pr_err("diag: drop reg proc %d\n",
+						smd_info->peripheral);
+			kfree(pkt_params->params);
+		} else if ((type == DIAG_CTRL_MSG_FEATURE) &&
+				(smd_info->peripheral == MODEM_DATA)) {
+			feature_mask_len = *(int *)(buf + 8);
+			driver->log_on_demand_support = (*(uint8_t *)
+							 (buf + 12)) & 0x04;
+		} else if (type != DIAG_CTRL_MSG_REG) {
+			flag = 1;
+		}
+		buf = buf + HDR_SIZ + data_len;
 	}
 	kfree(pkt_params);
-	if (flag) {
-		/* Poll SMD CNTL channels to check for data */
-		if (proc_num == MODEM_PROC)
-			diag_smd_cntl_notify(NULL, SMD_EVENT_DATA);
-		else if (proc_num == LPASS_PROC)
-			diag_smd_lpass_cntl_notify(NULL, SMD_EVENT_DATA);
-		else if (proc_num == WCNSS_PROC)
-			diag_smd_wcnss_cntl_notify(NULL, SMD_EVENT_DATA);
+
+	return flag;
+}
+
+void diag_send_diag_mode_update(int real_time)
+{
+	int i;
+
+	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++)
+		diag_send_diag_mode_update_by_smd(&driver->smd_cntl[i],
+							real_time);
+}
+
+void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
+							int real_time)
+{
+	struct diag_ctrl_msg_diagmode diagmode;
+	char buf[sizeof(struct diag_ctrl_msg_diagmode)];
+	int msg_size = sizeof(struct diag_ctrl_msg_diagmode);
+	int wr_size = -ENOMEM, retry_count = 0, timer;
+	struct diag_smd_info *data = NULL;
+
+	/* For now only allow the modem to receive the message */
+	if (!smd_info || smd_info->type != SMD_CNTL_TYPE ||
+		(smd_info->peripheral != MODEM_DATA))
+		return;
+
+	data = &driver->smd_data[smd_info->peripheral];
+	if (!data)
+		return;
+
+	mutex_lock(&driver->diag_cntl_mutex);
+	diagmode.ctrl_pkt_id = DIAG_CTRL_MSG_DIAGMODE;
+	diagmode.ctrl_pkt_data_len = 36;
+	diagmode.version = 1;
+	diagmode.sleep_vote = real_time ? 1 : 0;
+	/*
+	 * 0 - Disables real-time logging (to prevent
+	 *     frequent APPS wake-ups, etc.).
+	 * 1 - Enable real-time logging
+	 */
+	diagmode.real_time = real_time;
+	diagmode.use_nrt_values = 0;
+	diagmode.commit_threshold = 0;
+	diagmode.sleep_threshold = 0;
+	diagmode.sleep_time = 0;
+	diagmode.drain_timer_val = 0;
+	diagmode.event_stale_timer_val = 0;
+
+	memcpy(buf, &diagmode, msg_size);
+
+	if (smd_info->ch) {
+		while (retry_count < 3) {
+			wr_size = smd_write(smd_info->ch, buf, msg_size);
+			if (wr_size == -ENOMEM) {
+				/*
+				 * The smd channel is full. Delay while
+				 * smd processes existing data and smd
+				 * has memory become available. The delay
+				 * of 2000 was determined empirically as
+				 * best value to use.
+				 */
+				retry_count++;
+				for (timer = 0; timer < 5; timer++)
+					udelay(2000);
+			} else {
+				data =
+				&driver->smd_data[smd_info->peripheral];
+				driver->real_time_mode = real_time;
+				break;
+			}
+		}
+		if (wr_size != msg_size)
+			pr_err("diag: proc %d fail feature update %d, tried %d",
+				smd_info->peripheral,
+				wr_size, msg_size);
+	} else {
+		pr_err("diag: ch invalid, feature update on proc %d\n",
+				smd_info->peripheral);
 	}
-}
+	process_lock_enabling(&data->nrt_lock, real_time);
 
-void diag_read_smd_cntl_work_fn(struct work_struct *work)
-{
-	diag_smd_cntl_send_req(MODEM_PROC);
-}
-
-void diag_read_smd_lpass_cntl_work_fn(struct work_struct *work)
-{
-	diag_smd_cntl_send_req(LPASS_PROC);
-}
-
-void diag_read_smd_wcnss_cntl_work_fn(struct work_struct *work)
-{
-	diag_smd_cntl_send_req(WCNSS_PROC);
+	mutex_unlock(&driver->diag_cntl_mutex);
 }
 
 static int diag_smd_cntl_probe(struct platform_device *pdev)
 {
 	int r = 0;
+	int index = -1;
 
 	/* open control ports only on 8960 & newer targets */
 	if (chk_apps_only()) {
-		if (pdev->id == SMD_APPS_MODEM)
-			r = smd_open("DIAG_CNTL", &driver->ch_cntl, driver,
-							diag_smd_cntl_notify);
-		if (pdev->id == SMD_APPS_QDSP)
-			r = smd_named_open_on_edge("DIAG_CNTL", SMD_APPS_QDSP
-					, &driver->chlpass_cntl, driver,
-					diag_smd_lpass_cntl_notify);
-		if (pdev->id == SMD_APPS_WCNSS)
+		if (pdev->id == SMD_APPS_MODEM) {
+			index = MODEM_DATA;
+			r = smd_open("DIAG_CNTL",
+					&driver->smd_cntl[index].ch,
+					&driver->smd_cntl[index],
+					diag_smd_notify);
+			driver->smd_cntl[index].ch_save =
+					driver->smd_cntl[index].ch;
+		} else if (pdev->id == SMD_APPS_QDSP) {
+			index = LPASS_DATA;
+			r = smd_named_open_on_edge("DIAG_CNTL",
+					SMD_APPS_QDSP,
+					&driver->smd_cntl[index].ch,
+					&driver->smd_cntl[index],
+					diag_smd_notify);
+			driver->smd_cntl[index].ch_save =
+					driver->smd_cntl[index].ch;
+		} else if (pdev->id == SMD_APPS_WCNSS) {
+			index = WCNSS_DATA;
 			r = smd_named_open_on_edge("APPS_RIVA_CTRL",
-				SMD_APPS_WCNSS, &driver->ch_wcnss_cntl,
-					driver, diag_smd_wcnss_cntl_notify);
+					SMD_APPS_WCNSS,
+					&driver->smd_cntl[index].ch,
+					&driver->smd_cntl[index],
+					diag_smd_notify);
+			driver->smd_cntl[index].ch_save =
+					driver->smd_cntl[index].ch;
+		}
+
 		pr_debug("diag: open CNTL port, ID = %d,r = %d\n", pdev->id, r);
 	}
 	return 0;
@@ -310,53 +291,52 @@ static struct platform_driver diag_smd_lite_cntl_driver = {
 
 void diagfwd_cntl_init(void)
 {
+	int success;
+	int i;
+
 	reg_dirty = 0;
 	driver->polling_reg_flag = 0;
+	driver->log_on_demand_support = 1;
 	driver->diag_cntl_wq = create_singlethread_workqueue("diag_cntl_wq");
-	if (driver->buf_in_cntl == NULL) {
-		driver->buf_in_cntl = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
-		if (driver->buf_in_cntl == NULL)
-			goto err;
-		kmemleak_not_leak(driver->buf_in_cntl);
-	}
-	if (driver->buf_in_lpass_cntl == NULL) {
-		driver->buf_in_lpass_cntl = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
-		if (driver->buf_in_lpass_cntl == NULL)
-			goto err;
-		kmemleak_not_leak(driver->buf_in_lpass_cntl);
-	}
-	if (driver->buf_in_wcnss_cntl == NULL) {
-		driver->buf_in_wcnss_cntl = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
-		if (driver->buf_in_wcnss_cntl == NULL)
-			goto err;
-		kmemleak_not_leak(driver->buf_in_wcnss_cntl);
-	}
+
+	success = diag_smd_constructor(&driver->smd_cntl[MODEM_DATA],
+					MODEM_DATA, SMD_CNTL_TYPE);
+	if (!success)
+		goto err;
+
+	success = diag_smd_constructor(&driver->smd_cntl[LPASS_DATA],
+					LPASS_DATA, SMD_CNTL_TYPE);
+	if (!success)
+		goto err;
+
+	success = diag_smd_constructor(&driver->smd_cntl[WCNSS_DATA],
+					WCNSS_DATA, SMD_CNTL_TYPE);
+	if (!success)
+		goto err;
+
 	platform_driver_register(&msm_smd_ch1_cntl_driver);
 	platform_driver_register(&diag_smd_lite_cntl_driver);
 
 	return;
 err:
-		pr_err("diag: Could not initialize diag buffers");
-		kfree(driver->buf_in_cntl);
-		kfree(driver->buf_in_lpass_cntl);
-		kfree(driver->buf_in_wcnss_cntl);
-		if (driver->diag_cntl_wq)
-			destroy_workqueue(driver->diag_cntl_wq);
+	pr_err("diag: Could not initialize diag buffers");
+
+	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++)
+		diag_smd_destructor(&driver->smd_cntl[i]);
+
+	if (driver->diag_cntl_wq)
+		destroy_workqueue(driver->diag_cntl_wq);
 }
 
 void diagfwd_cntl_exit(void)
 {
-	smd_close(driver->ch_cntl);
-	smd_close(driver->chlpass_cntl);
-	smd_close(driver->ch_wcnss_cntl);
-	driver->ch_cntl = 0;
-	driver->chlpass_cntl = 0;
-	driver->ch_wcnss_cntl = 0;
+	int i;
+
+	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++)
+		diag_smd_destructor(&driver->smd_cntl[i]);
+
 	destroy_workqueue(driver->diag_cntl_wq);
+
 	platform_driver_unregister(&msm_smd_ch1_cntl_driver);
 	platform_driver_unregister(&diag_smd_lite_cntl_driver);
-
-	kfree(driver->buf_in_cntl);
-	kfree(driver->buf_in_lpass_cntl);
-	kfree(driver->buf_in_wcnss_cntl);
 }

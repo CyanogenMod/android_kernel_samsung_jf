@@ -1,7 +1,7 @@
 /*
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc.c 401625 2013-05-13 03:24:35Z $
+ * $Id: bcmsdh_sdmmc.c 427054 2013-10-02 03:38:35Z $
  */
 #include <typedefs.h>
 
@@ -176,7 +176,6 @@ sdioh_attach(osl_t *osh, void *bar0, uint irq)
 
 		sd->client_block_size[1] = 64;
 		err_ret = sdio_set_block_size(gInstance->func[1], 64);
-
 		/* Release host controller F1 */
 		sdio_release_host(gInstance->func[1]);
 		if (err_ret) {
@@ -184,6 +183,7 @@ sdioh_attach(osl_t *osh, void *bar0, uint irq)
 			MFREE(sd->osh, sd, sizeof(sdioh_info_t));
 			return NULL;
 		}
+
 	} else {
 		sd_err(("%s:gInstance->func[1] is null\n", __FUNCTION__));
 		MFREE(sd->osh, sd, sizeof(sdioh_info_t));
@@ -196,7 +196,6 @@ sdioh_attach(osl_t *osh, void *bar0, uint irq)
 
 		sd->client_block_size[2] = sd_f2_blocksize;
 		err_ret = sdio_set_block_size(gInstance->func[2], sd_f2_blocksize);
-
 		/* Release host controller F2 */
 		sdio_release_host(gInstance->func[2]);
 		if (err_ret) {
@@ -205,6 +204,7 @@ sdioh_attach(osl_t *osh, void *bar0, uint irq)
 			MFREE(sd->osh, sd, sizeof(sdioh_info_t));
 			return NULL;
 		}
+
 	} else {
 		sd_err(("%s:gInstance->func[2] is null\n", __FUNCTION__));
 		MFREE(sd->osh, sd, sizeof(sdioh_info_t));
@@ -846,10 +846,6 @@ sdioh_request_byte(sdioh_info_t *sd, uint rw, uint func, uint regaddr, uint8 *by
 #if defined(MMC_SDIO_ABORT)
 			/* to allow abort command through F1 */
 			else if (regaddr == SDIOD_CCCR_IOABORT) {
-				/* Because of SDIO3.0 host issue on Manta,
-				 * sometimes the abort fails.
-				 * Retrying again will fix this issue.
-				 */
 				while (sdio_abort_retry--) {
 					if (gInstance->func[func]) {
 						sdio_claim_host(gInstance->func[func]);
@@ -929,7 +925,6 @@ sdioh_request_word(sdioh_info_t *sd, uint cmd_type, uint rw, uint func, uint add
 
 	DHD_PM_RESUME_WAIT(sdioh_request_word_wait);
 	DHD_PM_RESUME_RETURN_ERROR(SDIOH_API_RC_FAIL);
-
 	/* Claim host controller */
 	sdio_claim_host(gInstance->func[func]);
 
@@ -1009,7 +1004,6 @@ void
 sdioh_glom_clear(sdioh_info_t *sd)
 {
 	void *pnow, *pnext;
-	uint8 i = 0;
 
 	pnext = sd->glom_info.glom_pkt_head;
 
@@ -1023,7 +1017,6 @@ sdioh_glom_clear(sdioh_info_t *sd)
 		pnext = PKTNEXT(sd->osh, pnow);
 		PKTSETNEXT(sd->osh, pnow, NULL);
 		sd->glom_info.count--;
-		i++;
 	}
 
 	sd->glom_info.glom_pkt_head = NULL;
@@ -1051,6 +1044,28 @@ sdioh_glom_enabled(void)
 	return sd_txglom;
 }
 #endif /* BCMSDIOH_TXGLOM */
+
+static INLINE int sdioh_request_packet_align(uint pkt_len, uint write, uint func, int blk_size)
+{
+	/* Align Patch */
+	if (!write || pkt_len < 32)
+		pkt_len = (pkt_len + 3) & 0xFFFFFFFC;
+	else if ((pkt_len > blk_size) && (pkt_len % blk_size)) {
+		if (func == SDIO_FUNC_2) {
+			sd_err(("%s: [%s] dhd_sdio must align %d bytes"
+			" packet larger than a %d bytes blk size by a blk size\n",
+			__FUNCTION__, write ? "W" : "R", pkt_len, blk_size));
+		}
+		pkt_len += blk_size - (pkt_len % blk_size);
+	}
+#ifdef CONFIG_MMC_MSM7X00A
+	if ((pkt_len % 64) == 32) {
+		sd_err(("%s: Rounding up TX packet +=32\n", __FUNCTION__));
+		pkt_len += 32;
+	}
+#endif /* CONFIG_MMC_MSM7X00A */
+	return pkt_len;
+}
 
 static SDIOH_API_RC
 sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
@@ -1096,7 +1111,7 @@ sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
 #ifdef BCMSDIOH_TXGLOM
 		(need_txglom && sd->txglom_mode == SDPCM_TXGLOM_MDESC) ||
 #endif
-		0) && (ttl_len > blk_size)) {
+		0) && (ttl_len >= blk_size)) {
 		blk_num = ttl_len / blk_size;
 		dma_len = blk_num * blk_size;
 	} else {
@@ -1182,6 +1197,7 @@ sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
 		for (pnext = pkt; pnext; pnext = PKTNEXT(sd->osh, pnext)) {
 			uint8 *buf = (uint8*)PKTDATA(sd->osh, pnext) +
 				xfred_len;
+			int pad = 0;
 			pkt_len = PKTLEN(sd->osh, pnext);
 			if (0 != xfred_len) {
 				pkt_len -= xfred_len;
@@ -1190,10 +1206,22 @@ sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
 #ifdef BCMSDIOH_TXGLOM
 			if (need_txglom) {
 				if (!localbuf) {
+					uint prev_lft_len = lft_len;
+					lft_len = sdioh_request_packet_align(lft_len, write,
+						func, blk_size);
+
+					if (lft_len > prev_lft_len) {
+						sd_err(("%s: padding is unexpected! lft_len %d,"
+							" prev_lft_len %d %s\n",
+							__FUNCTION__, lft_len, prev_lft_len,
+							write ? "Write" : "Read"));
+					}
+
 					localbuf = (uint8 *)MALLOC(sd->osh, lft_len);
 					if (localbuf == NULL) {
 						sd_err(("%s: %s TXGLOM: localbuf malloc FAILED\n",
 							__FUNCTION__, (write) ? "TX" : "RX"));
+						need_txglom = FALSE;
 						goto txglomfail;
 					}
 				}
@@ -1211,22 +1239,37 @@ sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
 txglomfail:
 #endif /* BCMSDIOH_TXGLOM */
 
-			/* Align Patch */
-			if (!write || pkt_len < 32)
-				pkt_len = (pkt_len + 3) & 0xFFFFFFFC;
-			else if (pkt_len % blk_size)
-				pkt_len += blk_size - (pkt_len % blk_size);
+			if (
+#ifdef BCMSDIOH_TXGLOM
+				!need_txglom &&
+#endif
+				TRUE) {
+				int align_pkt_len = 0;
+				align_pkt_len = sdioh_request_packet_align(pkt_len, write,
+					func, blk_size);
 
-#if defined(CUSTOMER_HW4) && defined(USE_DYNAMIC_F2_BLKSIZE)
-			if (write && pkt_len > 64 && (pkt_len % 64) == 32)
-				pkt_len += 32;
-#endif /* CUSTOMER_HW4 && USE_DYNAMIC_F2_BLKSIZE */
-#ifdef CONFIG_MMC_MSM7X00A
-			if ((pkt_len % 64) == 32) {
-				sd_trace(("%s: Rounding up TX packet +=32\n", __FUNCTION__));
-				pkt_len += 32;
+				pad = align_pkt_len - pkt_len;
+				if (pad > 0) {
+					if (func == SDIO_FUNC_2) {
+						sd_err(("%s: padding is unexpected! pkt_len %d,"
+						" PKTLEN %d lft_len %d %s\n",
+						__FUNCTION__, pkt_len, PKTLEN(sd->osh, pnext),
+							lft_len, write ? "Write" : "Read"));
+					}
+					if (PKTTAILROOM(sd->osh, pkt) < pad) {
+						sd_info(("%s: insufficient tailroom %d, pad %d,"
+						" lft_len %d pktlen %d, func %d %s\n",
+						__FUNCTION__, (int)PKTTAILROOM(sd->osh, pkt),
+						pad, lft_len, PKTLEN(sd->osh, pnext), func,
+						write ? "W" : "R"));
+						if (PKTPADTAILROOM(sd->osh, pkt, pad)) {
+							sd_err(("%s: padding error size %d.\n",
+								__FUNCTION__, pad));
+							return SDIOH_API_RC_FAIL;
+						}
+					}
+				}
 			}
-#endif /* CONFIG_MMC_MSM7X00A */
 
 			if ((write) && (!fifo))
 				err_ret = sdio_memcpy_toio(
@@ -1285,87 +1328,51 @@ txglomfail:
  */
 extern SDIOH_API_RC
 sdioh_request_buffer(sdioh_info_t *sd, uint pio_dma, uint fix_inc, uint write, uint func,
-                     uint addr, uint reg_width, uint buflen_u, uint8 *buffer, void *pkt)
+	uint addr, uint reg_width, uint buflen_u, uint8 *buffer, void *pkt)
 {
 	SDIOH_API_RC Status;
-	void *mypkt = NULL;
+	void *tmppkt;
+	void *orig_buf = NULL;
+	uint copylen = 0;
 
 	sd_trace(("%s: Enter\n", __FUNCTION__));
 
 	DHD_PM_RESUME_WAIT(sdioh_request_buffer_wait);
 	DHD_PM_RESUME_RETURN_ERROR(SDIOH_API_RC_FAIL);
-	/* Case 1: we don't have a packet. */
+
 	if (pkt == NULL) {
-		sd_data(("%s: Creating new %s Packet, len=%d\n",
-		         __FUNCTION__, write ? "TX" : "RX", buflen_u));
-#ifdef CONFIG_DHD_USE_STATIC_BUF
-		if (!(mypkt = PKTGET_STATIC(sd->osh, buflen_u, write ? TRUE : FALSE))) {
-#else
-		if (!(mypkt = PKTGET(sd->osh, buflen_u, write ? TRUE : FALSE))) {
-#endif /* CONFIG_DHD_USE_STATIC_BUF */
-			sd_err(("%s: PKTGET failed: len %d\n",
-			           __FUNCTION__, buflen_u));
-			return SDIOH_API_RC_FAIL;
-		}
-
-		/* For a write, copy the buffer data into the packet. */
-		if (write) {
-			bcopy(buffer, PKTDATA(sd->osh, mypkt), buflen_u);
-		}
-
-		Status = sdioh_request_packet(sd, fix_inc, write, func, addr, mypkt);
-
-		/* For a read, copy the packet data back to the buffer. */
-		if (!write) {
-			bcopy(PKTDATA(sd->osh, mypkt), buffer, buflen_u);
-		}
-#ifdef CONFIG_DHD_USE_STATIC_BUF
-		PKTFREE_STATIC(sd->osh, mypkt, write ? TRUE : FALSE);
-#else
-		PKTFREE(sd->osh, mypkt, write ? TRUE : FALSE);
-#endif /* CONFIG_DHD_USE_STATIC_BUF */
-	} else if (((ulong)(PKTDATA(sd->osh, pkt)) & DMA_ALIGN_MASK) != 0) {
-		/* Case 2: We have a packet, but it is unaligned. */
-
-		/* In this case, we cannot have a chain. */
+		/* Case 1: we don't have a packet. */
+		orig_buf = buffer;
+		copylen = buflen_u;
+	} else if ((ulong)PKTDATA(sd->osh, pkt) & DMA_ALIGN_MASK) {
+		/* Case 2: We have a packet, but it is unaligned.
+		 * in this case, we cannot have a chain.
+		 */
 		ASSERT(PKTNEXT(sd->osh, pkt) == NULL);
 
-		sd_data(("%s: Creating aligned %s Packet, len=%d\n",
-		         __FUNCTION__, write ? "TX" : "RX", PKTLEN(sd->osh, pkt)));
-#ifdef CONFIG_DHD_USE_STATIC_BUF
-		if (!(mypkt = PKTGET_STATIC(sd->osh, PKTLEN(sd->osh, pkt), write ? TRUE : FALSE))) {
-#else
-		if (!(mypkt = PKTGET(sd->osh, PKTLEN(sd->osh, pkt), write ? TRUE : FALSE))) {
-#endif /* CONFIG_DHD_USE_STATIC_BUF */
-			sd_err(("%s: PKTGET failed: len %d\n",
-			           __FUNCTION__, PKTLEN(sd->osh, pkt)));
+		orig_buf =	PKTDATA(sd->osh, pkt);
+		copylen = PKTLEN(sd->osh, pkt);
+	}
+
+	tmppkt = pkt;
+	if (copylen) {
+		tmppkt = PKTGET_STATIC(sd->osh, copylen, write ? TRUE : FALSE);
+		if (tmppkt == NULL) {
+			sd_err(("%s: PKTGET failed: len %d\n", __FUNCTION__, copylen));
 			return SDIOH_API_RC_FAIL;
 		}
-
 		/* For a write, copy the buffer data into the packet. */
-		if (write) {
-			bcopy(PKTDATA(sd->osh, pkt),
-			      PKTDATA(sd->osh, mypkt),
-			      PKTLEN(sd->osh, pkt));
-		}
+		if (write)
+			bcopy(orig_buf, PKTDATA(sd->osh, tmppkt), copylen);
+	}
 
-		Status = sdioh_request_packet(sd, fix_inc, write, func, addr, mypkt);
+	Status = sdioh_request_packet(sd, fix_inc, write, func, addr, tmppkt);
 
+	if (copylen) {
 		/* For a read, copy the packet data back to the buffer. */
-		if (!write) {
-			bcopy(PKTDATA(sd->osh, mypkt),
-			      PKTDATA(sd->osh, pkt),
-			      PKTLEN(sd->osh, mypkt));
-		}
-#ifdef CONFIG_DHD_USE_STATIC_BUF
-		PKTFREE_STATIC(sd->osh, mypkt, write ? TRUE : FALSE);
-#else
-		PKTFREE(sd->osh, mypkt, write ? TRUE : FALSE);
-#endif /* CONFIG_DHD_USE_STATIC_BUF */
-	} else { /* case 3: We have a packet and it is aligned. */
-		sd_data(("%s: Aligned %s Packet, direct DMA\n",
-		         __FUNCTION__, write ? "Tx" : "Rx"));
-		Status = sdioh_request_packet(sd, fix_inc, write, func, addr, pkt);
+		if (!write)
+			bcopy(PKTDATA(sd->osh, tmppkt), orig_buf, PKTLEN(sd->osh, tmppkt));
+		PKTFREE_STATIC(sd->osh, tmppkt, write ? TRUE : FALSE);
 	}
 
 	return (Status);

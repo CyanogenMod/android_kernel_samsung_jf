@@ -51,7 +51,7 @@ make_env = os.environ
 pwd = os.environ.get("PWD")
 make_env.update({
         'ARCH': 'arm',
-        'CROSS_COMPILE': pwd + '/../prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-',
+        'CROSS_COMPILE': pwd + '/../prebuilts/gcc/linux-x86/arm/arm-eabi-4.7/bin/arm-eabi-',
         'KCONFIG_NOTIMESTAMP': 'true' })
 all_options = {}
 
@@ -231,6 +231,9 @@ def main():
     parser.add_option('-m', '--make-target', action='append',
             help='Build the indicated make target (default: %s)' %
                  ' '.join(make_command))
+    parser.add_option('-i', '--ignore-errors', action='store_true', 
+            dest="ignore",
+            help="Ignore errors from commands")
 
     (options, args) = parser.parse_args()
     global all_options
@@ -251,6 +254,9 @@ def main():
         make_command.append("-j%d" % options.jobs)
     if options.load_average:
         make_command.append("-l%d" % options.load_average)
+    if options.ignore:
+        make_command.append("-i")
+        make_command.append("-k")
 
     if args == ['all']:
         build_many(configs, configs.keys())
