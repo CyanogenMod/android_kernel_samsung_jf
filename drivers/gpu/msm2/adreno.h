@@ -86,15 +86,6 @@ enum adreno_gpurev {
 	ADRENO_REV_A420 = 420,
 };
 
-enum coresight_debug_reg {
-	DEBUG_BUS_CTL,
-	TRACE_STOP_CNT,
-	TRACE_START_CNT,
-	TRACE_PERIOD_CNT,
-	TRACE_CMD,
-	TRACE_BUS_CTL,
-};
-
 #define ADRENO_SOFT_FAULT BIT(0)
 #define ADRENO_HARD_FAULT BIT(1)
 #define ADRENO_TIMEOUT_FAULT BIT(2)
@@ -381,10 +372,6 @@ struct adreno_gpudev {
 		unsigned int counter, unsigned int countable);
 	uint64_t (*perfcounter_read)(struct adreno_device *adreno_dev,
 		unsigned int group, unsigned int counter);
-	int (*coresight_enable) (struct kgsl_device *device);
-	void (*coresight_disable) (struct kgsl_device *device);
-	void (*coresight_config_debug_reg) (struct kgsl_device *device,
-			int debug_reg, unsigned int val);
 	void (*soft_reset)(struct adreno_device *device);
 	void (*postmortem_dump)(struct adreno_device *adreno_dev);
 };
@@ -453,11 +440,6 @@ extern const unsigned int a4xx_registers[];
 extern const unsigned int a4xx_registers_count;
 
 extern unsigned int ft_detect_regs[];
-
-int adreno_coresight_enable(struct coresight_device *csdev);
-void adreno_coresight_disable(struct coresight_device *csdev);
-void adreno_coresight_remove(struct platform_device *pdev);
-int adreno_coresight_init(struct platform_device *pdev);
 
 int adreno_idle(struct kgsl_device *device);
 bool adreno_isidle(struct kgsl_device *device);

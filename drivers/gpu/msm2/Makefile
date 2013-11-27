@@ -25,7 +25,6 @@ msm_adreno-y += \
 	adreno_dispatch.o \
 	adreno_postmortem.o \
 	adreno_snapshot.o \
-	adreno_coresight.o \
 	adreno_trace.o \
 	adreno_a2xx.o \
 	adreno_a2xx_trace.o \
