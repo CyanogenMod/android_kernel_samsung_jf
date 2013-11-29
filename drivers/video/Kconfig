@@ -25,7 +25,13 @@ source "drivers/gpu/stub/Kconfig"
 
 source "drivers/gpu/ion/Kconfig"
 
+if !ARCH_APQ8064
 source "drivers/gpu/msm/Kconfig"
+endif
+
+if ARCH_APQ8064
+source "drivers/gpu/msm2/Kconfig"
+endif
 
 config VGASTATE
        tristate
