@@ -2,7 +2,7 @@
  * Linux-specific abstractions to gain some independence from linux kernel versions.
  * Pave over some 2.2 versus 2.4 versus 2.6 kernel differences.
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -22,12 +22,13 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linuxver.h 416251 2013-08-02 10:57:29Z $
+ * $Id: linuxver.h 417757 2013-08-12 12:24:45Z $
  */
 
 #ifndef _linuxver_h_
 #define _linuxver_h_
 
+#include <typedefs.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #include <linux/config.h>
@@ -98,7 +99,10 @@
 #endif
 #endif	
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define DAEMONIZE(a)
+#elif ((LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)) && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)))
 #define DAEMONIZE(a) daemonize(a); \
 	allow_signal(SIGKILL); \
 	allow_signal(SIGTERM);
@@ -151,7 +155,11 @@ typedef irqreturn_t(*FN_ISR) (int irq, void *dev_id, struct pt_regs *ptregs);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 #include <linux/sched.h>
-#endif
+#endif 
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#include <linux/sched/rt.h>
+#endif 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
 #include <net/lib80211.h>
@@ -485,11 +493,11 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #endif
 
 typedef struct {
-	void 	*parent;  
-	char 	*proc_name;
+	void	*parent;  
+	char	*proc_name;
 	struct	task_struct *p_task;
-	long 	thr_pid;
-	int 	prio; 
+	long	thr_pid;
+	int		prio; 
 	struct	semaphore sema;
 	int	terminated;
 	struct	completion completed;
@@ -522,7 +530,7 @@ static inline bool binary_sema_down(tsk_ctl_t *tsk)
 		return TRUE;
 }
 
-static inline bool  binary_sema_up(tsk_ctl_t *tsk)
+static inline bool binary_sema_up(tsk_ctl_t *tsk)
 {
 	bool sem_up = FALSE;
 	unsigned long flags = 0;
@@ -657,6 +665,18 @@ do {									\
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #define netdev_priv(dev) dev->priv
+#endif 
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define RANDOM32	prandom_u32
+#else
+#define RANDOM32	random32
+#endif 
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define SRANDOM32(entropy)	prandom_seed(entropy)
+#else
+#define SRANDOM32(entropy)	srandom32(entropy)
 #endif 
 
 #endif 

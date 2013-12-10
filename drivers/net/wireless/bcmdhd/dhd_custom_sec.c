@@ -1,14 +1,14 @@
 /*
  * Customer HW 4 dependant file
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
- *
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- *
+ * 
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,30 +16,13 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- *
+ * 
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_custom_sec.c 334946 2012-05-24 20:38:00Z $
  */
- 
-/* Function list
-	1. Module Type
-		a. For CID - Use 'USE_CID_CHECK' Feature
-			dhd_write_cid_file(), dhd_dump_cis(), dhd_check_module_cid()
-		b. For MAC - Use 'GET_MAC_FROM_OTP' Feature
-			dhd_write_mac_file(), dhd_check_module_mac()
-	2. COB Type
-		a. For MAC - Use 'READ_MACADDR' Feature
-			dhd_read_macaddr()
-	3. Etc
-		a. Power Save Mode - Use 'CONFIG_CONTROL_PM' Feature
-			sec_control_pm()
-		b. Frame Burst Control (11ac) - Use 'USE_WL_FRAMEBURST' Feature
-			sec_control_frameburst()
- */
- 
 #ifdef CUSTOMER_HW4
 #include <typedefs.h>
 #include <linuxver.h>
@@ -1229,8 +1212,10 @@ void sec_control_pm(dhd_pub_t *dhd, uint *power_mode)
 	char *filepath = PSMINFO;
 	char power_val = 0;
 	char iovbuf[WL_EVENTING_MASK_LEN + 12];
+#ifdef DHD_ENABLE_LPC
 	int ret = 0;
 	uint32 lpc = 0;
+#endif /* DHD_ENABLE_LPC */
 
 	g_pm_control = FALSE;
 
@@ -1268,12 +1253,14 @@ void sec_control_pm(dhd_pub_t *dhd, uint *power_mode)
 			dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
 				sizeof(iovbuf), TRUE, 0);
 #endif
+#ifdef DHD_ENABLE_LPC
 			/* Set lpc 0 */
 			bcm_mkiovar("lpc", (char *)&lpc, 4, iovbuf, sizeof(iovbuf));
 			if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
 				sizeof(iovbuf), TRUE, 0)) < 0) {
 				DHD_ERROR(("%s Set lpc failed  %d\n", __FUNCTION__, ret));
 			}
+#endif /* DHD_ENABLE_LPC */
 		} else {
 			dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)power_mode,
 				sizeof(uint), TRUE, 0);

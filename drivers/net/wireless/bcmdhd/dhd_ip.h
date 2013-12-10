@@ -1,6 +1,7 @@
 /*
- * Common stats definitions for clients of dongle
- * ports
+ * Header file describing the common ip parser function.
+ *
+ * Provides type definitions and function prototypes used to parse ip packet.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
  * 
@@ -22,22 +23,20 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dngl_stats.h 241182 2011-02-17 21:50:03Z $
+ * $Id$
  */
 
-#ifndef _dngl_stats_h_
-#define _dngl_stats_h_
+#ifndef _dhd_ip_h_
+#define _dhd_ip_h_
 
-typedef struct {
-	unsigned long	rx_packets;		/* total packets received */
-	unsigned long	tx_packets;		/* total packets transmitted */
-	unsigned long	rx_bytes;		/* total bytes received */
-	unsigned long	tx_bytes;		/* total bytes transmitted */
-	unsigned long	rx_errors;		/* bad packets received */
-	unsigned long	tx_errors;		/* packet transmit problems */
-	unsigned long	rx_dropped;		/* packets dropped by dongle */
-	unsigned long	tx_dropped;		/* packets dropped by dongle */
-	unsigned long   multicast;      /* multicast packets received */
-} dngl_stats_t;
+typedef enum pkt_frag
+{
+	DHD_PKT_FRAG_NONE = 0,
+	DHD_PKT_FRAG_FIRST,
+	DHD_PKT_FRAG_CONT,
+	DHD_PKT_FRAG_LAST
+} pkt_frag_t;
 
-#endif /* _dngl_stats_h_ */
+extern pkt_frag_t pkt_frag_info(osl_t *osh, void *p);
+
+#endif /* _dhd_ip_h_ */

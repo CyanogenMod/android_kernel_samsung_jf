@@ -1,7 +1,7 @@
 /*
  * OS Abstraction Layer
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: osl.h 346935 2012-07-25 00:24:55Z $
+ * $Id: osl.h 370064 2012-11-20 21:00:25Z $
  */
 
 #ifndef _osl_h_
@@ -72,8 +72,11 @@ typedef void  (*osl_wreg_fn_t)(void *ctx, volatile void *reg, unsigned int val, 
 #define	PKTCGETATTR(s)		(0)
 #define	PKTCSETATTR(skb, f, p, b)
 #define	PKTCCLRATTR(skb)
-#define	PKTCCNT(skb)		(0)
-#define	PKTCLEN(skb)		(0)
+#define	PKTCCNT(skb)		(1)
+#define	PKTCLEN(skb)		PKTLEN(NULL, skb)
+#define	PKTCGETFLAGS(skb)	(0)
+#define	PKTCSETFLAGS(skb, f)
+#define	PKTCCLRFLAGS(skb)
 #define	PKTCFLAGS(skb)		(0)
 #define	PKTCSETCNT(skb, c)
 #define	PKTCINCRCNT(skb)
@@ -87,7 +90,7 @@ typedef void  (*osl_wreg_fn_t)(void *ctx, volatile void *reg, unsigned int val, 
 #define FOREACH_CHAINED_PKT(skb, nskb) \
 	for ((nskb) = NULL; (skb) != NULL; (skb) = (nskb))
 #define	PKTCFREE		PKTFREE
-#endif
+#endif 
 
 #ifndef HNDCTF
 #define PKTSETCHAINED(osh, skb)

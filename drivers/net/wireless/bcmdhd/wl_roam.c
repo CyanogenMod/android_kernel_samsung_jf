@@ -1,7 +1,7 @@
 /*
  * Linux roam cache
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -145,8 +145,8 @@ int set_roamscan_channel_list(struct net_device *dev,
 	channel_list.n = n;
 
 	/* need to set ROAMSCAN_MODE_NORMAL to update roamscan_channels,
-	   otherwise, it won't be updated
-	*/
+	 * otherwise, it won't be updated
+	 */
 	wldev_iovar_setint(dev, "roamscan_mode", ROAMSCAN_MODE_NORMAL);
 	error = wldev_iovar_setbuf(dev, "roamscan_channels", &channel_list,
 		sizeof(channel_list), iobuf, sizeof(iobuf), NULL);
@@ -278,7 +278,7 @@ void print_roam_cache(void)
 {
 	int i;
 
-	WL_DBG(("%d cache\n", n_roam_cache));
+	WL_DBG((" %d cache\n", n_roam_cache));
 
 	for (i = 0; i < n_roam_cache; i++) {
 		roam_cache[i].ssid[roam_cache[i].ssid_len] = 0;

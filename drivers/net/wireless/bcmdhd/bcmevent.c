@@ -1,7 +1,7 @@
 /*
  * bcmevent read-only data shared by kernel or app layers
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -20,7 +20,7 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- * $Id: bcmevent.c 374256 2012-12-12 08:34:34Z $
+ * $Id: bcmevent.c 429124 2013-10-11 09:47:05Z $
  */
 
 #include <typedefs.h>
@@ -29,7 +29,7 @@
 #include <proto/bcmeth.h>
 #include <proto/bcmevent.h>
 
-#if WLC_E_LAST != 108
+#if WLC_E_LAST != 130
 #error "You need to add an entry to bcmevent_names[] for the new event"
 #endif
 
@@ -149,8 +149,21 @@ const bcmevent_name_t bcmevent_names[] = {
 	{ WLC_E_PKTDELAY_IND, "PKTDELAY_IND" },
 #endif /* WLPKTDLYSTAT */
 	{ WLC_E_SERVICE_FOUND, "SERVICE_FOUND" },
+	{ WLC_E_GAS_FRAGMENT_RX, "GAS_FRAGMENT_RX" },
+	{ WLC_E_GAS_COMPLETE, "GAS_COMPLETE" },
 	{ WLC_E_P2PO_ADD_DEVICE, "P2PO_DEV_FOUND" },
-	{ WLC_E_P2PO_DEL_DEVICE, "P2PO_DEV_FOUND" }
+	{ WLC_E_P2PO_DEL_DEVICE, "P2PO_DEV_LOST" },
+#ifdef WLWNM
+	{ WLC_E_WNM_STA_SLEEP, "WMM_STA_SLEEP" },
+#endif /* WLWNM */
+#if defined(WL_PROXDETECT)
+	{ WLC_E_PROXD, "WLC_E_PROXD" },
+#endif
+	{ WLC_E_CCA_CHAN_QUAL, "CCA_BASED_CHANNEL_QUALITY" },
+#if defined(CUSTOMER_HW4) && defined(SUPPORT_AIBSS)
+	{ WLC_E_AIBSS_TXFAIL, "WLC_E_AIBSS_TXFAIL"},
+#endif /* CUSTOMER_HW4 && SUPPORT_AIBSS */
+	{ WLC_E_CCX_S69_RESP_RX, "CCX_S69_RESPONSE"},
 };
 
 const int bcmevent_names_size = ARRAYSIZE(bcmevent_names);

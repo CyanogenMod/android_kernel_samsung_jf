@@ -2,7 +2,7 @@
  * Misc utility routines for accessing chip-specific features
  * of the SiliconBackplane-based Broadcom chips.
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: aiutils.c 363711 2012-10-19 01:36:13Z $
+ * $Id: aiutils.c 385510 2013-02-15 21:02:07Z $
  */
 #include <bcm_cfg.h>
 #include <typedefs.h>
@@ -229,16 +229,16 @@ ai_scan(si_t *sih, void *regs, uint devid)
 			         (mpd & MPD_MUI_MASK) >> MPD_MUI_SHIFT));
 		}
 
-
+		
 		asd = get_asd(sih, &eromptr, 0, 0, AD_ST_SLAVE, &addrl, &addrh, &sizel, &sizeh);
 		if (asd == 0) {
 			do {
-
-				asd = get_asd(sih, &eromptr, 0, 0, AD_ST_BRIDGE, &addrl, &addrh,
+			
+			asd = get_asd(sih, &eromptr, 0, 0, AD_ST_BRIDGE, &addrl, &addrh,
 			              &sizel, &sizeh);
-				if (asd != 0)
-					br = TRUE;
-				else {
+			if (asd != 0)
+				br = TRUE;
+			else {
 					if (br == TRUE) {
 						break;
 					}
@@ -256,7 +256,7 @@ ai_scan(si_t *sih, void *regs, uint devid)
 		}
 		sii->coresba[idx] = addrl;
 		sii->coresba_size[idx] = sizel;
-
+		
 		j = 1;
 		do {
 			asd = get_asd(sih, &eromptr, 0, j, AD_ST_SLAVE, &addrl, &addrh,
@@ -543,6 +543,31 @@ ai_flag(si_t *sih)
 	ai = sii->curwrap;
 
 	return (R_REG(sii->osh, &ai->oobselouta30) & 0x1f);
+}
+
+uint
+ai_flag_alt(si_t *sih)
+{
+	si_info_t *sii;
+	aidmp_t *ai;
+
+	sii = SI_INFO(sih);
+	if (BCM47162_DMP()) {
+		SI_ERROR(("%s: Attempting to read MIPS DMP registers on 47162a0", __FUNCTION__));
+		return sii->curidx;
+	}
+	if (BCM5357_DMP()) {
+		SI_ERROR(("%s: Attempting to read USB20H DMP registers on 5357b0\n", __FUNCTION__));
+		return sii->curidx;
+	}
+	if (BCM4707_DMP()) {
+		SI_ERROR(("%s: Attempting to read CHIPCOMMONB DMP registers on 4707\n",
+			__FUNCTION__));
+		return sii->curidx;
+	}
+	ai = sii->curwrap;
+
+	return ((R_REG(sii->osh, &ai->oobselouta30) >> AI_OOBSEL_1_SHIFT) & AI_OOBSEL_MASK);
 }
 
 void
