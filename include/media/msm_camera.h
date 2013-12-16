@@ -1,5 +1,5 @@
-/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
- *
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+*
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
  * only version 2 as published by the Free Software Foundation.
@@ -1032,9 +1032,7 @@ struct msm_snapshot_pp_status {
 #define CFG_EEPROM_DIRECT_DATA_ERASE  57
 #define CFG_SET_STREAMING_MODE        58
 #define CFG_SET_VISION_AE             59
-#define CFG_FINAL_AF				  60 	//SEMCO Request by Lizk
-#define CFG_MAX                       61
-
+#define CFG_MAX                       60
 
 
 #define MOVE_NEAR	0
@@ -1939,7 +1937,6 @@ struct msm_calib_af {
 	uint16_t inf_dac2;		/*1.05M*/	
 	uint16_t start_dac;
 	uint16_t pid_dac;		/* Randy PID */
-	uint16_t cal_offset_dac ;		/* SEMCO by Liz 05112013 */
 };
 
 struct msm_calib_lsc {
@@ -2456,7 +2453,5 @@ struct intf_mctl_mapping_cfg {
 #define EXT_CAM_SET_RAW	44
 #define EXT_CAM_RESUME_PREVIEW 45
 #define EXT_CAM_SET_FACTORY_BIN 46
-#define EXT_CAM_START_GOLF_SHOT 47
-#define EXT_CAM_STOP_GOLF_SHOT 48
 
 #endif /* __LINUX_MSM_CAMERA_H */
