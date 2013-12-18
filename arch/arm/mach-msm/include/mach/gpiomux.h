@@ -148,6 +148,11 @@ int msm_gpiomux_write(unsigned gpio, enum msm_gpiomux_setting which,
  * should use msm_gpiomux_write.
  */
 void __msm_gpiomux_write(unsigned gpio, struct gpiomux_setting val);
+
+void msm_gpiomux_read(unsigned gpio, struct gpiomux_setting *val);
+
+void msm_gpio_print_enabled(void);
+
 #else
 static inline int msm_gpiomux_init(size_t ngpio)
 {

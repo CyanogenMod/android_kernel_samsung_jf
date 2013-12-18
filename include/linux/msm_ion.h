@@ -295,6 +295,20 @@ struct ion_flag_data {
 	unsigned long flags;
 };
 
+/* struct ion_buffer_data
+ *
+ * @handle:	handle for the buffer being queried
+ * @paddr:	The physical address of the buffer referenced by the handle
+ * @length:	The length of the buffer referenced by the handle
+ *
+ * Gets the physicial address of the given handle
+ */
+struct ion_buffer_data {
+	struct ion_handle *handle;
+	unsigned long paddr;
+	unsigned int length;
+};
+
 #define ION_IOC_MSM_MAGIC 'M'
 
 /**
@@ -327,5 +341,12 @@ struct ion_flag_data {
  */
 #define ION_IOC_GET_FLAGS		_IOWR(ION_IOC_MSM_MAGIC, 3, \
 						struct ion_flag_data)
+/**
+ * DOC: ION_IOC_GET_PHYS - get the physical address of the handle
+ *
+ * Gets the physicial address of the given handle
+ */
+#define ION_IOC_GET_PHYS	_IOWR(ION_IOC_MSM_MAGIC, 4, \
+						struct ion_buffer_data)
 
 #endif

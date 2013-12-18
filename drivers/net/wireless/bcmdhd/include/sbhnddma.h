@@ -2,8 +2,8 @@
  * Generic Broadcom Home Networking Division (HND) DMA engine HW interface
  * This supports the following chips: BCM42xx, 44xx, 47xx .
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
- * 
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: sbhnddma.h 309193 2012-01-19 00:03:57Z $
+ * $Id: sbhnddma.h 373617 2012-12-07 23:03:08Z $
  */
 
 #ifndef	_sbhnddma_h_
@@ -233,15 +233,33 @@ typedef volatile struct {
 
 #define D64RINGALIGN_BITS	13
 #define	D64MAXRINGSZ		(1 << D64RINGALIGN_BITS)
-#define	D64RINGALIGN		(1 << D64RINGALIGN_BITS)
+#define	D64RINGBOUNDARY		(1 << D64RINGALIGN_BITS)
 
 #define	D64MAXDD	(D64MAXRINGSZ / sizeof (dma64dd_t))
 
 
-#define	D64_XC_XE		0x00000001	
-#define	D64_XC_SE		0x00000002	
-#define	D64_XC_LE		0x00000004	
-#define	D64_XC_FL		0x00000010	
+#define	D64MAXDD_LARGE		((1 << 16) / sizeof (dma64dd_t))
+
+
+#define	D64RINGBOUNDARY_LARGE	(1 << 16)
+
+
+#define D64_DEF_USBBURSTLEN     2
+#define D64_DEF_SDIOBURSTLEN    1
+
+
+#ifndef D64_USBBURSTLEN
+#define D64_USBBURSTLEN	DMA_BL_64
+#endif
+#ifndef D64_SDIOBURSTLEN
+#define D64_SDIOBURSTLEN	DMA_BL_32
+#endif
+
+
+#define	D64_XC_XE		0x00000001
+#define	D64_XC_SE		0x00000002
+#define	D64_XC_LE		0x00000004
+#define	D64_XC_FL		0x00000010
 #define D64_XC_MR_MASK		0x000000C0	
 #define D64_XC_MR_SHIFT		6
 #define	D64_XC_PD		0x00000800	
@@ -258,20 +276,20 @@ typedef volatile struct {
 #define	D64_XP_LD_MASK		0x00001fff	
 
 
-#define	D64_XS0_CD_MASK		0x00001fff	
-#define	D64_XS0_XS_MASK		0xf0000000     	
+#define	D64_XS0_CD_MASK		(di->d64_xs0_cd_mask)
+#define	D64_XS0_XS_MASK		0xf0000000
 #define	D64_XS0_XS_SHIFT		28
-#define	D64_XS0_XS_DISABLED	0x00000000	
-#define	D64_XS0_XS_ACTIVE	0x10000000	
+#define	D64_XS0_XS_DISABLED	0x00000000
+#define	D64_XS0_XS_ACTIVE	0x10000000
 #define	D64_XS0_XS_IDLE		0x20000000	
 #define	D64_XS0_XS_STOPPED	0x30000000	
-#define	D64_XS0_XS_SUSP		0x40000000	
+#define	D64_XS0_XS_SUSP		0x40000000
 
-#define	D64_XS1_AD_MASK		0x00001fff	
-#define	D64_XS1_XE_MASK		0xf0000000     	
+#define	D64_XS1_AD_MASK		(di->d64_xs1_ad_mask)
+#define	D64_XS1_XE_MASK		0xf0000000
 #define	D64_XS1_XE_SHIFT		28
-#define	D64_XS1_XE_NOERR	0x00000000	
-#define	D64_XS1_XE_DPE		0x10000000	
+#define	D64_XS1_XE_NOERR	0x00000000
+#define	D64_XS1_XE_DPE		0x10000000
 #define	D64_XS1_XE_DFU		0x20000000	
 #define	D64_XS1_XE_DTE		0x30000000	
 #define	D64_XS1_XE_DESRE	0x40000000	
@@ -283,11 +301,12 @@ typedef volatile struct {
 #define	D64_RC_RO_SHIFT		1
 #define	D64_RC_FM		0x00000100	
 #define	D64_RC_SH		0x00000200	
-#define	D64_RC_OC		0x00000400	
-#define	D64_RC_PD		0x00000800	
-#define	D64_RC_AE		0x00030000	
+#define	D64_RC_OC		0x00000400
+#define	D64_RC_PD		0x00000800
+#define D64_RC_GE		0x00004000
+#define	D64_RC_AE		0x00030000
 #define	D64_RC_AE_SHIFT		16
-#define D64_RC_BL_MASK		0x001C0000	
+#define D64_RC_BL_MASK		0x001C0000
 #define D64_RC_BL_SHIFT		18
 #define D64_RC_PC_MASK		0x00E00000	
 #define D64_RC_PC_SHIFT		21
@@ -306,11 +325,11 @@ typedef volatile struct {
 #define	D64_RP_LD_MASK		0x00001fff	
 
 
-#define	D64_RS0_CD_MASK		0x00001fff	
-#define	D64_RS0_RS_MASK		0xf0000000     	
+#define	D64_RS0_CD_MASK		(di->d64_rs0_cd_mask)
+#define	D64_RS0_RS_MASK		0xf0000000
 #define	D64_RS0_RS_SHIFT		28
-#define	D64_RS0_RS_DISABLED	0x00000000	
-#define	D64_RS0_RS_ACTIVE	0x10000000	
+#define	D64_RS0_RS_DISABLED	0x00000000
+#define	D64_RS0_RS_ACTIVE	0x10000000
 #define	D64_RS0_RS_IDLE		0x20000000	
 #define	D64_RS0_RS_STOPPED	0x30000000	
 #define	D64_RS0_RS_SUSP		0x40000000	

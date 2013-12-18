@@ -2,7 +2,6 @@
  * MobiCore driver module.(interface to the secure world SWD)
  *
  * <-- Copyright Giesecke & Devrient GmbH 2009-2012 -->
- * <-- Copyright Trustonic Limited 2013 -->
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,7 +14,8 @@
 extern struct device *mcd;
 
 #define MCDRV_DBG_ERROR(dev, txt, ...) \
-	dev_err(dev, "MobiCore %s() ### ERROR: " txt, \
+	dev_err(dev, "[%d] %s() ### ERROR: " txt, \
+		task_pid_vnr(current), \
 		__func__, \
 		##__VA_ARGS__)
 
@@ -32,12 +32,15 @@ extern struct device *mcd;
 #endif
 
 #define MCDRV_DBG(dev, txt, ...) \
-	dev_info(dev, "MobiCore %s(): " txt, \
+	dev_info(dev, "[%d on CPU%d] %s(): " txt, \
+		 task_pid_vnr(current), \
+		 raw_smp_processor_id(), \
 		 __func__, \
 		 ##__VA_ARGS__)
 
 #define MCDRV_DBG_WARN(dev, txt, ...) \
-	dev_warn(dev, "MobiCore %s() WARNING: " txt, \
+	dev_warn(dev, "[%d] %s() WARNING: " txt, \
+		 task_pid_vnr(current), \
 		 __func__, \
 		 ##__VA_ARGS__)
 

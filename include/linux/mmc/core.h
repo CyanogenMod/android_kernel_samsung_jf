@@ -126,6 +126,7 @@ struct mmc_data {
 	bool			fault_injected; /* fault injected */
 };
 
+struct mmc_host;
 struct mmc_request {
 	struct mmc_command	*sbc;		/* SET_BLOCK_COUNT for multiblock */
 	struct mmc_command	*cmd;
@@ -134,9 +135,9 @@ struct mmc_request {
 
 	struct completion	completion;
 	void			(*done)(struct mmc_request *);/* completion function */
+	struct mmc_host		*host;
 };
 
-struct mmc_host;
 struct mmc_card;
 struct mmc_async_req;
 
@@ -199,6 +200,7 @@ extern int mmc_detect_card_removed(struct mmc_host *host);
 extern int mmc_flush_cache(struct mmc_card *);
 
 extern int mmc_flush_cache(struct mmc_card *);
+extern int mmc_bkops_enable(struct mmc_host *host, u8 value);
 
 extern int mmc_detect_card_removed(struct mmc_host *host);
 

@@ -3,7 +3,6 @@
  * its internal structures and defines.
  *
  * <-- Copyright Giesecke & Devrient GmbH 2009-2012 -->
- * <-- Copyright Trustonic Limited 2013 -->
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -36,11 +35,6 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 }
 
 /* Enable mobicore mem traces */
-/* #define MC_MEM_TRACES */
-
-/* Enable the use of vm_unamp instead of the deprecated do_munmap
- * and other 3.7 features
- */
-#define MC_VM_UNMAP
+#define MC_MEM_TRACES
 
 #endif /* _MC_PLATFORM_H_ */

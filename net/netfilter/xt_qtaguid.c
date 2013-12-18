@@ -54,25 +54,22 @@ static unsigned int proc_stats_perms = S_IRUGO;
 module_param_named(stats_perms, proc_stats_perms, uint, S_IRUGO | S_IWUSR);
 
 static struct proc_dir_entry *xt_qtaguid_ctrl_file;
-#ifdef CONFIG_ANDROID_PARANOID_NETWORK
+
+/* Everybody can write. But proc_ctrl_write_limited is true by default which
+ * limits what can be controlled. See the can_*() functions.
+ */
 static unsigned int proc_ctrl_perms = S_IRUGO | S_IWUGO;
-#else
-static unsigned int proc_ctrl_perms = S_IRUGO | S_IWUSR;
-#endif
 module_param_named(ctrl_perms, proc_ctrl_perms, uint, S_IRUGO | S_IWUSR);
 
-#ifdef CONFIG_ANDROID_PARANOID_NETWORK
-#include <linux/android_aid.h>
-static gid_t proc_stats_readall_gid = AID_NET_BW_STATS;
-static gid_t proc_ctrl_write_gid = AID_NET_BW_ACCT;
-#else
-/* 0 means, don't limit anybody */
-static gid_t proc_stats_readall_gid;
-static gid_t proc_ctrl_write_gid;
-#endif
-module_param_named(stats_readall_gid, proc_stats_readall_gid, uint,
+/* Limited by default, so the gid of the ctrl and stats proc entries
+ * will limit what can be done. See the can_*() functions.
+ */
+static bool proc_stats_readall_limited = true;
+static bool proc_ctrl_write_limited = true;
+
+module_param_named(stats_readall_limited, proc_stats_readall_limited, bool,
 		   S_IRUGO | S_IWUSR);
-module_param_named(ctrl_write_gid, proc_ctrl_write_gid, uint,
+module_param_named(ctrl_write_limited, proc_ctrl_write_limited, bool,
 		   S_IRUGO | S_IWUSR);
 
 /*
@@ -243,8 +240,9 @@ static struct qtaguid_event_counts qtu_events;
 static bool can_manipulate_uids(void)
 {
 	/* root pwnd */
-	return unlikely(!current_fsuid()) || unlikely(!proc_ctrl_write_gid)
-		|| in_egroup_p(proc_ctrl_write_gid);
+	return in_egroup_p(xt_qtaguid_ctrl_file->gid)
+		|| unlikely(!current_fsuid()) || unlikely(!proc_ctrl_write_limited)
+		|| unlikely(current_fsuid() == xt_qtaguid_ctrl_file->uid);
 }
 
 static bool can_impersonate_uid(uid_t uid)
@@ -255,9 +253,10 @@ static bool can_impersonate_uid(uid_t uid)
 static bool can_read_other_uid_stats(uid_t uid)
 {
 	/* root pwnd */
-	return unlikely(!current_fsuid()) || uid == current_fsuid()
-		|| unlikely(!proc_stats_readall_gid)
-		|| in_egroup_p(proc_stats_readall_gid);
+	return in_egroup_p(xt_qtaguid_stats_file->gid)
+		|| unlikely(!current_fsuid()) || uid == current_fsuid()
+		|| unlikely(!proc_stats_readall_limited)
+		|| unlikely(current_fsuid() == xt_qtaguid_ctrl_file->uid);
 }
 
 static inline void dc_add_byte_packets(struct data_counters *counters, int set,
@@ -1208,7 +1207,7 @@ static struct sock_tag *get_sock_stat(const struct sock *sk)
 static int ipx_proto(const struct sk_buff *skb,
 		     struct xt_action_param *par)
 {
-	int thoff, tproto;
+	int thoff = 0, tproto;
 
 	switch (par->family) {
 	case NFPROTO_IPV6:
@@ -1331,11 +1330,11 @@ static void iface_stat_update_from_skb(const struct sk_buff *skb,
 
 	if (unlikely(!el_dev)) {
 		pr_err_ratelimited("qtaguid[%d]: %s(): no par->in/out?!!\n",
-		       par->hooknum, __func__);
+				   par->hooknum, __func__);
 		BUG();
 	} else if (unlikely(!el_dev->name)) {
 		pr_err_ratelimited("qtaguid[%d]: %s(): no dev->name?!!\n",
-		       par->hooknum, __func__);
+				   par->hooknum, __func__);
 		BUG();
 	} else {
 		proto = ipx_proto(skb, par);
@@ -1416,12 +1415,15 @@ static void if_tag_stat_update(const char *ifname, uid_t uid,
 		 ifname, uid, sk, direction, proto, bytes);
 
 
+	spin_lock_bh(&iface_stat_list_lock);
 	iface_entry = get_iface_entry(ifname);
 	if (!iface_entry) {
-		pr_err_ratelimited("qtaguid: iface_stat: stat_update() %s not found\n",
-		       ifname);
+		spin_unlock_bh(&iface_stat_list_lock);
+		pr_err_ratelimited("qtaguid: iface_stat: stat_update() "
+				   "%s not found\n", ifname);
 		return;
 	}
+	spin_unlock_bh(&iface_stat_list_lock);
 	/* It is ok to process data when an iface_entry is inactive */
 
 	MT_DEBUG("qtaguid: iface_stat: stat_update() dev=%s entry=%p\n",
@@ -1469,6 +1471,8 @@ static void if_tag_stat_update(const char *ifname, uid_t uid,
 		 *  - No {0, uid_tag} stats and no {acc_tag, uid_tag} stats.
 		 */
 		new_tag_stat = create_if_tag_stat(iface_entry, uid_tag);
+		if (!new_tag_stat)
+			goto unlock;
 		uid_tag_counters = &new_tag_stat->counters;
 	} else {
 		uid_tag_counters = &tag_stat_entry->counters;
@@ -1477,6 +1481,8 @@ static void if_tag_stat_update(const char *ifname, uid_t uid,
 	if (acct_tag) {
 		/* Create the child {acct_tag, uid_tag} and hook up parent. */
 		new_tag_stat = create_if_tag_stat(iface_entry, tag);
+		if (!new_tag_stat)
+			goto unlock;
 		new_tag_stat->parent_counters = uid_tag_counters;
 	} else {
 		/*
@@ -1490,6 +1496,7 @@ static void if_tag_stat_update(const char *ifname, uid_t uid,
 		BUG_ON(!new_tag_stat);
 	}
 	tag_stat_update(new_tag_stat, direction, proto, bytes);
+unlock:
 	spin_unlock_bh(&iface_entry->tag_stat_list_lock);
 }
 
@@ -1781,6 +1788,8 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	}
 
 	sk = skb->sk;
+	if (sk && sk->sk_state == TCP_TIME_WAIT)
+		sk = NULL;
 	if (sk == NULL) {
 		/*
 		 * A missing sk->sk_socket happens when packets are in-flight
@@ -2305,11 +2314,12 @@ static int ctrl_cmd_tag(const char *input)
 	}
 	CT_DEBUG("qtaguid: ctrl_tag(%s): "
 		 "pid=%u tgid=%u uid=%u euid=%u fsuid=%u "
-		 "in_group=%d in_egroup=%d\n",
+		 "ctrl.gid=%u in_group()=%d in_egroup()=%d\n",
 		 input, current->pid, current->tgid, current_uid(),
 		 current_euid(), current_fsuid(),
-		 in_group_p(proc_ctrl_write_gid),
-		 in_egroup_p(proc_ctrl_write_gid));
+		 xt_qtaguid_ctrl_file->gid,
+		 in_group_p(xt_qtaguid_ctrl_file->gid),
+		 in_egroup_p(xt_qtaguid_ctrl_file->gid));
 	if (argc < 4) {
 		uid = current_fsuid();
 	} else if (!can_impersonate_uid(uid)) {
@@ -2601,10 +2611,11 @@ static int pp_stats_line(struct proc_print_info *ppi, int cnt_set)
 		    && !can_read_other_uid_stats(stat_uid)) {
 			CT_DEBUG("qtaguid: stats line: "
 				 "%s 0x%llx %u: insufficient priv "
-				 "from pid=%u tgid=%u uid=%u\n",
+				 "from pid=%u tgid=%u uid=%u stats.gid=%u\n",
 				 ppi->iface_entry->ifname,
 				 get_atag_from_tag(tag), stat_uid,
-				 current->pid, current->tgid, current_fsuid());
+				 current->pid, current->tgid, current_fsuid(),
+				 xt_qtaguid_stats_file->gid);
 			return 0;
 		}
 		if (ppi->item_index++ < ppi->items_to_skip)
@@ -2760,7 +2771,7 @@ static int qtudev_open(struct inode *inode, struct file *file)
 	utd_entry = get_uid_data(current_fsuid(), &utd_entry_found);
 	if (IS_ERR_OR_NULL(utd_entry)) {
 		res = PTR_ERR(utd_entry);
-		goto err;
+		goto err_unlock;
 	}
 
 	/* Look for existing PID based proc_data */
@@ -2802,8 +2813,8 @@ err_unlock_free_utd:
 		rb_erase(&utd_entry->node, &uid_tag_data_tree);
 		kfree(utd_entry);
 	}
+err_unlock:
 	spin_unlock_bh(&uid_tag_data_tree_lock);
-err:
 	return res;
 }
 

@@ -95,8 +95,12 @@ static int sdio_irq_thread(void *_host)
 	 * hence we poll for them in that case.
 	 */
 	idle_period = msecs_to_jiffies(10);
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
+	period = idle_period;
+#else
 	period = (host->caps & MMC_CAP_SDIO_IRQ) ?
 		MAX_SCHEDULE_TIMEOUT : idle_period;
+#endif
 
 	pr_debug("%s: IRQ thread started (poll period = %lu jiffies)\n",
 		 mmc_hostname(host), period);

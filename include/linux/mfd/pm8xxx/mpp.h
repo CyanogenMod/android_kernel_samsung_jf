@@ -25,6 +25,8 @@ struct pm8xxx_mpp_core_data {
 struct pm8xxx_mpp_platform_data {
 	struct pm8xxx_mpp_core_data	core_data;
 	int				mpp_base;
+	int				*dbg_mpps;
+	int				dbg_mpp_len;
 };
 
 /**
@@ -118,6 +120,7 @@ struct pm8xxx_mpp_config_data {
  */
 int pm8xxx_mpp_config(unsigned mpp, struct pm8xxx_mpp_config_data *config);
 
+void pm_mpp_dbg_showall(unsigned int level);
 #else
 
 static inline int pm8xxx_mpp_config(unsigned mpp,
@@ -126,6 +129,7 @@ static inline int pm8xxx_mpp_config(unsigned mpp,
 	return -ENXIO;
 }
 
+static inline void pm_mpp_dbg_showall(unsigned int level) {}
 #endif
 
 /* MPP Type: type */

@@ -97,16 +97,6 @@ config SB1250_MAC
 	  To compile this driver as a module, choose M here: the module
 	  will be called sb1250-mac.
 
-config TIGON3
-	tristate "Broadcom Tigon3 support"
-	depends on PCI
-	select PHYLIB
-	---help---
-	  This driver supports Broadcom Tigon3 based gigabit Ethernet cards.
-
-	  To compile this driver as a module, choose M here: the module
-	  will be called tg3.  This is recommended.
-
 config BNX2X
 	tristate "Broadcom NetXtremeII 10Gb support"
 	depends on PCI

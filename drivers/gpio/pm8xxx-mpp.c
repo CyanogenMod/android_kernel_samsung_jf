@@ -45,6 +45,8 @@ struct pm8xxx_mpp_chip {
 	int			irq_base;
 	int			nmpps;
 	u16			base_addr;
+	int			*dbg_mpps;
+	int			dbg_mpp_len;
 };
 
 static LIST_HEAD(pm8xxx_mpp_chips);
@@ -156,6 +158,86 @@ static void pm8xxx_mpp_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	}
 }
 
+static void pm_mpp_pr_config(u8 ctrl_reg)
+{
+	static const char * const ctype[] = {
+		"d_in", "d_out", "bi_dir", "a_in", "a_out", "sink",
+		"dtest_sink", "dtest_out"};
+	static const char * const level[] = {
+		"s1", "s4",	"--", "l15", "l17", "--", "--", "vph"};
+	static const char * const ctrl[] = {
+		"out_lo", "out_hi", "mpp", "inv_mpp", "--", "--", "--", "--"};
+	pr_cont("%s\t",
+			ctype[(ctrl_reg & PM8XXX_MPP_TYPE_MASK) >>
+			PM8XXX_MPP_TYPE_SHIFT]);
+	pr_cont("%s\t",
+			level[(ctrl_reg & PM8XXX_MPP_CONFIG_LVL_MASK) >>
+			PM8XXX_MPP_CONFIG_LVL_SHIFT]);
+	pr_cont("%s\n",
+			ctrl[ctrl_reg & PM8XXX_MPP_CONFIG_CTRL_MASK]);
+}
+
+static void pm_mpp_pr_short_config(u8 ctrl)
+{
+	switch ((ctrl & PM8XXX_MPP_TYPE_MASK) >>
+			PM8XXX_MPP_TYPE_SHIFT) {
+		case PM8XXX_MPP_TYPE_D_INPUT:
+			pr_cont("in],");
+			break;
+		case PM8XXX_MPP_TYPE_D_OUTPUT:
+			if (ctrl & PM8XXX_MPP_CONFIG_CTRL_MASK)
+				pr_cont("oh],");
+			else
+				pr_cont("ol],");
+			break;
+		default:
+			pr_cont("no],");
+			break;
+	}
+}
+
+void pm_mpp_dbg_showall(unsigned int level)
+{
+	struct pm8xxx_mpp_chip *mc;
+	u8 state;
+	const char *label;
+	int i, mpp;
+
+	list_for_each_entry(mc, &pm8xxx_mpp_chips, link) {
+		if (!(level || mc->dbg_mpp_len || mc->dbg_mpps))
+			continue;
+
+		if (likely(!level))
+			pr_cont("PM_MPPS:");
+		else
+			pr_info("\n");
+		for (i = 0; i < mc->nmpps; i++) {
+			if (unlikely(level)) {
+				label =	gpiochip_is_requested(&mc->gpio_chip,
+						i);
+				state = pm8xxx_mpp_get(&mc->gpio_chip, i);
+
+				/* dump all mpps */
+				pr_cont("gpio-%-3d:%d:%s\t%s\t",
+						mc->gpio_chip.base + i, i + 1,
+						label ? label : "--",
+						state ? "hi" : "lo");
+				pm_mpp_pr_config(mc->ctrl_reg[i]);
+			} else {
+				if (i >= mc->dbg_mpp_len)
+					break;
+				mpp = mc->dbg_mpps[i] - 1;
+
+				/* show interesting mpps only */
+				pr_cont("%-2.2u[", mpp + 1);
+				pm_mpp_pr_short_config(mc->ctrl_reg[mpp]);
+			}
+		}
+		if (likely(!level))
+			pr_cont("\n");
+	}
+}
+
 int pm8xxx_mpp_config(unsigned mpp, struct pm8xxx_mpp_config_data *config)
 {
 	struct pm8xxx_mpp_chip *mpp_chip;
@@ -258,6 +340,11 @@ static int __devinit pm8xxx_mpp_probe(struct platform_device *pdev)
 	mpp_chip->mpp_base = pdata->mpp_base;
 	mpp_chip->base_addr = pdata->core_data.base_addr;
 	mpp_chip->nmpps = pdata->core_data.nmpps;
+
+	if (pdata->dbg_mpps && pdata->dbg_mpp_len) {
+		mpp_chip->dbg_mpps = pdata->dbg_mpps;
+		mpp_chip->dbg_mpp_len = pdata->dbg_mpp_len;
+	}
 
 	mutex_lock(&pm8xxx_mpp_chips_lock);
 	list_add(&mpp_chip->link, &pm8xxx_mpp_chips);

@@ -103,6 +103,17 @@ config LEDS_COBALT_QUBE
 	help
 	  This option enables support for the front LED on Cobalt Qube series
 
+config LEDS_MAX77693
+	bool "LED support for the MAX77693"
+	depends on LEDS_CLASS
+	depends on MFD_MAX77693
+	default n
+	help
+	  This option enables support for the LEDs
+	  on the MAX77693 and MAX77803.
+	  Now camera_class is exceptioned
+	  by sgonil.kim.
+
 config LEDS_COBALT_RAQ
 	bool "LED Support for the Cobalt Raq series"
 	depends on LEDS_CLASS=y && MIPS_COBALT
@@ -585,4 +596,11 @@ config LEDS_TRIGGER_SLEEP
 comment "iptables trigger is under Netfilter config (LED target)"
 	depends on LEDS_TRIGGERS
 
+config LEDS_AN30259A
+	tristate "LED support for AN30259A I2C chip"
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  This option enables support for LEDs connected to the AN30259A
+	  LED driver chip accessed via the I2C bus.
 endif # NEW_LEDS

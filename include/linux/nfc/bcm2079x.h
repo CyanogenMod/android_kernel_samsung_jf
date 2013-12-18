@@ -38,7 +38,8 @@
 struct bcm2079x_platform_data {
 	unsigned int irq_gpio;
 	unsigned int en_gpio;
-	int wake_gpio;
+	unsigned int wake_gpio;
 };
 
+extern int poweroff_charging;
 #endif

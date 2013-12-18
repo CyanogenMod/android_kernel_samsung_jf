@@ -15,6 +15,7 @@
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/mfd/pm8xxx/pm8xxx-adc.h>
+#include <linux/charging_temperature_data.h>
 #define KELVINMIL_DEGMIL	273160
 
 /* Units for temperature below (on x axis) is in 0.1DegC as
@@ -771,3 +772,21 @@ int32_t pm8xxx_adc_batt_scaler(struct pm8xxx_adc_arb_btm_param *btm_param,
 	return rc;
 }
 EXPORT_SYMBOL_GPL(pm8xxx_adc_batt_scaler);
+
+int32_t pm8xxx_adc_sec_board_therm_default(int32_t adc_code,
+		const struct pm8xxx_adc_properties *adc_properties,
+		const struct pm8xxx_adc_chan_properties *chan_properties,
+		struct pm8xxx_adc_chan_result *adc_chan_result)
+{
+	adc_chan_result->adc_code = adc_code;
+	pr_debug("%s: adc_value: %d\n", __func__,
+			adc_chan_result->adc_code);
+	adc_chan_result->measurement = adc_chan_result->adc_code;
+
+	return pm8xxx_adc_map_linear(
+			temp_table,
+			ARRAY_SIZE(temp_table),
+			adc_chan_result->adc_code,
+			&adc_chan_result->physical);
+}
+EXPORT_SYMBOL_GPL(pm8xxx_adc_sec_board_therm_default);

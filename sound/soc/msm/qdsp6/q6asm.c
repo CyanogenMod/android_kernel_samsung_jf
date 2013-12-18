@@ -58,7 +58,7 @@
 #define IN_BUFFER_SIZE 24
 #endif
 static DEFINE_MUTEX(session_lock);
-
+extern int32_t ep_data;
 /* session id: 0 reserved */
 static struct audio_client *session[SESSION_MAX+1];
 static int32_t q6asm_mmapcallback(struct apr_client_data *data, void *priv);
@@ -88,6 +88,7 @@ static int in_cont_index;
 static int out_cold_index;
 static char *out_buffer;
 static char *in_buffer;
+u32 score;
 static int audio_output_latency_dbgfs_open(struct inode *inode,
 							struct file *file)
 {
@@ -774,7 +775,7 @@ static int32_t q6asm_mmapcallback(struct apr_client_data *data, void *priv)
 	struct audio_client *ac;
 
 	if (data->opcode == RESET_EVENTS) {
-		pr_debug("%s: Reset event is received: %d %d apr[%p]\n",
+		pr_info("%s: Reset event is received: %d %d apr[%p]\n",
 				__func__,
 				data->reset_event,
 				data->reset_proc,
@@ -871,7 +872,7 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 	}
 
 	if (data->opcode == RESET_EVENTS) {
-		pr_debug("q6asm_callback: Reset event is received: %d %d apr[%p]\n",
+		pr_info("q6asm_callback: Reset event is received: %d %d apr[%p]\n",
 				data->reset_event, data->reset_proc, ac->apr);
 			if (ac->cb)
 				ac->cb(data->opcode, data->token,
@@ -991,9 +992,17 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 		break;
 	}
 	case ASM_STREAM_CMDRSP_GET_PP_PARAMS:
-		rtac_make_asm_callback(ac->session, payload,
-			data->payload_size);
+
+		if(payload!=NULL &&  payload[2] == 0x10001fd2){
+		       score = payload[5];
+		}
+		else {
+			rtac_make_asm_callback(ac->session, payload,
+				data->payload_size);
+		}
+
 		break;
+
 	case ASM_DATA_EVENT_READ_DONE:{
 
 		struct audio_port_data *port = &ac->port[OUT];
@@ -3342,6 +3351,342 @@ fail_cmd:
 	kfree(vol_cmd);
 	return rc;
 }
+
+int q6asm_set_sa(struct audio_client *ac,int *param)
+{
+	void *packet = NULL;
+	void *payload = NULL;
+	int sz = 0;
+	int rc  = 0;
+	int i = 0;
+	int ret = 0;
+	struct asm_pp_params_command *cmd = NULL;
+	struct sa_params *sa_param = NULL;
+	if(ac == NULL){
+		printk("audio client is null\n");
+		return -1;
+	}
+	sz = sizeof(struct asm_pp_params_command) +
+		+ sizeof(struct sa_params);
+
+	packet = kzalloc(sz, GFP_KERNEL);
+	if (packet == NULL) {
+	//	pr_err("%s[%d]: Mem alloc failed\n", __func__, ac->session);
+		rc = -EINVAL;
+		return rc;
+	}
+	cmd = (struct asm_pp_params_command *)packet;
+
+	q6asm_add_hdr_async(ac,&cmd->hdr, sz, true);
+	cmd->hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS;
+	cmd->payload = NULL;
+	cmd->payload_size = sizeof(struct  asm_pp_param_data_hdr) +
+				sizeof(struct sa_params);
+	cmd->params.module_id = MODULE_ID_PP_SA;
+	cmd->params.param_id = PARAM_ID_PP_SA_PARAMS;
+	cmd->params.param_size = sizeof(struct sa_params);
+	cmd->params.reserved = 0;
+	payload = (u8 *)(packet + sizeof(struct asm_pp_params_command));
+	sa_param = (struct sa_params *)payload;
+	sa_param->OutDevice = param[0];
+	sa_param->Preset = param[1];
+	for( i=0; i<7; i++)
+		sa_param->EqLev[i] = param[i+2];
+	sa_param->m3Dlevel = param[9];
+	sa_param->BElevel = param[10];
+	sa_param->CHlevel = param[11];
+	sa_param->CHRoomSize = param[12];
+	sa_param->Clalevel = param[13];
+	sa_param->volume = param[14];
+	printk("S ");
+	for(i = 0 ; i<15; i++)
+		printk("%d ",param[i]);
+	printk("\n");
+	ret = apr_send_pkt(ac->apr, (uint32_t *)packet);
+	if (ret < 0) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+	/* Wait for the callback with copp id */
+	ret  = wait_event_timeout(ac->cmd_wait,
+			(atomic_read(&ac->cmd_state) == 0), 5*HZ);
+	if (!ret) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+
+fail_cmd:
+	kfree(packet);
+	return ret;
+}
+
+
+int q6asm_set_vsp(struct audio_client *ac,int *param)
+{
+	void *packet = NULL;
+	void *payload = NULL;
+	int sz = 0;
+	int rc  = 0;
+	int ret = 0;
+	struct asm_pp_params_command *cmd = NULL;
+	struct vsp_params *vsp_param = NULL;
+	if(ac == NULL) {
+		printk("audio client is null\n");
+		return -1;
+	}
+	sz = sizeof(struct asm_pp_params_command) +
+		+ sizeof(struct vsp_params);
+
+	packet = kzalloc(sz, GFP_KERNEL);
+	if (packet == NULL) {
+	//	pr_err("%s[%d]: Mem alloc failed\n", __func__, ac->session);
+		rc = -EINVAL;
+		return rc;
+	}
+	cmd = (struct asm_pp_params_command *)packet;
+
+	q6asm_add_hdr_async(ac,&cmd->hdr, sz, true);
+	cmd->hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS;
+	cmd->payload = NULL;
+	cmd->payload_size = sizeof(struct  asm_pp_param_data_hdr) +
+				sizeof(struct vsp_params);
+	cmd->params.module_id = MODULE_ID_PP_SA_VSP;
+	cmd->params.param_id = PARAM_ID_PP_SA_VSP_PARAMS;
+	cmd->params.param_size = sizeof(struct vsp_params);
+	cmd->params.reserved = 0;
+	payload = (u8 *)(packet + sizeof(struct asm_pp_params_command));
+	vsp_param = (struct vsp_params *)payload;
+	vsp_param->speed_int = param[0];
+	printk("%d ",param[0]);
+	printk("\n");
+	ret = apr_send_pkt(ac->apr, (uint32_t *)packet);
+	if (ret < 0) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+	/* Wait for the callback with copp id */
+	ret = wait_event_timeout(ac->cmd_wait,
+			(atomic_read(&ac->cmd_state) == 0), 5*HZ);
+	if (!ret) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+
+fail_cmd:
+	kfree(packet);
+	return ret;
+}
+
+
+int q6asm_set_dha(struct audio_client *ac,int *param)
+{
+	void *packet = NULL;
+	void *payload = NULL;
+	int sz = 0;
+	int rc  = 0;
+	int ret = 0;
+	int i=0;
+	struct asm_pp_params_command *cmd = NULL;
+	struct dha_params *dha_param = NULL;
+	if(ac == NULL) {
+		printk("audio client is null\n");
+		return -1;
+	}
+	sz = sizeof(struct asm_pp_params_command) +
+		+ sizeof(struct dha_params);
+
+	packet = kzalloc(sz, GFP_KERNEL);
+	if (packet == NULL) {
+	//	pr_err("%s[%d]: Mem alloc failed\n", __func__, ac->session);
+		rc = -EINVAL;
+		return rc;
+	}
+	cmd = (struct asm_pp_params_command *)packet;
+
+	q6asm_add_hdr_async(ac,&cmd->hdr, sz, true);
+	cmd->hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS;
+	cmd->payload = NULL;
+	cmd->payload_size = sizeof(struct  asm_pp_param_data_hdr) +
+				sizeof(struct dha_params);
+	cmd->params.module_id = MODULE_ID_PP_DHA;
+	cmd->params.param_id = PARAM_ID_PP_DHA_PARAMS;
+	cmd->params.param_size = sizeof(struct dha_params);
+	cmd->params.reserved = 0;
+	payload = (u8 *)(packet + sizeof(struct asm_pp_params_command));
+	dha_param = (struct dha_params *)payload;
+	dha_param->enable = param[0];
+	for(i=0;i<12;i++)
+		dha_param->gain[i/6][i%6] = param[i+1];
+	ret = apr_send_pkt(ac->apr, (uint32_t *)packet);
+	if (ret < 0) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+	/* Wait for the callback with copp id */
+	ret = wait_event_timeout(ac->cmd_wait,
+			(atomic_read(&ac->cmd_state) == 0), 5*HZ);
+	if (!ret) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+
+fail_cmd:
+	kfree(packet);
+	return ret;
+}
+
+
+int q6asm_set_lrsm(struct audio_client *ac,int *param)
+{
+	void *packet = NULL;
+	void *payload = NULL;
+	int sz = 0;
+	int rc  = 0;
+	int ret = 0;
+	struct asm_pp_params_command *cmd = NULL;
+	struct lrsm_params *lrsm_param = NULL;
+	if(ac == NULL) {
+		printk("audio client is null\n");
+		return -1;
+	}
+	sz = sizeof(struct asm_pp_params_command) +
+		+ sizeof(struct lrsm_params);
+
+	packet = kzalloc(sz, GFP_KERNEL);
+	if (packet == NULL) {
+	//	pr_err("%s[%d]: Mem alloc failed\n", __func__, ac->session);
+		rc = -EINVAL;
+		return rc;
+	}
+	cmd = (struct asm_pp_params_command *)packet;
+
+	q6asm_add_hdr_async(ac,&cmd->hdr, sz, true);
+	cmd->hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS;
+	cmd->payload = NULL;
+	cmd->payload_size = sizeof(struct  asm_pp_param_data_hdr) +
+				sizeof(struct lrsm_params);
+	cmd->params.module_id = MODULE_ID_PP_LRSM;
+	cmd->params.param_id = PARAM_ID_PP_LRSM_PARAMS;
+	cmd->params.param_size = sizeof(struct lrsm_params);
+	cmd->params.reserved = 0;
+	payload = (u8 *)(packet + sizeof(struct asm_pp_params_command));
+	lrsm_param = (struct lrsm_params *)payload;
+	lrsm_param->sm = param[0];
+	lrsm_param->lr = param[1];
+	ret = apr_send_pkt(ac->apr, (uint32_t *)packet);
+	if (ret < 0) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+	/* Wait for the callback with copp id */
+	ret = wait_event_timeout(ac->cmd_wait,
+			(atomic_read(&ac->cmd_state) == 0), 5*HZ);
+	if (!ret) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+
+fail_cmd:
+	kfree(packet);
+	return ret;
+}
+
+
+int q6asm_set_sa_ep(struct audio_client *ac,int *param)
+{
+	void *packet = NULL;
+	void *payload = NULL;
+	int sz = 0;
+	int rc  = 0;
+	int ret = 0;
+	struct asm_pp_params_command *cmd = NULL;
+	struct sa_ep_params *sa_ep_param = NULL;
+	if(ac == NULL) {
+		printk("audio client is null\n");
+		return -1;
+	}
+	sz = sizeof(struct asm_pp_params_command) +
+		+ sizeof(struct sa_ep_params);
+
+	packet = kzalloc(sz, GFP_KERNEL);
+	if (packet == NULL) {
+	//	pr_err("%s[%d]: Mem alloc failed\n", __func__, ac->session);
+		rc = -EINVAL;
+		return rc;
+	}
+	cmd = (struct asm_pp_params_command *)packet;
+
+	q6asm_add_hdr_async(ac,&cmd->hdr, sz, true);
+	cmd->hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS;
+	cmd->payload = NULL;
+	cmd->payload_size = sizeof(struct  asm_pp_param_data_hdr) +
+				sizeof(struct sa_ep_params);
+	cmd->params.module_id = MODULE_ID_PP_SA_EP;
+	cmd->params.param_id = PARAM_ID_PP_SA_EP_PARAMS;
+	cmd->params.param_size = sizeof(struct sa_ep_params);
+	cmd->params.reserved = 0;
+	payload = (u8 *)(packet + sizeof(struct asm_pp_params_command));
+	sa_ep_param = (struct sa_ep_params *)payload;
+	sa_ep_param->enable = param[0];
+	sa_ep_param->score = param[1];
+	printk("sa_ep param : %d %d\n", sa_ep_param->enable, sa_ep_param->score);
+	ret = apr_send_pkt(ac->apr, (uint32_t *)packet);
+	if (ret < 0) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+	/* Wait for the callback with copp id */
+	ret = wait_event_timeout(ac->cmd_wait,
+			(atomic_read(&ac->cmd_state) == 0), 5*HZ);
+	if (!ret) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+
+fail_cmd:
+	kfree(packet);
+	return ret;
+}
+
+int q6asm_get_sa_ep(struct audio_client *ac)
+{
+	void *packet = NULL;
+	int sz = 0;
+	int rc  = 0;
+	int ret = 0;
+
+	struct asm_pp_get_params_command *cmd = NULL;
+	if(ac == NULL) {
+		printk("audio client is null\n");
+		return -1;
+	}
+	sz = sizeof(struct asm_pp_get_params_command);
+	packet = kzalloc(sz, GFP_KERNEL);
+	if (packet == NULL) {
+		pr_err("%s[%d]: Mem alloc failed\n", __func__, ac->session);
+		rc = -EINVAL;
+		return rc;
+	}
+	cmd = (struct asm_pp_get_params_command *)packet;
+
+	q6asm_add_hdr_async(ac,&cmd->hdr, sz, true);
+	cmd->hdr.opcode = ASM_STREAM_CMD_GET_PP_PARAMS;
+	cmd->payload = NULL;
+	cmd->params.module_id = MODULE_ID_PP_SA_EP;
+	cmd->params.param_id = PARAM_ID_PP_SA_EP_GET_PARAMS;
+	cmd->params.param_size = 20;
+	cmd->params.reserved = 0;
+	ret = apr_send_pkt(ac->apr, (uint32_t *)packet);
+	if (ret < 0) {
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+
+fail_cmd:
+	kfree(packet);
+	return ret;
+}
+
 
 int q6asm_equalizer(struct audio_client *ac, void *eq)
 {

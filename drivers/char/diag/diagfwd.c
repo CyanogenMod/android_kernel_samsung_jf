@@ -481,6 +481,10 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 
 	if (driver->logging_mode == MEMORY_DEVICE_MODE) {
 		int hsic_updated = 0;
+		if (driver->sub_logging_mode == UART_MODE &&
+					data_type != HSIC_DATA)
+			return 0;
+
 		if (data_type == APPS_DATA) {
 			for (i = 0; i < driver->buf_tbl_size; i++)
 				if (driver->buf_tbl[i].length == 0) {

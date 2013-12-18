@@ -361,4 +361,5 @@ static inline void regulator_set_drvdata(struct regulator *regulator,
 
 #endif
 
+void regulator_showall_enabled(void);
 #endif

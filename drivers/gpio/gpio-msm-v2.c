@@ -26,7 +26,7 @@
  */
 enum {
 	GPIO_IN_BIT  = 0,
-	GPIO_OUT_BIT = 1
+	GPIO_OUT_BIT = 1,
 };
 
 /* Bits of interest in the GPIO_INTR_STATUS register.
@@ -63,8 +63,13 @@ enum {
  * the registers allow for low-polarity inputs, the case can never arise.
  */
 enum {
-	DC_POLARITY_HI	= BIT(11),
+	/*DC_POLARITY_HI	= BIT(11),*/
 	DC_IRQ_ENABLE	= BIT(3),
+};
+
+enum {
+	DC_IRQ_POLARITY_ACTIVE_LOW = 0,
+	DC_IRQ_POLARITY_ACTIVE_HIGH = 1,
 };
 
 /*
@@ -90,6 +95,8 @@ enum {
 #define GPIO_IN_OUT(gpio)         (MSM_TLMM_BASE + 0x1004 + (0x10 * (gpio)))
 #define GPIO_INTR_CFG(gpio)       (MSM_TLMM_BASE + 0x1008 + (0x10 * (gpio)))
 #define GPIO_INTR_STATUS(gpio)    (MSM_TLMM_BASE + 0x100c + (0x10 * (gpio)))
+#define DIR_CONN_INTR_POL(irq)    (MSM_TLMM_BASE + 0x2100 + (0x04 * (irq)))
+
 
 static inline void set_gpio_bits(unsigned n, void __iomem *reg)
 {
@@ -210,16 +217,24 @@ void __msm_gpio_install_direct_irq(unsigned gpio, unsigned irq,
 {
 	uint32_t bits;
 
-	__raw_writel(__raw_readl(GPIO_CONFIG(gpio)) | BIT(GPIO_OE_BIT),
-		GPIO_CONFIG(gpio));
+	/*__raw_writel(__raw_readl(GPIO_CONFIG(gpio)) | BIT(GPIO_OE_BIT),
+		GPIO_CONFIG(gpio));*/
 	__raw_writel(__raw_readl(GPIO_INTR_CFG(gpio)) &
-		~(INTR_RAW_STATUS_EN | INTR_ENABLE),
-		GPIO_INTR_CFG(gpio));
+	/*	~(INTR_RAW_STATUS_EN | INTR_ENABLE),
+		GPIO_INTR_CFG(gpio));*/
+	~(INTR_RAW_STATUS_EN | INTR_ENABLE),GPIO_INTR_CFG(gpio));
 	__raw_writel(DC_IRQ_ENABLE | TARGET_PROC_NONE,
 		GPIO_INTR_CFG_SU(gpio));
 
 	bits = TARGET_PROC_SCORPION | (gpio << 3);
-	if (input_polarity)
-		bits |= DC_POLARITY_HI;
+	/*if (input_polarity)
+		bits |= DC_POLARITY_HI;*/
 	__raw_writel(bits, DIR_CONN_INTR_CFG_SU(irq));
+
+	if (input_polarity)
+		bits = DC_IRQ_POLARITY_ACTIVE_HIGH;
+	else
+		bits = DC_IRQ_POLARITY_ACTIVE_LOW;
+	__raw_writel(bits, DIR_CONN_INTR_POL(irq));
+
 }

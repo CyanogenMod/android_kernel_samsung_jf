@@ -3878,7 +3878,7 @@ static int32_t qdsp_mvm_callback(struct apr_client_data *data, void *priv)
 		data->payload_size, data->opcode);
 
 	if (data->opcode == RESET_EVENTS) {
-		pr_debug("%s: Reset event received in Voice service\n",
+		pr_info("%s: Reset event received in Voice service\n",
 			 __func__);
 
 		apr_reset(c->apr_q6_mvm);
@@ -3968,7 +3968,7 @@ static int32_t qdsp_cvs_callback(struct apr_client_data *data, void *priv)
 		data->payload_size, data->opcode);
 
 	if (data->opcode == RESET_EVENTS) {
-		pr_debug("%s: Reset event received in Voice service\n",
+		pr_info("%s: Reset event received in Voice service\n",
 			 __func__);
 
 		apr_reset(c->apr_q6_cvs);
@@ -4119,7 +4119,7 @@ static int32_t qdsp_cvp_callback(struct apr_client_data *data, void *priv)
 		data->payload_size, data->opcode);
 
 	if (data->opcode == RESET_EVENTS) {
-		pr_debug("%s: Reset event received in Voice service\n",
+		pr_info("%s: Reset event received in Voice service\n",
 			 __func__);
 
 		apr_reset(c->apr_q6_cvp);

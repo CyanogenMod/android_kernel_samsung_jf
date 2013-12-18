@@ -33,7 +33,10 @@
 #include "mdp.h"
 #include "msm_fb.h"
 #include "mdp4.h"
-
+#define CSC_MV_OFF	0x400
+#define CSC_BV_OFF	0x500
+#define CSC_LV_OFF	0x600
+#define CSC_POST_OFF	0x80
 struct mdp4_statistic mdp4_stat;
 
 struct mdp_csc_cfg_data csc_cfg_matrix[CSC_MAX_BLOCKS] = {
@@ -386,6 +389,121 @@ void mdp4_fetch_cfg(uint32 core_clk)
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 }
 
+#if defined(CONFIG_FB_MSM_CAMERA_CSC)
+struct csc_ctrl {
+	int sysfs_created;
+	struct device *dev;
+	int mode;
+};
+
+int      csc_updated = 0;
+uint32_t csc_pre_bv_val = 0;
+static struct csc_ctrl cscctrl;
+
+extern int mipi_runtime_csc_update(uint32_t reg[][2], int length);
+
+void update_csc_registers(int mode)
+{
+	char *vg_base;
+	uint32_t csc_array[CSC_UPDATA_SIZE][2];
+	uint32_t off;
+	uint32_t base;
+
+	vg_base = MDP_BASE + MDP4_VIDEO_BASE;
+	base = (uint32_t) (vg_base + MDP4_VIDEO_CSC_OFF);
+	off = ((uint32_t) base + CSC_MV_OFF);
+
+	if (!mode) { /* camera preview */
+		csc_array[0][0] = off+0x00;  csc_array[0][1] = 0x0200;
+		csc_array[1][0] = off+0x04;  csc_array[1][1] = 0x0000;
+		csc_array[2][0] = off+0x08;  csc_array[2][1] = 0x02cd;
+		csc_array[3][0] = off+0x0c;  csc_array[3][1] = 0x0200;
+		csc_array[4][0] = off+0x10;  csc_array[4][1] = 0xff4f;
+		csc_array[5][0] = off+0x14;  csc_array[5][1] = 0xfe91;
+		csc_array[6][0] = off+0x18;  csc_array[6][1] = 0x0200;
+		csc_array[7][0] = off+0x1c;  csc_array[7][1] = 0x038b;
+		csc_array[8][0] = off+0x20;  csc_array[8][1] = 0x0000;
+		off = ((uint32_t) base + CSC_BV_OFF);
+		csc_array[9][0] = off+0x20;  csc_array[9][1] = 0x0000;
+	} else { /* video preview */
+		csc_array[0][0] = off+0x00;  csc_array[0][1] = 0x0254;
+		csc_array[1][0] = off+0x04;  csc_array[1][1] = 0x0000;
+		csc_array[2][0] = off+0x08;  csc_array[2][1] = 0x0331;
+		csc_array[3][0] = off+0x0c;  csc_array[3][1] = 0x0254;
+		csc_array[4][0] = off+0x10;  csc_array[4][1] = 0xff37;
+		csc_array[5][0] = off+0x14;  csc_array[5][1] = 0xfe60;
+		csc_array[6][0] = off+0x18;  csc_array[6][1] = 0x0254;
+		csc_array[7][0] = off+0x1c;  csc_array[7][1] = 0x0409;
+		csc_array[8][0] = off+0x20;  csc_array[8][1] = 0x0000;
+		off = ((uint32_t) base + CSC_BV_OFF);
+		csc_array[9][0] = off+0x20;  csc_array[9][1] = 0xfff0;
+	}
+
+	csc_updated = 1;
+	mipi_runtime_csc_update(csc_array, CSC_UPDATA_SIZE);
+}
+
+static ssize_t csc_read_cfg(struct device *dev,
+               struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+
+	ret = snprintf(buf, PAGE_SIZE, "%d", cscctrl.mode);
+	buf[strlen(buf) + 1] = '\0';
+	return ret;
+}
+
+static ssize_t csc_write_cfg(struct device *dev,
+               struct device_attribute *attr, const char *buf, size_t count)
+{
+	ssize_t ret = strnlen(buf, PAGE_SIZE);
+	int err;
+	int mode;
+
+	err =  kstrtoint(buf, 0, &mode);
+	if (err)
+	       return ret;
+
+	cscctrl.mode = mode;
+	update_csc_registers(cscctrl.mode);
+
+	pr_info("%s: csc ctrl set to %d \n", __func__, mode);
+
+	return ret;
+}
+
+static DEVICE_ATTR(csc_cfg, S_IRUGO | S_IWUSR, csc_read_cfg, csc_write_cfg);
+
+static struct attribute *csc_fs_attrs[] = {
+	&dev_attr_csc_cfg.attr,
+	NULL,
+};
+
+static struct attribute_group csc_fs_attr_group = {
+	.attrs = csc_fs_attrs,
+};
+
+int mdp4_reg_csc_fs(struct device *dev)
+{
+	int ret = 0;
+
+	if (!cscctrl.sysfs_created) {
+		cscctrl.dev = dev;
+		ret = sysfs_create_group(&cscctrl.dev->kobj,
+		&csc_fs_attr_group);
+		if (ret) {
+			pr_err("%s: sysfs group creation failed, ret=%d\n",
+			       __func__, ret);
+			return ret;
+		}
+
+		kobject_uevent(&cscctrl.dev->kobj, KOBJ_ADD);
+		pr_info("%s: kobject_uevent(KOBJ_ADD)\n", __func__);
+		cscctrl.sysfs_created = 1;
+	}
+	return ret;
+}
+#endif
 void mdp4_hw_init(void)
 {
 	ulong bits;
@@ -394,6 +512,7 @@ void mdp4_hw_init(void)
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	mdp_clk_ctrl(1);
+	mdp_bus_scale_restore_request();
 
 #ifdef MDP4_ERROR
 	/*
@@ -445,6 +564,8 @@ void mdp4_hw_init(void)
 
 	/* max read pending cmd config */
 	outpdw(MDP_BASE + 0x004c, 0x02222);	/* 3 pending requests */
+	outpdw(MDP_BASE + 0x0400, 0x7FF);
+	outpdw(MDP_BASE + 0x0404, 0x30050);
 
 #ifndef CONFIG_FB_MSM_OVERLAY
 	/* both REFRESH_MODE and DIRECT_OUT are ignored at BLT mode */
@@ -524,8 +645,9 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 	outpdw(MDP_INTR_CLEAR, isr);
 
 	if (isr & INTR_PRIMARY_INTF_UDERRUN) {
-		pr_debug("%s: UNDERRUN -- primary\n", __func__);
+		pr_info("%s: UNDERRUN -- primary\n", __func__);
 		mdp4_stat.intr_underrun_p++;
+//		dump_underrun_pipe_info();
 		/* When underun occurs mdp clear the histogram registers
 		that are set before in hw_init so restore them back so
 		that histogram works.*/
@@ -647,11 +769,13 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 #endif	/* OVERLAY */
 
 	if (isr & INTR_PRIMARY_VSYNC) {
+		sec_debug_mdp_set_value(SEC_DEBUG_VSYNC_IRQ, SEC_DEBUG_IN);
 		mdp4_stat.intr_vsync_p++;
 		if (panel & MDP4_PANEL_LCDC)
 			mdp4_primary_vsync_lcdc();
 		else if (panel & MDP4_PANEL_DSI_VIDEO)
 			mdp4_primary_vsync_dsi_video();
+		sec_debug_mdp_set_value(SEC_DEBUG_VSYNC_IRQ, SEC_DEBUG_OUT);
 	}
 #ifdef CONFIG_FB_MSM_DTV
 	if (isr & INTR_EXTERNAL_VSYNC) {
@@ -3091,6 +3215,19 @@ int mdp4_qseed_cfg(struct mdp_qseed_cfg_data *config)
 
 error:
 	return ret;
+}
+u32 mdp4_get_mixer_num(u32 panel_type)
+{
+	u32 mixer_num;
+	if ((panel_type == TV_PANEL) ||
+			(panel_type == DTV_PANEL))
+		mixer_num = MDP4_MIXER1;
+	else if (panel_type == WRITEBACK_PANEL) {
+		mixer_num = MDP4_MIXER2;
+	} else {
+		mixer_num = MDP4_MIXER0;
+	}
+	return mixer_num;
 }
 
 static int is_valid_calib_addr(void *addr)

@@ -17,6 +17,10 @@
 #define MDM_DEBUG_MASK_SHDN_LOG     (0x00000004)
 #define GPIO_IS_VALID(gpio) \
 	(gpio != -1)
+
+#ifdef CONFIG_SAMSUNG_LPM_MODE
+extern int poweroff_charging;
+#endif
 struct mdm_modem_drv;
 
 struct mdm_ops {

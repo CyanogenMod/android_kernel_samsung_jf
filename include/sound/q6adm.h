@@ -17,6 +17,20 @@
 #define ADM_PATH_LIVE_REC 0x2
 #define ADM_PATH_NONLIVE_REC 0x3
 
+struct adm_pp_param_data_hdr {
+	u32 module_id;
+	u32 param_id;
+	u16 param_size;
+	u16 reserved;
+} __attribute__ ((packed));
+
+struct adm_pp_params_command {
+	struct apr_hdr	hdr;
+	u32    *payload;
+	u32	payload_size;
+	struct  adm_pp_param_data_hdr params;
+} __packed;
+
 /* multiple copp per stream. */
 struct route_payload {
 	unsigned int copp_ids[AFE_MAX_PORTS];

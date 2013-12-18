@@ -1,8 +1,8 @@
 /*
  * Fundamental types and constants relating to WPA
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
- * 
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wpa.h 261155 2011-05-23 23:51:32Z $
+ * $Id: wpa.h 384536 2013-02-12 04:13:09Z $
  */
 
 #ifndef _proto_wpa_h_
@@ -113,8 +113,17 @@ typedef BWL_PRE_PACKED_STRUCT struct
 #define WPA_CIPHER_AES_OCB	3	
 #define WPA_CIPHER_AES_CCM	4	
 #define WPA_CIPHER_WEP_104	5	
-#define WPA_CIPHER_BIP		6	
-#define WPA_CIPHER_TPK		7	
+#define WPA_CIPHER_BIP		6
+#define WPA_CIPHER_TPK		7
+#ifdef BCMCCX
+#define WPA_CIPHER_CKIP		8
+#define WPA_CIPHER_CKIP_MMH	9
+#define WPA_CIPHER_WEP_MMH	10
+
+#define IS_CCX_CIPHER(cipher)	((cipher) == WPA_CIPHER_CKIP || \
+				 (cipher) == WPA_CIPHER_CKIP_MMH || \
+				 (cipher) == WPA_CIPHER_WEP_MMH)
+#endif
 
 #ifdef BCMWAPI_WAI
 #define WAPI_CIPHER_NONE	WPA_CIPHER_NONE
@@ -161,10 +170,10 @@ typedef BWL_PRE_PACKED_STRUCT struct
 #define RSN_CAP_2_REPLAY_CNTRS		1
 #define RSN_CAP_4_REPLAY_CNTRS		2
 #define RSN_CAP_16_REPLAY_CNTRS		3
-#ifdef MFP
 #define RSN_CAP_MFPR			0x0040
 #define RSN_CAP_MFPC			0x0080
-#endif
+#define RSN_CAP_SPPC			0x0400
+#define RSN_CAP_SPPR			0x0800
 
 
 #define WPA_CAP_4_REPLAY_CNTRS		RSN_CAP_4_REPLAY_CNTRS

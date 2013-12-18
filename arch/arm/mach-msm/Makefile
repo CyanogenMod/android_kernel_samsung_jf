@@ -263,6 +263,7 @@ obj-$(CONFIG_ARCH_MSM8960) += memory_topology.o
 obj-$(CONFIG_ARCH_MSM8960) += saw-regulator.o
 obj-$(CONFIG_ARCH_MSM8960) += devices-8960.o
 obj-$(CONFIG_ARCH_APQ8064) += devices-8960.o devices-8064.o
+obj-$(CONFIG_INPUT_TOUCHSCREEN) += board-mxt540s-tsp.o board-s5000-tsp.o
 obj-$(CONFIG_ARCH_APQ8064) += acpuclock-8064.o
 board-8960-all-objs += board-8960.o board-8960-camera.o board-8960-display.o board-8960-pmic.o board-8960-storage.o board-8960-gpiomux.o
 board-8930-all-objs += board-8930.o board-8930-camera.o board-8930-display.o board-8930-pmic.o board-8930-storage.o board-8930-gpiomux.o devices-8930.o board-8930-gpu.o
@@ -295,7 +296,37 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-mmc.o board-sapphire-wifi.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
 
-obj-$(CONFIG_MACH_LGE) += lge/
+board-8064-common-all-objs += board-8064-pmic.o board-8064-storage.o board-8064-camera.o board-8064-display.o board-8064-gpu.o board-8064-regulator.o
+ifdef CONFIG_BCM4335
+board-8064-common-all-objs += board-8064-wifi.o board-8064-bt.o
+endif
+obj-$(CONFIG_MACH_JF_VZW) += board-jf_vzw.o board-jf_vzw-gpiomux.o
+obj-$(CONFIG_MACH_JF_SPR) += board-jf_spr.o board-jf_spr-gpiomux.o
+obj-$(CONFIG_MACH_JF_ATT) += board-jf_att.o board-jf_att-gpiomux.o
+obj-$(CONFIG_MACH_JF_TMO) += board-jf_tmo.o board-jf_tmo-gpiomux.o
+obj-$(CONFIG_MACH_JF_USC) += board-jf_usc.o board-jf_usc-gpiomux.o
+obj-$(CONFIG_MACH_JF_EUR) += board-jf_eur.o board-jf_eur-gpiomux.o
+obj-$(CONFIG_MACH_JF_SKT) += board-jf_skt.o board-jf_skt-gpiomux.o
+obj-$(CONFIG_MACH_JF_KTT) += board-jf_ktt.o board-jf_ktt-gpiomux.o
+obj-$(CONFIG_MACH_JF_LGT) += board-jf_lgt.o board-jf_lgt-gpiomux.o
+obj-$(CONFIG_MACH_JF_DCM) += board-jf_dcm.o board-jf_dcm-gpiomux.o
+obj-$(CONFIG_MACH_JACTIVE_EUR) += board-jactive_eur.o board-jactive_eur-gpiomux.o
+obj-$(CONFIG_MACH_JACTIVE_ATT) += board-jactive_att.o board-jactive_att-gpiomux.o
+obj-$(CONFIG_MACH_JF_CRI) += board-jf_cri.o board-jf_cri-gpiomux.o
+obj-$(CONFIG_MACH_JF) += board-fusion3-battery.o
+obj-$(CONFIG_MACH_JF_VZW) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_SPR) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_ATT) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_TMO) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_USC) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_EUR) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_SKT) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_KTT) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_LGT) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_DCM) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JACTIVE_EUR) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JACTIVE_ATT) += board-8064-common-all.o
+obj-$(CONFIG_MACH_JF_CRI) += board-8064-common-all.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 CFLAGS_board-9615.o += -Idrivers/usb/gadget
@@ -364,7 +395,7 @@ obj-$(CONFIG_MACH_MSM7X27_FFA) += board-msm7627-regulator.o
 obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30-regulator.o
 obj-$(CONFIG_ARCH_MSM7X27A) += board-msm7x27a-regulator.o
 endif
-
+obj-$(CONFIG_SEC_DEBUG) += sec_debug.o sec_gaf.o sec_getlog.o
 obj-$(CONFIG_ARCH_MSM8960) += mdm2.o mdm_common.o
 obj-$(CONFIG_MSM_RTB) += msm_rtb.o
 obj-$(CONFIG_MSM_CACHE_ERP) += cache_erp.o
@@ -375,6 +406,7 @@ obj-$(CONFIG_MSM_HSIC_SYSMON) += hsic_sysmon.o
 obj-$(CONFIG_MSM_HSIC_SYSMON_TEST) += hsic_sysmon_test.o
 
 obj-$(CONFIG_MSM_RPM_SMD) += rpm-smd.o
+obj-$(CONFIG_MFD_MAX77693) += sec-switch.o
 obj-$(CONFIG_MSM_CPR) += msm_cpr.o
 obj-$(CONFIG_MSM_VP_REGULATOR) += msm_vp.o
 
@@ -386,3 +418,8 @@ endif
 obj-$(CONFIG_MSM_CPU_PWRCTL) +=  msm_cpu_pwrctl.o
 
 obj-$(CONFIG_ARCH_RANDOM) += early_random.o
+ifdef CONFIG_SEC_THERMISTOR
+obj-$(CONFIG_SEC_THERMISTOR) += sec_thermistor.o fusion3-thermistor.o
+endif
+
+obj-$(CONFIG_BT_BCM4335) += board-bluetooth-bcm4335.o

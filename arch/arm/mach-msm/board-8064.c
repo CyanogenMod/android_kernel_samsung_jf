@@ -90,6 +90,11 @@
 #include "smd_private.h"
 #include "sysmon.h"
 
+#ifdef CONFIG_SEC_THERMISTOR
+#include <mach/sec_thermistor.h>
+#include <mach/fusion3-thermistor.h>
+#endif
+
 #define MSM_PMEM_ADSP_SIZE         0x7800000
 #define MSM_PMEM_AUDIO_SIZE        0x4CF000
 #ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
@@ -2402,7 +2407,9 @@ static struct platform_device *common_not_mpq_devices[] __initdata = {
 static struct platform_device *early_common_devices[] __initdata = {
 	&apq8064_device_acpuclk,
 	&apq8064_device_dmov,
+#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 	&apq8064_device_qup_spi_gsbi5,
+#endif
 };
 
 static struct platform_device *pm8921_common_devices[] __initdata = {
@@ -2427,6 +2434,9 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_device_hsusb_host,
 	&android_usb_device,
 	&msm_device_wcnss_wlan,
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	&apq8064_device_qup_spi_gsbi5,
+#endif
 	&msm_device_iris_fm,
 	&apq8064_fmem_device,
 #ifdef CONFIG_ANDROID_PMEM
@@ -2521,6 +2531,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_ebi1_ch1_erp,
 	&epm_adc_device,
 	&coresight_tpiu_device,
+	&apq8064_device_qup_i2c_gsbi7,
 	&coresight_etb_device,
 	&apq8064_coresight_funnel_device,
 	&coresight_etm0_device,
@@ -2752,6 +2763,8 @@ static void __init apq8064_i2c_init(void)
 	}
 	mpq8064_device_qup_i2c_gsbi5.dev.platform_data =
 					&mpq8064_i2c_qup_gsbi5_pdata;
+	apq8064_device_qup_i2c_gsbi7.dev.platform_data =
+					&apq8064_i2c_qup_gsbi7_pdata;
 }
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
@@ -3158,6 +3171,13 @@ static void __init register_i2c_devices(void)
 		apq8064_camera_board_info.board_info,
 		apq8064_camera_board_info.num_i2c_board_info,
 	};
+
+	struct i2c_registry apq8064_front_camera_i2c_devices = {
+		I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_RUMI,
+		APQ_8064_GSBI7_QUP_I2C_BUS_ID,
+		apq8064_front_camera_board_info.board_info,
+		apq8064_front_camera_board_info.num_i2c_board_info,
+	};
 #endif
 	/* Build the matching 'supported_machs' bitmask */
 	if (machine_is_apq8064_cdp())
@@ -3183,6 +3203,11 @@ static void __init register_i2c_devices(void)
 		i2c_register_board_info(apq8064_camera_i2c_devices.bus,
 			apq8064_camera_i2c_devices.info,
 			apq8064_camera_i2c_devices.len);
+
+	if (apq8064_front_camera_i2c_devices.machs & mach_mask)
+		i2c_register_board_info(apq8064_front_camera_i2c_devices.bus,
+			apq8064_front_camera_i2c_devices.info,
+			apq8064_front_camera_i2c_devices.len);
 #endif
 
 	for (i = 0; i < ARRAY_SIZE(mpq8064_i2c_devices); ++i) {

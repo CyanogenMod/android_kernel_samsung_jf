@@ -5,7 +5,6 @@
  * buffer and the Linux log
  *
  * <-- Copyright Giesecke & Devrient GmbH 2009-2012 -->
- * <-- Copyright Trustonic Limited 2013 -->
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -52,27 +51,17 @@ struct logmsg_struct {
 	uint32_t log_data;		/* Value, if any */
 };
 
-static bool prev_eol;			/* Previous char was a EOL */
-static uint16_t prev_source;		/* Previous Log source */
 static uint32_t log_pos;		/* MobiCore log previous position */
 static struct mc_trace_buf *log_buf;	/* MobiCore log buffer structure */
 struct task_struct *log_thread;		/* Log Thread task structure */
 static char *log_line;			/* Log Line buffer */
 static uint32_t log_line_len;		/* Log Line buffer current length */
-static int thread_err;
 
-static void log_eol(uint16_t source)
+static void log_eol(void)
 {
 	if (!strnlen(log_line, LOG_LINE_SIZE))
 		return;
-	prev_eol = true;
-	/* MobiCore Userspace */
-	if (prev_source)
-		dev_info(mcd, "%03x|%s\n", prev_source, log_line);
-	/* MobiCore kernel */
-	else
-		dev_info(mcd, "%s\n", log_line);
-
+	dev_info(mcd, "%s\n", log_line);
 	log_line_len = 0;
 	log_line[0] = 0;
 }
@@ -81,29 +70,53 @@ static void log_eol(uint16_t source)
  * Collect chars in log_line buffer and output the buffer when it is full.
  * No locking needed because only "mobicore_log" thread updates this buffer.
  */
-static void log_char(char ch, uint16_t source)
+static void log_char(char ch)
 {
 	if (ch == '\n' || ch == '\r') {
-		log_eol(source);
+		log_eol();
 		return;
 	}
 
-	if (log_line_len >= LOG_LINE_SIZE - 1 || source != prev_source)
-		log_eol(source);
-
+	if (log_line_len >= LOG_LINE_SIZE - 1) {
+		dev_info(mcd, "%s\n", log_line);
+		log_line_len = 0;
+		log_line[0] = 0;
+	}
 
 	log_line[log_line_len] = ch;
 	log_line[log_line_len + 1] = 0;
 	log_line_len++;
-	prev_eol = false;
-	prev_source = source;
+}
+
+/*
+ * Put a string to the log line.
+ */
+static void log_str(const char *s)
+{
+	int i;
+
+	for (i = 0; i < strnlen(s, LOG_LINE_SIZE); i++)
+		log_char(s[i]);
+}
+
+static uint32_t process_v1log(void)
+{
+	char *last_char = log_buf->buff + log_buf->write_pos;
+	char *buff = log_buf->buff + log_pos;
+	while (buff != last_char) {
+		log_char(*(buff++));
+		/* Wrap around */
+		if (buff - (char *)log_buf >= log_size)
+			buff = log_buf->buff;
+	}
+	return buff - log_buf->buff;
 }
 
 static const uint8_t HEX2ASCII[16] = {
 	'0', '1', '2', '3', '4', '5', '6', '7',
 	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
-static void dbg_raw_nro(uint32_t format, uint32_t value, uint16_t source)
+static void dbg_raw_nro(uint32_t format, uint32_t value)
 {
 	int digits = 1;
 	uint32_t base = (format & LOG_INTEGER_DECIMAL) ? 10 : 16;
@@ -126,17 +139,17 @@ static void dbg_raw_nro(uint32_t format, uint32_t value, uint16_t source)
 	if (width > digits) {
 		char ch = (base == 10) ? ' ' : '0';
 		while (width > digits) {
-			log_char(ch, source);
+			log_char(ch);
 			width--;
 		}
 	}
 
 	if (negative)
-		log_char('-', source);
+		log_char('-');
 
 	while (digits-- > 0) {
 		uint32_t d = value / digit_base;
-		log_char(HEX2ASCII[d], source);
+		log_char(HEX2ASCII[d]);
 		value = value - d * digit_base;
 		digit_base /= base;
 	}
@@ -144,32 +157,36 @@ static void dbg_raw_nro(uint32_t format, uint32_t value, uint16_t source)
 
 static void log_msg(struct logmsg_struct *msg)
 {
+	unsigned char msgtxt[5];
+	int mpos = 0;
+
 	switch (msg->ctrl & LOG_TYPE_MASK) {
 	case LOG_TYPE_CHAR: {
 		uint32_t ch;
 		ch = msg->log_data;
 		while (ch != 0) {
-			log_char(ch & 0xFF, msg->source);
+			msgtxt[mpos++] = ch&0xFF;
 			ch >>= 8;
 		}
+		msgtxt[mpos] = 0;
+		log_str(msgtxt);
 		break;
 	}
 	case LOG_TYPE_INTEGER: {
-		dbg_raw_nro(msg->ctrl, msg->log_data, msg->source);
+		dbg_raw_nro(msg->ctrl, msg->log_data);
 		break;
 	}
 	default:
 		break;
 	}
 	if (msg->ctrl & LOG_EOL)
-		log_eol(msg->source);
+		log_eol();
 }
 
-static uint32_t process_log(void)
+static uint32_t process_v2log(void)
 {
 	char *last_msg = log_buf->buff + log_buf->write_pos;
 	char *buff = log_buf->buff + log_pos;
-
 	while (buff != last_msg) {
 		log_msg((struct logmsg_struct *)buff);
 		buff += sizeof(struct logmsg_struct);
@@ -184,44 +201,33 @@ static uint32_t process_log(void)
 /* log_worker() - Worker thread processing the log_buf buffer. */
 static int log_worker(void *p)
 {
-	int ret = 0;
-	if (log_buf == NULL) {
-		ret = -EFAULT;
-		goto err_kthread;
-	}
+	if (log_buf == NULL)
+		return -EFAULT;
 
 	while (!kthread_should_stop()) {
 		if (log_buf->write_pos == log_pos)
 			schedule_timeout_interruptible(MAX_SCHEDULE_TIMEOUT);
 
 		switch (log_buf->version) {
+		case 1:
+			log_pos = process_v1log();
+			break;
 		case 2:
-			log_pos = process_log();
+			log_pos = process_v2log();
 			break;
 		default:
 			MCDRV_DBG_ERROR(mcd, "Unknown Mobicore log data");
 			log_pos = log_buf->write_pos;
+			log_thread = NULL;
 			/*
 			 * Stop the thread as we have no idea what
 			 * happens next
 			 */
-			ret = -EFAULT;
-			goto err_kthread;
+			return -EFAULT;
 		}
 	}
-err_kthread:
 	MCDRV_DBG(mcd, "Logging thread stopped!");
-	thread_err = ret;
-	/* Wait until the next kthread_stop() is called, if it was already
-	 * called we just slip through, if there is an error signal it and
-	 * wait to get the signal */
-	set_current_state(TASK_INTERRUPTIBLE);
-	while (!kthread_should_stop()) {
-		schedule();
-		set_current_state(TASK_INTERRUPTIBLE);
-	}
-	set_current_state(TASK_RUNNING);
-	return ret;
+	return 0;
 }
 
 /*
@@ -233,14 +239,6 @@ void mobicore_log_read(void)
 {
 	if (log_thread == NULL || IS_ERR(log_thread))
 		return;
-
-	/* The thread itself is in some error condition so just get
-	 * rid of it */
-	if (thread_err != 0) {
-		kthread_stop(log_thread);
-		log_thread = NULL;
-		return;
-	}
 
 	wake_up_process(log_thread);
 }
@@ -261,9 +259,6 @@ long mobicore_log_setup(void)
 	log_thread = NULL;
 	log_line = NULL;
 	log_line_len = 0;
-	prev_eol = false;
-	prev_source = 0;
-	thread_err = 0;
 
 	/* Sanity check for the log size */
 	if (log_size < PAGE_SIZE)
@@ -277,11 +272,11 @@ long mobicore_log_setup(void)
 		return -ENOMEM;
 	}
 
-	log_thread = kthread_create(log_worker, NULL, "mc_log");
+	log_thread = kthread_create(log_worker, NULL, "mobicore_log");
 	if (IS_ERR(log_thread)) {
 		MCDRV_DBG_ERROR(mcd, "MobiCore log thread creation failed!");
 		ret = -EFAULT;
-		goto err_free_line;
+		goto mobicore_log_setup_log_line;
 	}
 
 	sched_setscheduler(log_thread, SCHED_IDLE, &param);
@@ -294,7 +289,7 @@ long mobicore_log_setup(void)
 	if (!log_buf) {
 		MCDRV_DBG_ERROR(mcd, "Failed to get page for logger!");
 		ret = -ENOMEM;
-		goto err_stop_kthread;
+		goto mobicore_log_setup_kthread;
 	}
 	phys_log_buf = virt_to_phys(log_buf);
 
@@ -314,18 +309,16 @@ long mobicore_log_setup(void)
 		free_pages((unsigned long)log_buf, get_order(log_size));
 		log_buf = NULL;
 		ret = -EIO;
-		goto err_stop_kthread;
+		goto mobicore_log_setup_kthread;
 	}
-
-	set_task_state(log_thread, TASK_INTERRUPTIBLE);
 
 	MCDRV_DBG(mcd, "fc_log Logger version %u\n", log_buf->version);
 	return 0;
 
-err_stop_kthread:
+mobicore_log_setup_kthread:
 	kthread_stop(log_thread);
 	log_thread = NULL;
-err_free_line:
+mobicore_log_setup_log_line:
 	kfree(log_line);
 	log_line = NULL;
 	return ret;

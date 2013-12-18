@@ -84,6 +84,9 @@ struct msm_camera_legacy_device_platform_data {
 #define MSM_CAMERA_FLASH_SRC_EXT     (0x00000001<<3)
 #define MSM_CAMERA_FLASH_SRC_LED (0x00000001<<3)
 #define MSM_CAMERA_FLASH_SRC_LED1 (0x00000001<<4)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+#define MSM_CAMERA_FLASH_SRC_PMIC_GPIO (0x00000001<<5) /* richardra added 3 */
+#endif
 
 struct msm_camera_sensor_flash_pmic {
 	uint8_t num_of_src;
@@ -93,6 +96,16 @@ struct msm_camera_sensor_flash_pmic {
 	enum pmic8058_leds led_src_2;
 	int (*pmic_set_current)(enum pmic8058_leds id, unsigned mA);
 };
+
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+/* richardra added 4 */
+struct msm_camera_sensor_flash_pmic_gpio {
+	uint8_t num_of_src;
+	uint8_t led_src_1;
+	uint8_t led_src_2;
+	int (*pmic_set_func)(uint8_t pmic_gpio, uint8_t onoff);
+};
+#endif
 
 struct msm_camera_sensor_flash_pwm {
 	uint32_t freq;
@@ -126,6 +139,22 @@ struct msm_camera_sensor_flash_led {
 	const int led_name_len;
 };
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+struct msm_camera_sensor_flash_src {
+	int flash_sr_type;
+
+	union {
+		struct msm_camera_sensor_flash_pmic pmic_src;
+		struct msm_camera_sensor_flash_pwm pwm_src;
+		struct msm_camera_sensor_flash_current_driver
+			current_driver_src;
+		struct msm_camera_sensor_flash_external
+			ext_driver_src;
+		struct msm_camera_sensor_flash_led led_src;
+		struct msm_camera_sensor_flash_pmic_gpio pmic_gpio_src;
+	} _fsrc;
+};
+#else
 struct msm_camera_sensor_flash_src {
 	int flash_sr_type;
 
@@ -139,6 +168,7 @@ struct msm_camera_sensor_flash_src {
 		struct msm_camera_sensor_flash_led led_src;
 	} _fsrc;
 };
+#endif
 
 struct msm_camera_sensor_flash_data {
 	int flash_type;
@@ -224,6 +254,22 @@ struct msm_camera_sensor_platform_info {
 	struct msm_camera_gpio_conf *gpio_conf;
 	struct msm_camera_i2c_conf *i2c_conf;
 	struct msm_camera_csi_lane_params *csi_lane_params;
+	void(*sensor_power_on)(void);
+	void(*sensor_power_off)(void);
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	void(*sensor_power_on_sub)(void);
+	void(*sensor_power_off_sub)(void);
+#endif
+	void(*sensor_af_power_off)(void);
+	void(*sensor_vddio_power_off)(void);
+	void(*sensor_pmic_gpio_ctrl)(int, int);
+	int (*config_isp_irq)(void);
+	int (*config_sambaz)(int);
+	int irq;
+	int irq_gpio;
+	int reset;
+	int stby;
+	int (*sys_rev)(void);
 };
 
 enum msm_camera_actuator_name {
@@ -245,6 +291,10 @@ struct msm_actuator_info {
 	int vcm_pwd;
 	int vcm_enable;
 };
+enum msm_eeprom_type {
+	MSM_EEPROM_I2C,
+	MSM_EEPROM_SPI,
+};
 
 struct msm_eeprom_info {
 	struct i2c_board_info const *board_info;
@@ -252,6 +302,9 @@ struct msm_eeprom_info {
 	int eeprom_reg_addr;
 	int eeprom_read_length;
 	int eeprom_i2c_slave_addr;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	enum msm_eeprom_type type;
+#endif
 };
 
 struct msm_camera_sensor_info {
@@ -431,11 +484,17 @@ struct mddi_platform_data {
 
 struct mipi_dsi_platform_data {
 	int vsync_gpio;
+	void (*active_reset)(int high);
+	int (*power_common)(void);
 	int (*dsi_power_save)(int on);
 	int (*dsi_client_reset)(void);
 	int (*get_lane_config)(void);
 	char (*splash_is_enabled)(void);
 	int target_type;
+#if defined(CONFIG_SUPPORT_SECOND_POWER)
+	int (*panel_power_save)(int on);
+#endif
+
 };
 
 enum mipi_dsi_3d_ctrl {

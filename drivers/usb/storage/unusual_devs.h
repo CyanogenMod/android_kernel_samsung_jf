@@ -396,7 +396,7 @@ UNUSUAL_DEV(  0x04da, 0x2372, 0x0000, 0x9999,
 		"Panasonic",
 		"DMC-LCx Camera",
 		USB_SC_DEVICE, USB_PR_DEVICE, NULL,
-		US_FL_FIX_CAPACITY | US_FL_NOT_LOCKABLE ),
+		/*US_FL_FIX_CAPACITY |*/US_FL_NOT_LOCKABLE),
 
 /* Reported by Simeon Simeonov <simeonov_2000@yahoo.com> */
 UNUSUAL_DEV(  0x04da, 0x2373, 0x0000, 0x9999,

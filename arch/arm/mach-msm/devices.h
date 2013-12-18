@@ -94,6 +94,9 @@ extern struct platform_device apq8064_device_uart_gsbi7;
 extern struct platform_device apq8064_device_qup_i2c_gsbi1;
 extern struct platform_device apq8064_device_qup_i2c_gsbi3;
 extern struct platform_device apq8064_device_qup_i2c_gsbi4;
+extern struct platform_device apq8064_device_qup_i2c_gsbi2;
+extern struct platform_device apq8064_device_qup_i2c_gsbi7;
+extern struct platform_device apq8064_device_qup_spi_gsbi4;
 extern struct platform_device apq8064_device_qup_spi_gsbi5;
 extern struct platform_device apq8064_slim_ctrl;
 extern struct platform_device apq8064_device_ssbi_pmic1;
@@ -117,6 +120,10 @@ extern struct platform_device msm_device_sdc4;
 extern struct platform_device msm8960_pc_cntr;
 extern struct platform_device msm8064_pc_cntr;
 extern struct platform_device msm8930_pc_cntr;
+
+extern struct platform_device msm8960_cpu_slp_status;
+extern struct platform_device msm8064_cpu_slp_status;
+extern struct platform_device msm8930_cpu_slp_status;
 
 extern struct platform_device msm_device_gadget_peripheral;
 extern struct platform_device msm_device_hsusb_host;

@@ -326,11 +326,6 @@ int msm_camera_enable_vreg(struct device *dev, struct camera_vreg_t *cam_vreg,
 					continue;
 			} else
 				j = i;
-			if (IS_ERR(reg_ptr[j])) {
-				pr_err("%s: %s null regulator\n",
-					__func__, cam_vreg[j].reg_name);
-				return -EINVAL;
-			}
 			regulator_disable(reg_ptr[j]);
 			if (cam_vreg[j].delay > 20)
 				msleep(cam_vreg[j].delay);
@@ -348,11 +343,6 @@ disable_vreg:
 				continue;
 		} else
 			j = i;
-		if (IS_ERR(reg_ptr[j])) {
-			pr_err("%s: %s null regulator\n",
-				__func__, cam_vreg[j].reg_name);
-			return -EINVAL;
-		}
 		regulator_disable(reg_ptr[j]);
 		if (cam_vreg[j].delay > 20)
 			msleep(cam_vreg[j].delay);

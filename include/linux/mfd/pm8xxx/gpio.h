@@ -30,6 +30,8 @@ struct pm8xxx_gpio_core_data {
 struct pm8xxx_gpio_platform_data {
 	struct pm8xxx_gpio_core_data	gpio_cdata;
 	int				gpio_base;
+	int				*dbg_gpios;
+	int				dbg_gpio_len;
 };
 
 /* GPIO parameters */
@@ -152,11 +154,13 @@ struct pm_gpio {
  * RETURNS: an appropriate -ERRNO error value on error, or zero for success.
  */
 int pm8xxx_gpio_config(int gpio, struct pm_gpio *param);
+void pm_gpio_dbg_showall(unsigned int level);
 #else
 static inline int pm8xxx_gpio_config(int gpio, struct pm_gpio *param)
 {
 	return -ENXIO;
 }
+static inline void pm_gpio_dbg_showall(unsigned int level) {}
 #endif
 
 #endif

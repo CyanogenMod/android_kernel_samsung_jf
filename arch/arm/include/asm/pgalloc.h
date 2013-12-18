@@ -130,11 +130,67 @@ static inline void __pmd_populate(pmd_t *pmdp, phys_addr_t pte,
 				  pmdval_t prot)
 {
 	pmdval_t pmdval = (pte + PTE_HWTABLE_OFF) | prot;
+#ifdef	TIMA_KERNEL_L1_MANAGE
+	unsigned long cmd_id = 0x3f809221;
+	unsigned long tima_wr_out, pmd_base;
+#if __GNUC__ >= 4 && __GNUC_MINOR__ >= 6
+        __asm__ __volatile__(".arch_extension sec");
+#endif
+	clean_dcache_area(pmdp, 8);
+	__asm__ __volatile__ (
+		"stmfd  sp!,{r0, r8-r11}\n"
+		"mov   	r11, r0\n"
+		"mov    r0, %1\n"
+		"mov	r8, %2\n"
+		"mov    r9, %3\n"
+		"mov    r10, %4\n"
+		"mcr    p15, 0, r8, c7, c14, 1\n"
+		"add    r8, r8, #4\n"
+		"mcr    p15, 0, r8, c7, c14, 1\n"
+		"dsb\n"
+		"smc    #9\n"
+		"sub    r8, r8, #4\n"
+		"mcr    p15, 0, r8, c7, c6,  1\n"
+		"dsb\n"
+
+		"mov    %0, r10\n"
+		"add    r8, r8, #4\n"
+		"mcr    p15, 0, r8, c7, c6,  1\n"
+		"dsb\n"
+
+		"mov    r0, #0\n"
+		"mcr    p15, 0, r0, c8, c3, 0\n"
+		"dsb\n"
+		"isb\n"
+		"pop    {r0, r8-r11}\n"
+		:"=r"(tima_wr_out):"r"(cmd_id),"r"((unsigned long)pmdp),"r"(pmdval),"r"(__pmd(pmdval + 256 * sizeof(pte_t))):"r0","r8","r9","r10","r11","cc");
+
+		if ((pmdp[0]|0x4)!=(__pmd(pmdval)|0x4)) {
+			printk(KERN_ERR"pmdp[0] %lx != __pmd(pmdval) %lx - %lx %lx in func: %s tima_wr_out = %lx\n",
+					(unsigned long) pmdp[0], (unsigned long) __pmd(pmdval), (unsigned long) pmdp[1], (unsigned long) (__pmd(pmdval + 256 * sizeof(pte_t))),
+					__func__, tima_wr_out);
+			tima_send_cmd(pmdp[0], 0x3f810221);
+		}
+		if ((pmdp[1]|0x4)!=((__pmd(pmdval + 256 * sizeof(pte_t)))|0x4)) {
+			printk(KERN_ERR"pmdp[1] %lx != (__pmd(pmdval + 256 * sizeof(pte_t))) %lx in func: %s\n",
+					(unsigned long) pmdp[1], (unsigned long) (__pmd(pmdval + 256 * sizeof(pte_t))), __func__);
+			tima_send_cmd(pmdp[1], 0x3f810221);
+		}
+#else
 	pmdp[0] = __pmd(pmdval);
 #ifndef CONFIG_ARM_LPAE
 	pmdp[1] = __pmd(pmdval + 256 * sizeof(pte_t));
 #endif
+#endif
 	flush_pmd_entry(pmdp);
+
+#ifdef	TIMA_KERNEL_L1_MANAGE
+        pmd_base = ((unsigned long)pmdp) & (~0x3fff);
+        tima_verify_state(pmd_base, 0, 1, 2);
+        tima_verify_state(pmd_base + 0x1000, 0, 1, 2);
+        tima_verify_state(pmd_base + 0x2000, 0, 1, 2);
+        tima_verify_state(pmd_base + 0x3000, 0, 1, 2);
+#endif
 }
 
 /*

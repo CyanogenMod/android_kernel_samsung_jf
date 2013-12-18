@@ -155,6 +155,14 @@ config SND_SOC_MSM8960
 	help
 	 To add support for SoC audio on MSM8960 and APQ8064 boards
 
+config SND_SOC_ES325
+	tristate "Soc ES325 driver"
+	default n
+
+config SND_SOC_ES325_SLIM
+	tristate "Soc ES325 driver slimbus interface"
+	default n
+
 config AUDIO_OCMEM
 	bool "Enable OCMEM for audio/voice usecase"
 	depends on MSM_OCMEM

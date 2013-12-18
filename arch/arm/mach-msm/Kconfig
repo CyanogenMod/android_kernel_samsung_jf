@@ -241,6 +241,7 @@ config ARCH_APQ8064
 	select ARCH_SUPPORTS_MSI
 	select ARM_HAS_SG_CHAIN
 	select MSM_KRAIT_WFE_FIXUP
+	select SPARSEMEM_ALLOC_MEM_MAP_TOGETHER if SPARSEMEM
 	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
 	select GENERIC_TIME_VSYSCALL
@@ -491,6 +492,12 @@ config MSM_REMOTE_SPINLOCK_SFPB
 	bool
 config MSM_ADM3
 	bool
+
+config MACH_JACTIVE
+	default n
+	bool "APQ8064 Samsung JACTIVE"
+	help
+	  Support for the Samsung J ACTIVE device.
 
 menu "MSM Board Selection"
 
@@ -921,9 +928,131 @@ config MACH_FSM9XXX_SURF
 config MACH_MSM_DUMMY
 	bool "NONE (No device)"
 
+config MACH_JF
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF"
+	help
+	  This is JF device of Samsung.
+	  It's based on Qualcomm APQ8064 chipset.
+
+config MACH_JF_VZW
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_VZW"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_SPR
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_SPR"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_ATT
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_ATT"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_TMO
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_TMO"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_USC
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_USC"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_CRI
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_CRI"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_EUR
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_EUR"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_SKT
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_SKT"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_KTT
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_KTT"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_LGT
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_LGT"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_DCM
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_DCM"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_CAN
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_CAN"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JACTIVE_EUR
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JACTIVE_EUR"
+	help
+	  Support for the Samsung J ACTIVE EUR device.
+
+config MACH_JACTIVE_ATT
+	depends on ARCH_APQ8064
+	default n
+	select MACH_JACTIVE
+	bool "APQ8064 Samsung JACTIVE_ATT"
+	help
+	  Support for the Samsung J ACTIVE ATT device.
 endmenu
 
-source "arch/arm/mach-msm/lge/Kconfig"
+menu "Locale Selection"
+
+config TARGET_LOCALE_KOR
+	default n
+	bool "Locale Kor support"
+	help
+	  Enable LOCALE KOR.
+	  used to distinguish LOCALE-related differences.
+
+config TARGET_LOCALE_JPN
+	default n
+	bool "Locale JPN support"
+	help
+	  Enable LOCALE JPN.
+	  used to distinguish LOCALE-related differences.
+
+endmenu
 
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"
@@ -932,6 +1061,36 @@ config MSM_STACKED_MEMORY
 	  This option is used to indicate the presence of on-die stacked
 	  memory.  When present this memory bank is used for a high speed
 	  shared memory interface.  When not present regular RAM is used.
+
+config RTC_AUTO_PWRON
+        bool "RTC Auto Power on PM8xxx PMICs"
+        depends on ARCH_APQ8064
+        default n
+        help
+          Support for the auto power on alarm on the PM8XXX PMIC.
+          Say Y if you want to enable this feature.
+
+config RTC_AUTO_PWRON_PARAM
+        bool "RTC Auto Power on with param PM8xxx PMICs"
+        depends on RTC_AUTO_PWRON
+        default n
+        help
+          This option is used to prevent invalid RTC alarm power on.
+          Say Y if you want to enable this feature.
+
+config MACH_JF_CMCC
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_CMCC"
+	help
+	  Support for the Samsung JF device.
+
+config MACH_JF_CMCCCSFB
+	depends on ARCH_APQ8064
+	default n
+	bool "APQ8064 Samsung JF_CMCC_CSFB"
+	help
+	  Support for the Samsung JF device.
 
 config PHYS_OFFSET
 	hex
@@ -2066,6 +2225,14 @@ config MSM_DIRECT_SCLK_ACCESS
 	bool "Direct access to the SCLK timer"
 	default n
 
+config MSM_HSIC_GPIO_REV06
+	bool "distinguish rev03 and rev06"
+	default n
+
+config WIFI_NOMODEM
+	bool "distinguish lte and wifi"
+	default n
+
 config IOMMU_API
        bool
 
@@ -2224,6 +2391,20 @@ config BT_MSM_PINTEST
 	  Bluetooth MSM Pin Connectivity test module.
 	  This driver provides support for verifying the MSM to BT pin
 	  connectivity.
+
+config BT_BCM4335
+	bool "Enable BCM4335 driver"
+	default n
+	help
+	  Adds BCM4335 RFKILL driver for Broadcom BCM4335 chipset.
+	  default is n.
+
+config BT_BLUEDROID
+	bool "Bluetooth bluedroid"
+	default n
+	help
+	  This is for bluedroid stack
+	  default is n.
 
 config MSM_FAKE_BATTERY
 		depends on POWER_SUPPLY
@@ -2597,4 +2778,15 @@ config MSM_USE_USER_ACCESSIBLE_TIMERS
 	  Enables MSM-specific user accessible timers via a shared
 	  memory page containing the cycle counter.
 
+config SEC_THERMISTOR
+	bool "Use external thermistor near AP for checking temprature"
+	default n
+	help
+	Use thermistor driver for checking temperature near AP chip.
+
+config SEC_FACTORY
+	bool "Enable FACTORY Features"
+	default n
+	help
+	  Enable Features only For FACTORY BINARY.
 endif

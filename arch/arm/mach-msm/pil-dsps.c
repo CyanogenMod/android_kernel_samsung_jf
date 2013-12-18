@@ -108,8 +108,10 @@ static int __devinit pil_dsps_driver_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "using non-secure boot\n");
 	}
 	pil = msm_pil_register(desc);
-	if (IS_ERR(pil))
+	if (IS_ERR(pil)) {
+		devm_kfree(&pdev->dev, desc);
 		return PTR_ERR(pil);
+	}
 	platform_set_drvdata(pdev, pil);
 	return 0;
 }

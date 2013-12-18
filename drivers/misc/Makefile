@@ -72,6 +72,12 @@ obj-$(CONFIG_MSM_MEMORY_LOW_POWER_MODE_SUSPEND_DEEP_POWER_DOWN) \
 obj-$(CONFIG_PMIC8058_XOADC) += pmic8058-xoadc.o
 obj-$(CONFIG_QSEECOM) += qseecom.o
 obj-$(CONFIG_QFP_FUSE) += qfp_fuse.o
+obj-$(CONFIG_QSEECOM)  += tzic.o
 obj-y += tspdrv/
+obj-$(CONFIG_BCM2079X_NFC_I2C)	+= bcm2079x-i2c.o
+obj-$(CONFIG_SEC_MISC)		+= sec_param.o sec_misc.o
+obj-$(CONFIG_MFD_MAX77693)	+= max77693-muic.o
+obj-$(CONFIG_SAMSUNG_JACK)	+= sec_jack.o
 obj-$(CONFIG_BU52031NVX) += pm8xxx-cradle.o
 obj-$(CONFIG_SLIMPORT_ANX7808)	+= slimport_anx7808/
+obj-$(CONFIG_SEC_TORCH_FLASH)	+= sec_torch.o

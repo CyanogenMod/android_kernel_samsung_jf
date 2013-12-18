@@ -713,6 +713,13 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	spin_unlock_irqrestore(&dev->req_lock, flags);
 
 	if (multi_pkt_xfer) {
+		if (dev->tx_req_bufsize < req->length + skb->len) {
+			pr_err("%s: drop %lx, dev->tx_req_bufsize %d, \
+					req->length %d, skb->len %d\n", __func__,
+					(unsigned long)req->buf, dev->tx_req_bufsize,
+					req->length, skb->len);
+			goto drop;
+		}
 		memcpy(req->buf + req->length, skb->data, skb->len);
 		req->length = req->length + skb->len;
 		length = req->length;

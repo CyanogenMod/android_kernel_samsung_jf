@@ -51,7 +51,7 @@ bool afe_close_done[2] = {true, true};
 static int32_t afe_callback(struct apr_client_data *data, void *priv)
 {
 	if (data->opcode == RESET_EVENTS) {
-		pr_debug("q6afe: reset event = %d %d apr[%p]\n",
+		pr_info("q6afe: reset event = %d %d apr[%p]\n",
 			data->reset_event, data->reset_proc, this_afe.apr);
 		if (this_afe.apr) {
 			apr_reset(this_afe.apr);

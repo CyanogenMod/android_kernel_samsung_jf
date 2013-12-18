@@ -2,7 +2,7 @@
  * drivers/gpu/ion/ion.c
  *
  * Copyright (C) 2011 Google, Inc.
- * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -627,6 +627,21 @@ int ion_map_iommu(struct ion_client *client, struct ion_handle *handle,
 	struct ion_iommu_map *iommu_map;
 	int ret = 0;
 
+	if (client == NULL) {
+		pr_err("%s: client pointer is null!\n", __func__);
+		return -EINVAL;
+	}
+
+	if (handle == NULL) {
+		pr_err("%s: null handle pointer!\n", __func__);
+		return -EINVAL;
+	}
+
+	if (handle->buffer == NULL) {
+		pr_err("%s: null buffer pointer!\n", __func__);
+		return -EINVAL;
+	}
+
 	if (ION_IS_CACHED(flags)) {
 		pr_err("%s: Cannot map iommu as cached.\n", __func__);
 		return -EINVAL;
@@ -731,6 +746,21 @@ void ion_unmap_iommu(struct ion_client *client, struct ion_handle *handle,
 {
 	struct ion_iommu_map *iommu_map;
 	struct ion_buffer *buffer;
+
+	if (client == NULL) {
+		pr_err("%s: null client pointer!\n", __func__);
+		return;
+	}
+
+	if (handle == NULL) {
+		pr_err("%s: null handle pointer!\n", __func__);
+		return;
+	}
+
+	if (handle->buffer == NULL) {
+		pr_err("%s: null buffer pointer!\n", __func__);
+		return;
+	}
 
 	mutex_lock(&client->lock);
 	buffer = handle->buffer;

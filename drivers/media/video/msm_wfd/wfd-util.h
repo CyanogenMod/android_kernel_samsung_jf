@@ -12,8 +12,8 @@
  */
 
 #include <linux/debugfs.h>
-#include <linux/list.h>
 #include <linux/ktime.h>
+#include <linux/list.h>
 #include <linux/mutex.h>
 
 #ifndef _WFD_UTIL_H_

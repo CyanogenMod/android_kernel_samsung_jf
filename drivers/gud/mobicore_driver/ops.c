@@ -11,7 +11,6 @@
  * which has to be created by the fd = open(/dev/mobicore) command.
  *
  * <-- Copyright Giesecke & Devrient GmbH 2009-2012 -->
- * <-- Copyright Trustonic Limited 2013 -->
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -21,121 +20,12 @@
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/device.h>
-#include <linux/workqueue.h>
-#include <linux/cpu.h>
 
 #include "main.h"
 #include "fastcall.h"
 #include "ops.h"
 #include "mem.h"
-#include "pm.h"
 #include "debug.h"
-
-/* MobiCore context data */
-static struct mc_context *ctx;
-
-static inline long smc(union fc_generic *fc)
-{
-	/* If we request sleep yields must be filtered out as they
-	 * make no sense */
-	if (ctx->mcp)
-		if (ctx->mcp->flags.sleep_mode.SleepReq) {
-			if (fc->as_in.cmd == MC_SMC_N_YIELD)
-				return MC_FC_RET_ERR_INVALID;
-		}
-	return _smc(fc);
-}
-
-#ifdef MC_FASTCALL_WORKER_THREAD
-
-static struct task_struct *fastcall_thread;
-static DEFINE_KTHREAD_WORKER(fastcall_worker);
-
-struct fastcall_work {
-	struct kthread_work work;
-	void *data;
-};
-
-static void fastcall_work_func(struct kthread_work *work)
-{
-	struct fastcall_work *fc_work =
-		container_of(work, struct fastcall_work, work);
-	smc(fc_work->data);
-}
-
-void mc_fastcall(void *data)
-{
-	struct fastcall_work fc_work = {
-		KTHREAD_WORK_INIT(fc_work.work, fastcall_work_func),
-		.data = data,
-	};
-
-	queue_kthread_work(&fastcall_worker, &fc_work.work);
-	flush_kthread_work(&fc_work.work);
-}
-
-int mc_fastcall_init(struct mc_context *context)
-{
-	int ret = 0;
-
-	ctx = context;
-
-	fastcall_thread = kthread_create(kthread_worker_fn, &fastcall_worker,
-					 "mc_fastcall");
-	if (IS_ERR(fastcall_thread)) {
-		ret = PTR_ERR(fastcall_thread);
-		fastcall_thread = NULL;
-		MCDRV_DBG_ERROR(mcd, "cannot create fastcall wq (%d)\n", ret);
-		return ret;
-	}
-
-	/* this thread MUST run on CPU 0 */
-	kthread_bind(fastcall_thread, 0);
-	wake_up_process(fastcall_thread);
-
-	return 0;
-}
-
-void mc_fastcall_destroy(void)
-{
-	if (!IS_ERR_OR_NULL(fastcall_thread)) {
-		kthread_stop(fastcall_thread);
-		fastcall_thread = NULL;
-	}
-}
-#else
-
-struct fastcall_work_struct {
-	struct work_struct work;
-	void *data;
-};
-
-static void fastcall_work_func(struct work_struct *work)
-{
-	struct fastcall_work_struct *fc_work =
-		container_of(work, struct fastcall_work_struct, work);
-	smc(fc_work->data);
-}
-
-void mc_fastcall(void *data)
-{
-	struct fastcall_work_struct work = {
-		.data = data,
-	};
-	INIT_WORK(&work.work, fastcall_work_func);
-	schedule_work_on(0, &work.work);
-
-	flush_work(&work.work);
-}
-
-int mc_fastcall_init(struct mc_context *context)
-{
-	ctx = context;
-	return 0;
-};
-
-void mc_fastcall_destroy(void) {};
-#endif
 
 int mc_info(uint32_t ext_info_id, uint32_t *state, uint32_t *ext_info)
 {
@@ -196,21 +86,6 @@ int mc_nsiq(void)
 	memset(&nsiq, 0, sizeof(nsiq));
 	nsiq.as_in.cmd = MC_SMC_N_SIQ;
 	mc_fastcall(&nsiq);
-	ret = convert_fc_ret(nsiq.as_out.ret);
-
-	return ret;
-}
-
-/* call common notify */
-int _nsiq(void)
-{
-	int ret = 0;
-	union fc_generic nsiq;
-	MCDRV_DBG_VERBOSE(mcd, "enter\n");
-
-	memset(&nsiq, 0, sizeof(nsiq));
-	nsiq.as_in.cmd = MC_SMC_N_SIQ;
-	_smc(&nsiq);
 	ret = convert_fc_ret(nsiq.as_out.ret);
 
 	return ret;

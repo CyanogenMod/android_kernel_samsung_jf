@@ -62,6 +62,7 @@ struct external_common_state_type {
 	boolean hpd_state;
 	boolean pre_suspend_hpd_state;
 	struct kobject *uevent_kobj;
+	struct msm_fb_data_type *mfd;
 	uint32 video_resolution;
 	struct device *dev;
 	struct switch_dev sdev;
@@ -75,7 +76,9 @@ struct external_common_state_type {
 	boolean hpd_feature_on;
 	boolean hdmi_sink;
 	struct hdmi_disp_mode_list_type disp_mode_list;
+	uint8 speaker_allocation_block;
 	uint16 video_latency, audio_latency;
+	uint8 audio_data_block_cnt;
 	uint16 physical_address;
 	uint32 preferred_video_format;
 	uint8 pt_scan_info;
@@ -85,6 +88,7 @@ struct external_common_state_type {
 	uint8 spd_product_description[17];
 	boolean present_3d;
 	boolean present_hdcp;
+	uint32 audio_data_blocks[16];
 	uint8 audio_data_block[MAX_AUDIO_DATA_BLOCK_SIZE];
 	int adb_size;
 	uint8 spkr_alloc_data_block[MAX_SPKR_ALLOC_DATA_BLOCK_SIZE];
@@ -92,6 +96,8 @@ struct external_common_state_type {
 	int (*read_edid_block)(int block, uint8 *edid_buf);
 	int (*hpd_feature)(int on);
 #endif
+	uint16 audio_speaker_data;
+	boolean sii8240_connected;
 };
 
 /* The external interface driver needs to initialize the common state. */

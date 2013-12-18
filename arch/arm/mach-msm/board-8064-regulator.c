@@ -15,6 +15,10 @@
 
 #include "board-8064.h"
 
+#ifdef CONFIG_REGULATOR_MAX77693
+#include <linux/mfd/max77693.h>
+#endif
+
 #define VREG_CONSUMERS(_id) \
 	static struct regulator_consumer_supply vreg_consumers_##_id[]
 
@@ -34,6 +38,8 @@ VREG_CONSUMERS(L2) = {
 	REGULATOR_SUPPLY("lvds_pll_vdda",	"lvds.0"),
 	REGULATOR_SUPPLY("dsi1_pll_vdda",	"mipi_dsi.1"),
 	REGULATOR_SUPPLY("dsi_pll_vdda",	"mdp.0"),
+	REGULATOR_SUPPLY("HRD_VDDD_CDC_D",		"tabla2x-slim"),
+	REGULATOR_SUPPLY("HRD_CDC_VDDA_A_1P2V",	"tabla2x-slim"),
 };
 VREG_CONSUMERS(L3) = {
 	REGULATOR_SUPPLY("8921_l3",		NULL),
@@ -44,7 +50,12 @@ VREG_CONSUMERS(L3) = {
 VREG_CONSUMERS(L4) = {
 	REGULATOR_SUPPLY("8921_l4",		NULL),
 	REGULATOR_SUPPLY("HSUSB_1p8",		"msm_otg"),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("iris_vddxo",		"wcnss_wlan.0"),
+#endif
+#ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
+	REGULATOR_SUPPLY("sdc_vdd",	"msm_sdcc.3"),
+#endif
 };
 VREG_CONSUMERS(L5) = {
 	REGULATOR_SUPPLY("8921_l5",		NULL),
@@ -52,7 +63,12 @@ VREG_CONSUMERS(L5) = {
 };
 VREG_CONSUMERS(L6) = {
 	REGULATOR_SUPPLY("8921_l6",		NULL),
+#ifndef CONFIG_MMC_MSM_SDC4_SUPPORT
 	REGULATOR_SUPPLY("sdc_vdd",		"msm_sdcc.3"),
+#else
+	REGULATOR_SUPPLY("sdc_vdd",		"msm_sdcc.2"),
+	REGULATOR_SUPPLY("sdc_vdd",		"msm_sdcc.4"),
+#endif
 };
 VREG_CONSUMERS(L7) = {
 	REGULATOR_SUPPLY("8921_l7",		NULL),
@@ -66,6 +82,15 @@ VREG_CONSUMERS(L8) = {
 	REGULATOR_SUPPLY("cam_vana",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vana",		"4-0034"),
 	REGULATOR_SUPPLY("cam_vana",		"4-0020"),
+	REGULATOR_SUPPLY("cam_vana",		"7-006a"),
+	REGULATOR_SUPPLY("cam_vana",		"4-003e"),
+	REGULATOR_SUPPLY("cam_vana",		"4-002d"),
+#ifdef CONFIG_CAMERA_USE_GSBI7
+	REGULATOR_SUPPLY("cam_vana",		"7-003e"),
+#endif
+#ifdef CONFIG_CAMERA_SW_I2C
+	REGULATOR_SUPPLY("cam_vana",		"27-006a"),
+#endif
 };
 VREG_CONSUMERS(L9) = {
 	REGULATOR_SUPPLY("8921_l9",		NULL),
@@ -73,7 +98,9 @@ VREG_CONSUMERS(L9) = {
 };
 VREG_CONSUMERS(L10) = {
 	REGULATOR_SUPPLY("8921_l10",		NULL),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("iris_vddpa",		"wcnss_wlan.0"),
+#endif
 };
 VREG_CONSUMERS(L11) = {
 	REGULATOR_SUPPLY("8921_l11",		NULL),
@@ -86,7 +113,16 @@ VREG_CONSUMERS(L12) = {
 	REGULATOR_SUPPLY("cam_vdig",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vdig",		"4-0034"),
 	REGULATOR_SUPPLY("cam_vdig",		"4-0020"),
+	REGULATOR_SUPPLY("cam_vdig",		"7-006a"),
 	REGULATOR_SUPPLY("8921_l12",		NULL),
+	REGULATOR_SUPPLY("cam_vdig",		"4-003e"),
+	REGULATOR_SUPPLY("cam_vdig",		"4-002d"),
+#ifdef CONFIG_CAMERA_USE_GSBI7
+	REGULATOR_SUPPLY("cam_vdig",		"7-003e"),
+#endif
+#ifdef CONFIG_CAMERA_SW_I2C
+	REGULATOR_SUPPLY("cam_vdig",		"27-006a"),
+#endif
 };
 VREG_CONSUMERS(L13) = {
 	REGULATOR_SUPPLY("8921_l13",		NULL),
@@ -97,6 +133,7 @@ VREG_CONSUMERS(L14) = {
 };
 VREG_CONSUMERS(L15) = {
 	REGULATOR_SUPPLY("8921_l15",		NULL),
+	REGULATOR_SUPPLY("1800mV_LCD",		"mipi_dsi.1"),
 };
 VREG_CONSUMERS(L16) = {
 	REGULATOR_SUPPLY("8921_l16",		NULL),
@@ -106,6 +143,15 @@ VREG_CONSUMERS(L16) = {
 	REGULATOR_SUPPLY("cam_vaf",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vaf",		"4-0034"),
 	REGULATOR_SUPPLY("cam_vaf",		"4-0020"),
+	REGULATOR_SUPPLY("cam_vaf",		"7-006a"),
+	REGULATOR_SUPPLY("cam_vaf",		"4-003e"),
+	REGULATOR_SUPPLY("cam_vaf",		"4-002d"),
+#ifdef CONFIG_CAMERA_USE_GSBI7
+	REGULATOR_SUPPLY("cam_vaf",		"7-003e"),
+#endif
+#ifdef CONFIG_CAMERA_SW_I2C
+	REGULATOR_SUPPLY("cam_vaf",		"27-006a"),
+#endif
 };
 VREG_CONSUMERS(L17) = {
 	REGULATOR_SUPPLY("8921_l17",		NULL),
@@ -115,6 +161,7 @@ VREG_CONSUMERS(L18) = {
 };
 VREG_CONSUMERS(L21) = {
 	REGULATOR_SUPPLY("8921_l21",		NULL),
+	REGULATOR_SUPPLY("cam_vt_dvdd",	"7-006a"),
 };
 VREG_CONSUMERS(L22) = {
 	REGULATOR_SUPPLY("8921_l22",		NULL),
@@ -128,7 +175,9 @@ VREG_CONSUMERS(L23) = {
 };
 VREG_CONSUMERS(L24) = {
 	REGULATOR_SUPPLY("8921_l24",		NULL),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("riva_vddmx",		"wcnss_wlan.0"),
+#endif
 };
 VREG_CONSUMERS(L25) = {
 	REGULATOR_SUPPLY("8921_l25",		NULL),
@@ -154,7 +203,9 @@ VREG_CONSUMERS(L29) = {
 };
 VREG_CONSUMERS(S2) = {
 	REGULATOR_SUPPLY("8921_s2",		NULL),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("iris_vddrfa",		"wcnss_wlan.0"),
+#endif
 };
 VREG_CONSUMERS(S3) = {
 	REGULATOR_SUPPLY("8921_s3",		NULL),
@@ -162,7 +213,9 @@ VREG_CONSUMERS(S3) = {
 	REGULATOR_SUPPLY("HSUSB_VDDCX",		"msm_ehci_host.0"),
 	REGULATOR_SUPPLY("HSUSB_VDDCX",		"msm_ehci_host.1"),
 	REGULATOR_SUPPLY("HSIC_VDDCX",		"msm_hsic_host"),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("riva_vddcx",		"wcnss_wlan.0"),
+#endif
 	REGULATOR_SUPPLY("vp_pcie",             "msm_pcie"),
 	REGULATOR_SUPPLY("vptx_pcie",           "msm_pcie"),
 };
@@ -175,14 +228,20 @@ VREG_CONSUMERS(S4) = {
 	REGULATOR_SUPPLY("CDC_VDDA_RX",		"tabla-slim"),
 	REGULATOR_SUPPLY("VDDIO_CDC",		"tabla2x-slim"),
 	REGULATOR_SUPPLY("CDC_VDD_CP",		"tabla2x-slim"),
-	REGULATOR_SUPPLY("CDC_VDDA_TX",		"tabla2x-slim"),
-	REGULATOR_SUPPLY("CDC_VDDA_RX",		"tabla2x-slim"),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("riva_vddpx",		"wcnss_wlan.0"),
+#endif
+#ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
+	REGULATOR_SUPPLY("sdc_vdd_io",		"msm_sdcc.2"),
+	REGULATOR_SUPPLY("sdc_vdd_io",		"msm_sdcc.4"),
+#endif
+
 	REGULATOR_SUPPLY("vcc_i2c",		"3-005b"),
 	REGULATOR_SUPPLY("vcc_i2c",		"3-0024"),
 	REGULATOR_SUPPLY("vddp",		"0-0048"),
 	REGULATOR_SUPPLY("hdmi_lvl_tsl",	"hdmi_msm.0"),
 	REGULATOR_SUPPLY("vdd-io",		"spi0.2"),
+	REGULATOR_SUPPLY("pa_therm",		"pm8xxx-adc"),
 };
 VREG_CONSUMERS(S5) = {
 	REGULATOR_SUPPLY("8921_s5",		NULL),
@@ -200,7 +259,9 @@ VREG_CONSUMERS(S8) = {
 };
 VREG_CONSUMERS(LVS1) = {
 	REGULATOR_SUPPLY("8921_lvs1",		NULL),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("iris_vddio",		"wcnss_wlan.0"),
+#endif
 };
 VREG_CONSUMERS(LVS3) = {
 	REGULATOR_SUPPLY("8921_lvs3",		NULL),
@@ -216,6 +277,15 @@ VREG_CONSUMERS(LVS5) = {
 	REGULATOR_SUPPLY("cam_vio",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vio",		"4-0034"),
 	REGULATOR_SUPPLY("cam_vio",		"4-0020"),
+	REGULATOR_SUPPLY("cam_vio",		"7-006a"),
+	REGULATOR_SUPPLY("cam_vio",		"4-003e"),
+	REGULATOR_SUPPLY("cam_vio",		"4-002d"),
+#ifdef CONFIG_CAMERA_USE_GSBI7
+	REGULATOR_SUPPLY("cam_vio",		"7-003e"),
+#endif
+#ifdef CONFIG_CAMERA_SW_I2C
+	REGULATOR_SUPPLY("cam_vio",		"27-006a"),
+#endif
 };
 VREG_CONSUMERS(LVS6) = {
 	REGULATOR_SUPPLY("8921_lvs6",		NULL),
@@ -223,7 +293,9 @@ VREG_CONSUMERS(LVS6) = {
 };
 VREG_CONSUMERS(LVS7) = {
 	REGULATOR_SUPPLY("8921_lvs7",		NULL),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("pll_vdd",		"pil_riva"),
+#endif
 	REGULATOR_SUPPLY("lvds_vdda",		"lvds.0"),
 	REGULATOR_SUPPLY("dsi1_vddio",		"mipi_dsi.1"),
 	REGULATOR_SUPPLY("dsi_pll_vddio",	"mdp.0"),
@@ -274,13 +346,77 @@ VREG_CONSUMERS(AVC_3P3V) = {
 	REGULATOR_SUPPLY("avc_3p3v",	NULL),
 };
 
+#ifdef CONFIG_REGULATOR_MAX77693
+static struct regulator_consumer_supply safeout1_supply[] = {
+	REGULATOR_SUPPLY("safeout1", NULL),
+};
+
+static struct regulator_consumer_supply safeout2_supply[] = {
+	REGULATOR_SUPPLY("safeout2", NULL),
+};
+
+static struct regulator_consumer_supply charger_supply[] = {
+	REGULATOR_SUPPLY("vinchg1", "charger-manager.0"),
+	REGULATOR_SUPPLY("vinchg1", NULL),
+};
+
+static struct regulator_init_data safeout1_init_data = {
+	.constraints	= {
+		.name		= "safeout1 range",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+		.always_on	= 0,
+		.boot_on	= 1,
+		.state_mem	= {
+			.enabled = 1,
+		},
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(safeout1_supply),
+	.consumer_supplies	= safeout1_supply,
+};
+
+static struct regulator_init_data safeout2_init_data = {
+	.constraints	= {
+		.name		= "safeout2 range",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+		.always_on	= 0,
+		.boot_on	= 0,
+		.state_mem	= {
+			.enabled = 1,
+		},
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(safeout2_supply),
+	.consumer_supplies	= safeout2_supply,
+};
+
+static struct regulator_init_data charger_init_data = {
+	.constraints	= {
+		.name		= "CHARGER",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS |
+		REGULATOR_CHANGE_CURRENT,
+		.boot_on	= 1,
+		.min_uA		= 60000,
+		.max_uA		= 2580000,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(charger_supply),
+	.consumer_supplies	= charger_supply,
+};
+
+struct max77693_regulator_data max77693_regulators[] = {
+	{MAX77693_ESAFEOUT1, &safeout1_init_data,},
+	{MAX77693_ESAFEOUT2, &safeout2_init_data,},
+	{MAX77693_CHARGER, &charger_init_data,},
+};
+#endif /* CONFIG_REGULATOR_MAX77693 */
+
 /* Regulators that are only present when using PM8921 */
 VREG_CONSUMERS(S1) = {
 	REGULATOR_SUPPLY("8921_s1",		NULL),
 };
 VREG_CONSUMERS(LVS2) = {
 	REGULATOR_SUPPLY("8921_lvs2",		NULL),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("iris_vdddig",		"wcnss_wlan.0"),
+#endif
 };
 VREG_CONSUMERS(HDMI_MVS) = {
 	REGULATOR_SUPPLY("8921_hdmi_mvs",	NULL),
@@ -297,11 +433,13 @@ VREG_CONSUMERS(EXT_5V) = {
 /* Regulators that are only present when using PM8917 */
 VREG_CONSUMERS(8917_S1) = {
 	REGULATOR_SUPPLY("8921_s1",		NULL),
+#ifdef CONFIG_WCNSS_CORE
 	REGULATOR_SUPPLY("iris_vdddig",		"wcnss_wlan.0"),
+#endif
 };
 VREG_CONSUMERS(L30) = {
 	REGULATOR_SUPPLY("8917_l30",		NULL),
-};
+	REGULATOR_SUPPLY("3000mV_LCD",		"mipi_dsi.1"),};
 VREG_CONSUMERS(L31) = {
 	REGULATOR_SUPPLY("8917_l31",		NULL),
 };
@@ -313,6 +451,8 @@ VREG_CONSUMERS(L33) = {
 };
 VREG_CONSUMERS(L34) = {
 	REGULATOR_SUPPLY("8917_l34",		NULL),
+	REGULATOR_SUPPLY("CDC_VDDA_TX",	"tabla2x-slim"),
+	REGULATOR_SUPPLY("CDC_VDDA_RX",	"tabla2x-slim"),
 };
 VREG_CONSUMERS(L35) = {
 	REGULATOR_SUPPLY("8917_l35",		NULL),
@@ -357,7 +497,15 @@ VREG_CONSUMERS(BOOST) = {
 	PM8XXX_VREG_INIT(_id, _name, _min_uV, _max_uV, REGULATOR_MODE_NORMAL \
 		| REGULATOR_MODE_IDLE, REGULATOR_CHANGE_VOLTAGE | \
 		REGULATOR_CHANGE_STATUS | REGULATOR_CHANGE_MODE | \
-		REGULATOR_CHANGE_DRMS, 0, _pull_down, _always_on, \
+		REGULATOR_CHANGE_DRMS,  0, _pull_down, _always_on, \
+		_supply_regulator, _system_uA, _enable_time, _reg_id)
+
+#define PM8XXX_LDO_APPLY_UV(_id, _name, _always_on, _pull_down, _min_uV, _max_uV, \
+		_enable_time, _supply_regulator, _system_uA, _reg_id) \
+	PM8XXX_VREG_INIT(_id, _name, _min_uV, _max_uV, REGULATOR_MODE_NORMAL \
+		| REGULATOR_MODE_IDLE, REGULATOR_CHANGE_VOLTAGE | \
+		REGULATOR_CHANGE_STATUS | REGULATOR_CHANGE_MODE | \
+		REGULATOR_CHANGE_DRMS, 1, _pull_down, _always_on, \
 		_supply_regulator, _system_uA, _enable_time, _reg_id)
 
 #define PM8XXX_NLDO1200(_id, _name, _always_on, _pull_down, _min_uV, \
@@ -604,6 +752,52 @@ msm8064_pm8921_regulator_pdata[] __devinitdata = {
 	PM8XXX_VS300(HDMI_MVS, "8921_hdmi_mvs", 0, 1,         0, "ext_5v", 3),
 };
 
+#ifdef CONFIG_ISDBTMM
+/* PM8917 regulator constraints */
+struct pm8xxx_regulator_platform_data
+msm8064_pm8917_regulator_pdata[] __devinitdata = {
+	/*
+	 *		ID   name always_on pd min_uV   max_uV   en_t supply
+	 *	system_uA reg_ID
+	 */
+	PM8XXX_LDO(L15,      "8921_l15", 0, 1, 1800000, 1800000, 200, NULL,
+		0, 1),
+
+	PM8XXX_NLDO1200(L26, "8921_l26", 0, 1, 375000, 1050000, 200, "8921_s7",
+		0, 2),
+
+	PM8XXX_LDO(L27,      "8921_l27", 0, 1, 1100000, 1100000, 200, NULL,
+		0, 3),
+
+	PM8XXX_LDO(L30,      "8917_l30", 0, 1, 3000000, 3000000, 200, NULL,
+		0, 4),
+	PM8XXX_LDO(L31,      "8917_l31", 0, 1, 1800000, 1800000, 200, NULL,
+		0, 5),
+	PM8XXX_LDO(L32,      "8917_l32", 0, 1, 3300000, 3300000, 200, NULL,
+		0, 6),
+	PM8XXX_LDO_APPLY_UV(L33,      "8917_l33", 1, 1, 1200000, 1200000, 200, NULL,
+		0, 7),
+	PM8XXX_LDO(L34,      "8917_l34", 0, 1, 2200000, 2200000, 200, NULL,
+		0, 8),
+#ifdef CONFIG_MACH_JF_DCM
+	PM8XXX_LDO(L35,      "8917_l35", 0, 1, 1850000, 1850000, 200, NULL,
+		0, 9),
+#else
+	PM8XXX_LDO(L35,      "8917_l35", 0, 1, 1800000, 1800000, 200, NULL,
+		0, 9),
+#endif
+	PM8XXX_LDO(L36,      "8917_l36", 0, 1, 1800000, 1800000, 200, NULL,
+		0, 10),
+
+	/*
+	 *           ID     name   always_on  min_uV   max_uV en_t supply reg_ID
+	 */
+	PM8XXX_BOOST(BOOST, "8917_boost", 0,  5000000, 5000000, 500, NULL, 11),
+
+	/*	     ID        name      always_on pd en_t supply    reg_ID */
+	PM8XXX_VS300(USB_OTG,  "8921_usb_otg",  0, 0, 0,   "8917_boost", 12),
+};
+#else
 /* PM8917 regulator constraints */
 struct pm8xxx_regulator_platform_data
 msm8064_pm8917_regulator_pdata[] __devinitdata = {
@@ -613,18 +807,23 @@ msm8064_pm8917_regulator_pdata[] __devinitdata = {
 	 */
 	PM8XXX_NLDO1200(L26, "8921_l26", 0, 1, 375000, 1050000, 200, "8921_s7",
 		0, 1),
-	PM8XXX_LDO(L30,      "8917_l30", 0, 1, 1800000, 1800000, 200, NULL,
+	PM8XXX_LDO(L30,      "8917_l30", 0, 1, 3000000, 3000000, 200, NULL,
 		0, 2),
 	PM8XXX_LDO(L31,      "8917_l31", 0, 1, 1800000, 1800000, 200, NULL,
 		0, 3),
-	PM8XXX_LDO(L32,      "8917_l32", 0, 1, 2800000, 2800000, 200, NULL,
+	PM8XXX_LDO(L32,      "8917_l32", 0, 1, 3300000, 3300000, 200, NULL,
 		0, 4),
-	PM8XXX_LDO(L33,      "8917_l33", 0, 1, 2800000, 2800000, 200, NULL,
+	PM8XXX_LDO_APPLY_UV(L33,      "8917_l33", 1, 1, 1200000, 1200000, 200, NULL,
 		0, 5),
-	PM8XXX_LDO(L34,      "8917_l34", 0, 1, 1800000, 1800000, 200, NULL,
+	PM8XXX_LDO(L34,      "8917_l34", 0, 1, 2200000, 2200000, 200, NULL,
 		0, 6),
-	PM8XXX_LDO(L35,      "8917_l35", 0, 1, 3000000, 3000000, 200, NULL,
+#ifdef CONFIG_MACH_JF_DCM
+	PM8XXX_LDO(L35,      "8917_l35", 0, 1, 1850000, 1850000, 200, NULL,
 		0, 7),
+#else
+	PM8XXX_LDO(L35,      "8917_l35", 0, 1, 1800000, 1800000, 200, NULL,
+		0, 7),
+#endif
 	PM8XXX_LDO(L36,      "8917_l36", 0, 1, 1800000, 1800000, 200, NULL,
 		0, 8),
 
@@ -634,18 +833,19 @@ msm8064_pm8917_regulator_pdata[] __devinitdata = {
 	PM8XXX_BOOST(BOOST, "8917_boost", 0,  5000000, 5000000, 500, NULL, 9),
 
 	/*	     ID        name      always_on pd en_t supply    reg_ID */
-	PM8XXX_VS300(USB_OTG,  "8921_usb_otg",  0, 1, 0,   "8917_boost", 10),
+	PM8XXX_VS300(USB_OTG,  "8921_usb_otg",  0, 0, 0,   "8917_boost", 10),
 };
+#endif
 
 static struct rpm_regulator_init_data
 apq8064_rpm_regulator_init_data[] __devinitdata = {
 	/*	ID a_on pd ss min_uV   max_uV  supply sys_uA  freq  fm  ss_fm */
-	RPM_SMPS(S1, 1, 1, 0, 1225000, 1225000, NULL, 100000, 3p20, NONE, NONE),
+	RPM_SMPS(S1, 1, 1, 0, 1300000, 1300000, NULL, 100000, 3p20, NONE, NONE),
 	RPM_SMPS(S2, 0, 1, 0, 1300000, 1300000, NULL,      0, 1p60, NONE, NONE),
 	RPM_SMPS(S3, 0, 1, 1,  500000, 1150000, NULL, 100000, 4p80, NONE, NONE),
 	RPM_SMPS(S4, 1, 1, 0, 1800000, 1800000, NULL, 100000, 1p60, AUTO, AUTO),
 	RPM_SMPS(S7, 0, 0, 0, 1300000, 1300000, NULL, 100000, 3p20, NONE, NONE),
-	RPM_SMPS(S8, 0, 1, 0, 2200000, 2200000, NULL,      0, 1p60, NONE, NONE),
+	RPM_SMPS(S8, 0, 1, 0, 1200000, 1200000, NULL,      0, 1p60, HPM, HPM),
 
 	/*	ID a_on pd ss min_uV   max_uV   supply    sys_uA init_ip */
 	RPM_LDO(L1,  1, 1, 0, 1100000, 1100000, "8921_s4",     0,  1000),
@@ -654,26 +854,30 @@ apq8064_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L4,  1, 1, 0, 1800000, 1800000, NULL,          0, 10000),
 	RPM_LDO(L5,  0, 1, 0, 2950000, 2950000, NULL,          0,     0),
 	RPM_LDO(L6,  0, 1, 0, 2950000, 2950000, NULL,          0,     0),
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
+	RPM_LDO(L7,  1, 1, 0, 1800000, 1800000, NULL,     0,     0),
+#else
 	RPM_LDO(L7,  0, 1, 0, 1850000, 2950000, NULL,          0,     0),
+#endif
 	RPM_LDO(L8,  0, 1, 0, 2800000, 2800000, NULL,          0,     0),
-	RPM_LDO(L9,  0, 1, 0, 3000000, 3000000, NULL,          0,     0),
-	RPM_LDO(L10, 0, 1, 0, 2900000, 2900000, NULL,          0,     0),
-	RPM_LDO(L11, 0, 1, 0, 3000000, 3000000, NULL,          0,     0),
+	RPM_LDO(L9,  0, 1, 0, 2850000, 2850000, NULL,          0,     0),
+	RPM_LDO(L10, 0, 1, 0, 2900000, 3300000, NULL,          0,     0),
+	RPM_LDO(L11, 0, 1, 0, 3300000, 3300000, NULL,          0,     0),
 	RPM_LDO(L12, 0, 1, 0, 1200000, 1200000, "8921_s4",     0,     0),
 	RPM_LDO(L13, 0, 0, 0, 2220000, 2220000, NULL,          0,     0),
 	RPM_LDO(L14, 0, 1, 0, 1800000, 1800000, NULL,          0,     0),
 	RPM_LDO(L15, 0, 1, 0, 1800000, 2950000, NULL,          0,     0),
-	RPM_LDO(L16, 0, 1, 0, 2800000, 2800000, NULL,          0,     0),
-	RPM_LDO(L17, 0, 1, 0, 2000000, 2000000, NULL,          0,     0),
-	RPM_LDO(L18, 0, 1, 0, 1300000, 1800000, "8921_s4",     0,     0),
-	RPM_LDO(L21, 0, 1, 0, 1050000, 1050000, NULL,          0,     0),
-	RPM_LDO(L22, 0, 1, 0, 2600000, 2600000, NULL,          0,     0),
+	RPM_LDO(L16, 0, 1, 0, 2800000, 3000000, NULL,          0,     0),
+	RPM_LDO(L17, 0, 1, 0, 1800000, 3300000, NULL,          0,     0),
+	RPM_LDO(L18, 1, 1, 0, 1100000, 1100000, "8921_s4",     0,     0),
+	RPM_LDO(L21, 0, 1, 0, 1800000, 1800000, NULL,          0,     0),
+	RPM_LDO(L22, 0, 1, 0, 1800000, 1800000, NULL,          0,     0),
 	RPM_LDO(L23, 0, 1, 0, 1800000, 1800000, NULL,          0,     0),
 	RPM_LDO(L24, 0, 1, 1,  750000, 1150000, "8921_s1", 10000, 10000),
 	RPM_LDO(L25, 1, 1, 0, 1250000, 1250000, "8921_s1", 10000, 10000),
 	RPM_LDO(L27, 0, 0, 0, 1100000, 1100000, "8921_s7",     0,     0),
-	RPM_LDO(L28, 0, 1, 0, 1050000, 1050000, "8921_s7",     0,     0),
-	RPM_LDO(L29, 0, 1, 0, 2000000, 2000000, NULL,          0,     0),
+	RPM_LDO(L28, 0, 1, 0, 1100000, 1100000, "8921_s7",     0,     0),
+	RPM_LDO(L29, 0, 1, 0, 1800000, 1800000, NULL,          0,     0),
 
 	/*     ID  a_on pd ss                   supply */
 	RPM_VS(LVS1, 0, 1, 0,                   "8921_s4"),

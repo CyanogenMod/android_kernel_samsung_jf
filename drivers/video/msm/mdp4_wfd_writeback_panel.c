@@ -67,6 +67,7 @@ static int __init writeback_panel_init(void)
 		WRITEBACK_MSG_ERR("Failed to register platform driver\n");
 		goto fail_driver_registration;
 	}
+
 	rc = platform_device_register(&writeback_panel_device);
 	if (rc) {
 		WRITEBACK_MSG_ERR("Failed to register "

@@ -627,6 +627,10 @@ struct adm_cmd_memory_unmap_regions{
 #define VPM_TX_DM_FLUENCE_COPP_TOPOLOGY			0x00010F72
 #define VPM_TX_QMIC_FLUENCE_COPP_TOPOLOGY		0x00010F75
 
+// NXP LVVEFQ
+#define VPM_TX_SM_LVVE_COPP_TOPOLOGY	0x1000BFF0
+#define VPM_TX_DM_LVVE_COPP_TOPOLOGY	0x1000BFF1
+
 #define LOWLATENCY_POPP_TOPOLOGY			0x00010C68
 #define LOWLATENCY_COPP_TOPOLOGY			0x00010312
 #define PCM_BITS_PER_SAMPLE				16
@@ -704,6 +708,14 @@ struct asm_pp_params_command {
 	u32    *payload;
 	u32	payload_size;
 	struct  asm_pp_param_data_hdr params;
+} __attribute__ ((packed));
+
+struct asm_pp_get_params_command {
+	struct apr_hdr	hdr;
+	u32    *payload;
+	struct  asm_pp_param_data_hdr params;
+	u32 dummy1;
+	u32 dummy2;
 } __attribute__ ((packed));
 
 #define EQUALIZER_MODULE_ID		0x00010c27

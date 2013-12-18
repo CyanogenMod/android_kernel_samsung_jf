@@ -853,7 +853,9 @@ int diag_switch_logging(unsigned long ioarg)
 		diag_clear_hsic_tbl();
 		driver->mask_check = 0;
 		driver->logging_mode = MEMORY_DEVICE_MODE;
-	}
+		driver->sub_logging_mode = UART_MODE;
+	} else
+		driver->sub_logging_mode = NO_LOGGING_MODE;
 
 	driver->logging_process_id = current->tgid;
 	mutex_unlock(&driver->diagchar_mutex);
@@ -1606,6 +1608,11 @@ static int diagchar_write(struct file *file, const char __user *buf,
 			}
 		}
 		buf = buf + 4;
+
+		/* To removed "0x7E", when received only "0x7E" */
+		if (0x7e == *(((unsigned char *)buf)))
+			return 0;
+
 #ifdef DIAG_DEBUG
 		pr_debug("diag: user space data %d\n", payload_size);
 		for (i = 0; i < payload_size; i++)
@@ -1684,10 +1691,12 @@ static int diagchar_write(struct file *file, const char __user *buf,
 			}
 		}
 #endif
+#if 0
 		/* send masks to 8k now */
 		if (!remote_proc)
 			diag_process_hdlc((void *)
 				(user_space_data + token_offset), payload_size);
+#endif
 		diagmem_free(driver, user_space_data, POOL_TYPE_USER);
 		return 0;
 	}
