@@ -22,7 +22,6 @@
 #include "msm_jpeg_platform.h"
 #include "msm_jpeg_common.h"
 
-#define UINT32_MAX    (4294967295U)
 static int release_buf;
 
 inline void msm_jpeg_q_init(char const *name, struct msm_jpeg_q *q_p)
@@ -219,7 +218,7 @@ int msm_jpeg_evt_get(struct msm_jpeg_device *pgmn_dev,
 		JPEG_DBG("%s:%d] no buffer\n", __func__, __LINE__);
 		return -EAGAIN;
 	}
-
+	memset(&ctrl_cmd, 0, sizeof(ctrl_cmd));
 	ctrl_cmd.type = buf_p->vbuf.type;
 	kfree(buf_p);
 
@@ -632,7 +631,7 @@ int msm_jpeg_ioctl_hw_cmds(struct msm_jpeg_device *pgmn_dev,
 	void * __user arg)
 {
 	int is_copy_to_user;
-	uint32_t len;
+	int len;
 	uint32_t m;
 	struct msm_jpeg_hw_cmds *hw_cmds_p;
 	struct msm_jpeg_hw_cmd *hw_cmd_p;
@@ -641,12 +640,7 @@ int msm_jpeg_ioctl_hw_cmds(struct msm_jpeg_device *pgmn_dev,
 		JPEG_PR_ERR("%s:%d] failed\n", __func__, __LINE__);
 		return -EFAULT;
 	}
-	if ((m == 0) || (m > ((UINT32_MAX-sizeof(struct msm_jpeg_hw_cmds))/
-		sizeof(struct msm_jpeg_hw_cmd)))) {
-		JPEG_PR_ERR("%s:%d] outof range of hwcmds\n",
-			__func__, __LINE__);
-		return -EINVAL;
-	}
+
 	len = sizeof(struct msm_jpeg_hw_cmds) +
 		sizeof(struct msm_jpeg_hw_cmd) * (m - 1);
 	hw_cmds_p = kmalloc(len, GFP_KERNEL);

@@ -1,8 +1,8 @@
 /*
  * Misc system wide definitions
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
- * 
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmdefs.h 316830 2012-02-23 20:29:22Z $
+ * $Id: bcmdefs.h 424298 2013-09-17 06:38:13Z $
  */
 
 #ifndef	_bcmdefs_h_
@@ -53,10 +53,18 @@
 #define	BCMNMIATTACHFN(_fn)	_fn
 #define	BCMNMIATTACHDATA(_data)	_data
 #define CONST	const
+
+#undef BCM47XX_CA9
+
 #ifndef BCMFASTPATH
+#if defined(BCM47XX_CA9)
+#define BCMFASTPATH		__attribute__ ((__section__ (".text.fastpath")))
+#define BCMFASTPATH_HOST	__attribute__ ((__section__ (".text.fastpath_host")))
+#else
 #define BCMFASTPATH
 #define BCMFASTPATH_HOST
-#endif 
+#endif
+#endif
 
 
 
@@ -177,10 +185,14 @@ typedef struct {
 
 #if defined(BCM_RPC_NOCOPY) || defined(BCM_RCP_TXNOCOPY)
 
-#define BCMEXTRAHDROOM 220
-#else 
-#define BCMEXTRAHDROOM 172
-#endif 
+#define BCMEXTRAHDROOM 260
+#else
+#if defined(BCM47XX_CA9)
+#define BCMEXTRAHDROOM 224
+#else
+#define BCMEXTRAHDROOM 204
+#endif
+#endif
 
 
 #ifndef SDALIGN

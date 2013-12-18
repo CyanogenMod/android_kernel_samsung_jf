@@ -11,7 +11,6 @@
  * which has to be created by the fd = open(/dev/mobicore) command.
  *
  * <-- Copyright Giesecke & Devrient GmbH 2009-2012 -->
- * <-- Copyright Trustonic Limited 2013 -->
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -353,9 +352,7 @@ static int map_buffer(struct task_struct *task, void *wsm_buffer,
 		return -EINVAL;
 	}
 
-	MCDRV_DBG_VERBOSE(mcd, "WSM addr=0x%p, len=0x%08x\n", wsm_buffer,
-			  wsm_len);
-
+	MCDRV_DBG_VERBOSE("WSM addr=0x%p, len=0x%08x\n", wsm_buffer, wsm_len);
 
 	/* calculate page usage */
 	virt_addr_page = (void *)(((unsigned long)(wsm_buffer)) & PAGE_MASK);
@@ -618,24 +615,19 @@ err_no_mem:
 	return ERR_PTR(ret);
 }
 
-uint32_t mc_find_l2_table(uint32_t handle, int32_t fd)
+uint32_t mc_find_l2_table(struct mc_instance *instance, uint32_t handle)
 {
 	uint32_t ret = 0;
 	struct mc_l2_table *table = NULL;
+
+	if (WARN(!instance, "No instance data available"))
+		return 0;
 
 	mutex_lock(&mem_ctx.table_lock);
 	table = find_l2_table(handle);
 
 	if (table == NULL) {
 		MCDRV_DBG_ERROR(mcd, "entry not found %u\n", handle);
-		ret = 0;
-		goto table_err;
-	}
-
-	/* It's safe here not to lock the instance since the owner of
-	 * the table will be cleared only with the table lock taken */
-	if (!mc_check_owner_fd(table->owner, fd)) {
-		MCDRV_DBG_ERROR(mcd, "not valid owner%u\n", handle);
 		ret = 0;
 		goto table_err;
 	}

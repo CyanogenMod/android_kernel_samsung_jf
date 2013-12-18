@@ -1,5 +1,6 @@
 
 source "drivers/video/msm/vidc/Kconfig"
+source "drivers/video/msm/mhl_v2/Kconfig"
 
 config FB_MSM
 	tristate "MSM Framebuffer support"
@@ -38,6 +39,18 @@ config FB_MSM_TRIPLE_BUFFER
 config FB_MSM_MDP_HW
 	bool
 	default n
+
+config USE_VFB
+	bool "MSM Virtual Framebuffer support"
+	default n
+	---help---
+	  Support for MSM Virtual Framebuffer
+
+config SEC_DEBUG_MDP
+	bool "MSM MDP debug support"
+	default n
+	---help---
+	  Support for MDP debug
 
 choice
 	prompt "MDP HW version"
@@ -100,6 +113,10 @@ config FB_MSM_MDP_NONE
 	  Say Y here if this is mdm platform.
 
 endchoice
+
+config MIPI_SUPPORT_TFT_IN_HW_00_01
+	bool "On Fusion3, use tft panel in hw 00/01 "
+	default n
 
 config FB_MSM_EBI2
 	bool
@@ -230,6 +247,20 @@ config FB_MSM_MIPI_DSI_TC358764_DSI2LVDS
 	  and up to WUXGA 1920x1200 18-bit
 	  using a dual LVDS link.
 
+config FB_MSM_MIPI_DSI_RENESAS_TFT
+	bool
+	select FB_MSM_MIPI_DSI
+	default n
+
+config FB_MSM_MIPI_DSI_SAMSUNG_OCTA
+	bool
+	select FB_MSM_MIPI_DSI
+	default n
+
+config FB_MSM_MIPI_DSI_SAMSUNG_OLED
+	bool
+	select FB_MSM_MIPI_DSI
+	default n
 config FB_MSM_LCDC_ST15_WXGA
     bool
     select FB_MSM_LCDC_PANEL
@@ -422,6 +453,38 @@ config FB_MSM_MIPI_SIMULATOR_VIDEO
 	bool
 	select FB_MSM_MIPI_DSI_SIMULATOR
 	default n
+config FB_MSM_NO_MDP_PIPE_CTRL
+	depends on FB_MSM_OVERLAY
+	bool "Do not use mdp_pipe_ctrl"
+	---help---
+	  Saying 'Y' here obsoletes the mdp_pipe_ctrl function,
+	  which was used to control mdp-related clocks. MDP4 vsync-driven
+	  screen updates will use a different clock control mechanism if
+	  this is selected.
+
+
+config FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT
+	bool
+	select FB_MSM_MIPI_DSI_SAMSUNG_OLED
+	default n
+
+config FB_MSM_NO_MDP_PIPE_CTRL
+	depends on FB_MSM_OVERLAY
+	bool "Do not use mdp_pipe_ctrl"
+	---help---
+	  Saying 'Y' here obsoletes the mdp_pipe_ctrl function,
+	  which was used to control mdp-related clocks. MDP4 vsync-driven
+	  screen updates will use a different clock control mechanism if
+	  this is selected.
+
+config FB_MSM_NO_MDP_PIPE_CTRL
+	depends on FB_MSM_OVERLAY
+	bool "Do not use mdp_pipe_ctrl"
+	---help---
+	  Saying 'Y' here obsoletes the mdp_pipe_ctrl function,
+	  which was used to control mdp-related clocks. MDP4 vsync-driven
+	  screen updates will use a different clock control mechanism if
+	  this is selected.
 
 config FB_MSM_NO_MDP_PIPE_CTRL
 	depends on FB_MSM_OVERLAY
@@ -438,6 +501,15 @@ config FB_MSM_OVERLAY0_WRITEBACK
 	---help---
 	  Support for MDP4 OVERLAY0 write back mode
 
+config FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT
+	bool
+	select FB_MSM_MIPI_DSI_RENESAS_TFT
+	default n
+
+config FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT
+	bool
+	select FB_MSM_MIPI_DSI_SAMSUNG_OCTA
+	default n
 
 config FB_MSM_OVERLAY1_WRITEBACK
         depends on FB_MSM_OVERLAY
@@ -450,9 +522,10 @@ config FB_MSM_WRITEBACK_MSM_PANEL
         bool "MDP overlay write back panel enable"
 	---help---
 	  Support for MDP4 OVERLAY write back mode
-choice
-	prompt "LCD Panel"
-	default FB_MSM_MDDI_AUTO_DETECT
+
+#choice
+#	prompt "LCD Panel"
+#	default FB_MSM_MDDI_AUTO_DETECT
 
 config FB_MSM_LCDC_PRISM_WVGA_PANEL
 	depends on FB_MSM_LCDC_HW
@@ -764,6 +837,27 @@ config FB_MSM_MIPI_SIMULATOR_VIDEO_PANEL
 	bool "MIPI Simulator Video Panel"
 	select FB_MSM_MIPI_SIMULATOR_VIDEO
 
+config FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT_PANEL
+	bool "MIPI SAMSUNG OLED VIDEO HD PT Panel"
+	select FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT
+	---help---
+	  Support Samsung Oled HD Panel
+
+config FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL
+	bool "MIPI RENESAS TFT VIDEO FULL HD PT Panel"
+	select FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT
+	---help---
+	  Support Renesas Full HD Panel
+
+config FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
+	bool "MIPI SAMSUNG OCTA VIDEO FULL HD PT Panel"
+	select FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT
+        ---help---
+          Support for samsung full hd oled.
+          The chip supports 1920*1080 24-bit
+          and up to 936.92Mhz
+          using a samsung LDI
+
 config FB_MSM_EBI2_TMD_QVGA_EPSON_QCIF
 	bool "EBI2 TMD QVGA Epson QCIF Dual Panel"
 	select FB_MSM_EBI2
@@ -780,7 +874,7 @@ config FB_MSM_PANEL_NONE
 	bool "NONE"
 	---help---
 	  This will disable LCD panel
-endchoice
+#endchoice
 
 config LGIT_VIDEO_WXGA_CABC
 	bool "Content Adaptive Backlight Control on LGIT WXGA Panel"
@@ -988,6 +1082,12 @@ config FB_MSM_DEFAULT_DEPTH_RGBA8888
 
 endchoice
 
+config FB_MSM_CAMERA_CSC
+	default n
+	bool "SAMSUNG JF CAMERA CSC"
+	help
+	  Support for Camere CSC tuning
+
 config FB_MSM_EBI2_EPSON_S1D_QVGA_PANEL
 	bool "EBI2 Epson QVGA Panel"
 	select FB_MSM_EBI2
@@ -1001,6 +1101,37 @@ config FB_MSM_EBI2_PANEL_DETECT
 	default n
 	---help---
 	  Support for EBI2 panel auto detect
+
+config FB_MDP4_ENHANCE
+	bool "MDP4 VIDEO ENHANCEMENT"
+	default n
+	---help---
+	  Support for mdp4 video enhancement
+
+config MDNIE_LITE_TUNING
+	bool "mdnie lite tuning"
+	default n
+
+config HBM_PSRE
+	bool "HBM PSRE funtion"
+	default n
+
+config SUPPORT_DISPLAY_OCTA_TFT
+	bool "support OCTA and TFT panel"
+	select PROJECT_FUSION3
+	default n
+
+config SUPPORT_SECOND_POWER
+	bool "support second power operation"
+	default n
+
+config LCD_VDD3_BY_PMGPIO
+	bool "support externel dcdc for VDD3_IO"
+	default n
+
+config ESD_ERR_FG_RECOVERY
+	bool "ESD RECOVERY BY ERR_FG"
+	default n
 
 if FB_MSM_MDSS
 	source "drivers/video/msm/mdss/Kconfig"

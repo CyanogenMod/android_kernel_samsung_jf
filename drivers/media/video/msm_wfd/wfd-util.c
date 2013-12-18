@@ -195,6 +195,7 @@ int wfd_stats_update(struct wfd_stats *stats, enum wfd_stats_event event)
 	default:
 		rc = -ENOTSUPP;
 	}
+	mutex_unlock(&stats->mutex);
 
 	mutex_unlock(&stats->mutex);
 	return rc;

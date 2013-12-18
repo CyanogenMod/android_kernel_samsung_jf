@@ -2,7 +2,6 @@
  * MobiCore driver module.(interface to the secure world SWD)
  *
  * <-- Copyright Giesecke & Devrient GmbH 2009-2012 -->
- * <-- Copyright Trustonic Limited 2013 -->
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -118,7 +117,7 @@ int mc_lock_l2_table(struct mc_instance *instance, uint32_t handle);
 /* Unlock l2 table. */
 int mc_unlock_l2_table(struct mc_instance *instance, uint32_t handle);
 /* Return the phys address of l2 table. */
-uint32_t mc_find_l2_table(uint32_t handle, int32_t fd);
+uint32_t mc_find_l2_table(struct mc_instance *instance, uint32_t handle);
 /* Release all used l2 tables to Linux memory space */
 void mc_release_l2_tables(void);
 

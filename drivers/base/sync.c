@@ -634,6 +634,8 @@ static void sync_fence_free(struct kref *kref)
 
 	sync_fence_free_pts(fence);
 
+	fence->file->private_data = NULL;
+
 	kfree(fence);
 }
 
@@ -642,6 +644,10 @@ static int sync_fence_release(struct inode *inode, struct file *file)
 	struct sync_fence *fence = file->private_data;
 	unsigned long flags;
 
+	if (fence == NULL) {
+		pr_err("%s: fence already freed\n", __func__);
+		return -EIO;
+	}
 	/*
 	 * We need to remove all ways to access this fence before droping
 	 * our ref.
@@ -666,6 +672,11 @@ static int sync_fence_release(struct inode *inode, struct file *file)
 static unsigned int sync_fence_poll(struct file *file, poll_table *wait)
 {
 	struct sync_fence *fence = file->private_data;
+
+	if (fence == NULL) {
+		pr_err("%s: fence already freed\n", __func__);
+		return POLLERR;
+	}
 
 	poll_wait(file, &fence->wq, wait);
 
@@ -762,8 +773,9 @@ static int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 	}
 
 	strlcpy(info->obj_name, pt->parent->name, sizeof(info->obj_name));
-	strlcpy(info->driver_name, pt->parent->ops->driver_name,
-		sizeof(info->driver_name));
+	if (pt->parent->ops->driver_name)
+		strlcpy(info->driver_name, pt->parent->ops->driver_name,
+			sizeof(info->driver_name));
 	info->status = pt->status;
 	info->timestamp_ns = ktime_to_ns(pt->timestamp);
 
@@ -825,6 +837,10 @@ static long sync_fence_ioctl(struct file *file, unsigned int cmd,
 			     unsigned long arg)
 {
 	struct sync_fence *fence = file->private_data;
+	if (fence == NULL) {
+		pr_err("%s: fence is already freed", __func__);
+		return -ENOTTY;
+	}
 	switch (cmd) {
 	case SYNC_IOC_WAIT:
 		return sync_fence_ioctl_wait(fence, arg);

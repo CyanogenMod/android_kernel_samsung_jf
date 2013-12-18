@@ -113,7 +113,7 @@ config HAVE_IOREMAP_PROT
 	bool
 
 config HAVE_KPROBES
-	bool
+	def_bool n
 
 config HAVE_KRETPROBES
 	bool

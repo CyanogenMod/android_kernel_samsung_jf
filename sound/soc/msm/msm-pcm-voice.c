@@ -281,7 +281,9 @@ static int msm_voice_volume_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] = 0;
 	return 0;
 }
-
+#ifdef CONFIG_SND_SOC_ES325
+int es325_set_VEQ_max_gain(int volume);
+#endif
 static int msm_voice_volume_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -289,6 +291,9 @@ static int msm_voice_volume_put(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: volume: %d\n", __func__, volume);
 	voc_set_rx_vol_index(voc_get_session_id(VOICE_SESSION_NAME),
 						RX_PATH, volume);
+#ifdef CONFIG_SND_SOC_ES325
+	es325_set_VEQ_max_gain(volume);
+#endif
 	return 0;
 }
 
@@ -549,8 +554,14 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 				msm_voice_rx_device_mute_put),
 	SOC_SINGLE_EXT("Voice Tx Mute", SND_SOC_NOPM, 0, 1, 0,
 				msm_voice_mute_get, msm_voice_mute_put),
+#if defined(CONFIG_MACH_JF_VZW) || defined(CONFIG_MACH_JF_USC)
+	/* 8 level Voice Rx volume for VZW and USC */
+	SOC_SINGLE_EXT("Voice Rx Volume", SND_SOC_NOPM, 0, 7, 0,
+				msm_voice_volume_get, msm_voice_volume_put),
+#else
 	SOC_SINGLE_EXT("Voice Rx Volume", SND_SOC_NOPM, 0, 5, 0,
 				msm_voice_volume_get, msm_voice_volume_put),
+#endif
 	SOC_ENUM_EXT("TTY Mode", msm_tty_mode_enum[0], msm_voice_tty_mode_get,
 				msm_voice_tty_mode_put),
 	SOC_SINGLE_EXT("Widevoice Enable", SND_SOC_NOPM, 0, 1, 0,

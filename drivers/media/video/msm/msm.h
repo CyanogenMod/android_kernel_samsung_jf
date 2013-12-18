@@ -76,11 +76,6 @@
 #define MAX_NUM_CPP_DEV 1
 #define MAX_NUM_CCI_DEV 1
 
-/*AVTimer*/
-#define AVTIMER_MSW_PHY_ADDR  0x2800900C
-#define AVTIMER_LSW_PHY_ADDR  0x28009008
-#define AVTIMER_ITERATION_CTR 16
-
 /* msm queue management APIs*/
 
 #define msm_dequeue(queue, member) ({	   \
@@ -364,10 +359,6 @@ struct msm_cam_v4l2_dev_inst {
 	int vbqueue_initialized;
 	struct mutex inst_lock;
 	uint32_t inst_handle;
-	uint32_t sequence;
-	uint8_t avtimerOn;
-	void __iomem *p_avtimer_msw;
-	void __iomem *p_avtimer_lsw;
 };
 
 struct msm_cam_mctl_node {
@@ -691,8 +682,6 @@ struct msm_frame_buffer *msm_mctl_buf_find(
 	struct msm_cam_v4l2_dev_inst *pcam_inst, int del_buf,
 	struct msm_free_buf *fbuf);
 void msm_mctl_gettimeofday(struct timeval *tv);
-void msm_mctl_getAVTimer(struct msm_cam_v4l2_dev_inst *pcam_inst,
-        struct timeval *tv);
 int msm_mctl_check_pp(struct msm_cam_media_controller *p_mctl,
 	int msg_type, int *pp_divert_type, int *pp_type);
 int msm_mctl_do_pp_divert(
@@ -746,6 +735,7 @@ int msm_mctl_pp_get_vpe_buf_info(struct msm_mctl_pp_frame_info *zoom);
 void msm_queue_init(struct msm_device_queue *queue, const char *name);
 void msm_enqueue(struct msm_device_queue *queue, struct list_head *entry);
 void msm_drain_eventq(struct msm_device_queue *queue);
+extern void sensor_native_control(void __user *arg);
 #endif /* __KERNEL__ */
 
 #endif /* _MSM_H */

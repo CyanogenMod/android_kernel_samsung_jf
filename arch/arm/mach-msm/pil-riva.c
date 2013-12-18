@@ -289,31 +289,36 @@ static int __devinit pil_riva_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, drv);
 
 	drv->base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
-	if (!drv->base)
-		return -ENOMEM;
+	if (!drv->base) {
+		ret = -ENOMEM;
+		goto exit_drv_kfree;
+	}
 
 	desc = devm_kzalloc(&pdev->dev, sizeof(*desc), GFP_KERNEL);
-	if (!desc)
-		return -ENOMEM;
+	if (!desc) {
+		ret = -ENOMEM;
+		goto exit_devm_iounmap;
+	}
 
 	drv->pll_supply = devm_regulator_get(&pdev->dev, "pll_vdd");
 	if (IS_ERR(drv->pll_supply)) {
 		dev_err(&pdev->dev, "failed to get pll supply\n");
-		return PTR_ERR(drv->pll_supply);
+		ret = PTR_ERR(drv->pll_supply);
+		goto exit_dev_kfree;
 	}
 	if (regulator_count_voltages(drv->pll_supply) > 0) {
 		ret = regulator_set_voltage(drv->pll_supply, 1800000, 1800000);
 		if (ret) {
 			dev_err(&pdev->dev,
 				"failed to set pll supply voltage\n");
-			return ret;
+			goto exit_dev_kfree;
 		}
 
 		ret = regulator_set_optimum_mode(drv->pll_supply, 100000);
 		if (ret < 0) {
 			dev_err(&pdev->dev,
 				"failed to set pll supply optimum mode\n");
-			return ret;
+			goto exit_dev_kfree;
 		}
 	}
 
@@ -331,13 +336,25 @@ static int __devinit pil_riva_probe(struct platform_device *pdev)
 	}
 
 	drv->xo = devm_clk_get(&pdev->dev, "cxo");
-	if (IS_ERR(drv->xo))
-		return PTR_ERR(drv->xo);
+	if (IS_ERR(drv->xo)) {
+		ret = PTR_ERR(drv->xo);
+		goto exit_dev_kfree;
+	}
 
 	drv->pil = msm_pil_register(desc);
-	if (IS_ERR(drv->pil))
-		return PTR_ERR(drv->pil);
+	if (IS_ERR(drv->pil)) {
+		ret = PTR_ERR(drv->pil);
+		goto exit_dev_kfree;
+	}
 	return 0;
+
+exit_dev_kfree:
+	devm_kfree(&pdev->dev, desc);
+exit_devm_iounmap:
+	devm_iounmap(&pdev->dev, drv->base);
+exit_drv_kfree:
+	devm_kfree(&pdev->dev, drv);
+	return ret;
 }
 
 static int __devexit pil_riva_remove(struct platform_device *pdev)

@@ -255,6 +255,9 @@ void destroy_ramdump_device(void *dev)
 	if (IS_ERR_OR_NULL(rd_dev))
 		return;
 
+	mutex_lock(&ramdump_mtx);
+	list_del(&rd_dev->list);
+	mutex_unlock(&ramdump_mtx);
 	misc_deregister(&rd_dev->device);
 	kfree(rd_dev);
 }

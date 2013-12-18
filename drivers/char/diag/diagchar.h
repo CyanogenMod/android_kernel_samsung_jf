@@ -298,6 +298,7 @@ struct diagchar_dev {
 	struct diag_request *usb_read_ptr;
 	struct diag_request *write_ptr_svc;
 	int logging_mode;
+	int sub_logging_mode;
 	int mask_check;
 	int logging_process_id;
 	struct task_struct *socket_process;

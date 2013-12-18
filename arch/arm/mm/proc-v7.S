@@ -16,6 +16,9 @@
 #include <asm/hwcap.h>
 #include <asm/pgtable-hwdef.h>
 #include <asm/pgtable.h>
+#ifdef TIMA_EMUL_ENABLED
+#include <asm/entry-macro-tima.S>
+#endif
 
 #include "proc-macros.S"
 
@@ -120,14 +123,34 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mcr	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
 	ldmia	r0, {r6 - r11}
+#ifndef TIMA_EMUL_ENABLED
 	mcr	p15, 0, r6, c3, c0, 0	@ Domain ID
+#else
+	tima_macro_emul_crit_instn r6, 0x3f806221
+
+#endif
 #ifndef CONFIG_ARM_LPAE
 	ALT_SMP(orr	r1, r1, #TTB_FLAGS_SMP)
 	ALT_UP(orr	r1, r1, #TTB_FLAGS_UP)
 #endif
+#ifndef TIMA_EMUL_ENABLED
 	mcr	p15, 0, r1, c2, c0, 0	@ TTB 0
+#else
+	tima_macro_emul_crit_instn r7, 0x3f803221
+
+#endif
+#ifndef TIMA_EMUL_ENABLED
 	mcr	p15, 0, r7, c2, c0, 1	@ TTB 1
+#else
+	tima_macro_emul_crit_instn r8, 0x3f804221
+
+#endif
+#ifndef TIMA_EMUL_ENABLED
 	mcr	p15, 0, r11, c2, c0, 2	@ TTB control register
+#else
+	tima_macro_emul_crit_instn ip, 0x3f805221
+
+#endif
 	mrc	p15, 0, r4, c1, c0, 1	@ Read Auxiliary control register
 	teq	r4, r9			@ Is it already set?
 	mcrne	p15, 0, r9, c1, c0, 1	@ No, so write it

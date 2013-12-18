@@ -65,6 +65,7 @@
 #define MCI_CSPM_CCSENABLE	(1 << 14)
 #define MCI_CSPM_CCSDISABLE	(1 << 15)
 #define MCI_CSPM_AUTO_CMD19	(1 << 16)
+#define MCI_CSPM_AUTO_CMD21	(1 << 21)
 
 
 #define MMCIRESPCMD		0x010
@@ -197,7 +198,6 @@
 	MCI_DATATIMEOUTMASK|MCI_TXUNDERRUNMASK|MCI_RXOVERRUNMASK|	\
 	MCI_CMDRESPENDMASK|MCI_CMDSENTMASK|MCI_DATAENDMASK|		\
 	MCI_PROGDONEMASK|MCI_AUTOCMD19TIMEOUTMASK)
-
 #define MCI_IRQ_PIO 	\
 	(MCI_RXDATAAVLBLMASK | MCI_TXDATAAVLBLMASK | 	\
 	MCI_RXFIFOEMPTYMASK | MCI_TXFIFOEMPTYMASK | MCI_RXFIFOFULLMASK |\
@@ -218,6 +218,8 @@
 
 /* Set the request timeout to 10secs */
 #define MSM_MMC_REQ_TIMEOUT	10000 /* msecs */
+
+extern struct class *sec_class;	/* Sysfs about SD Card Detection */
 
 /*
  * Controller HW limitations
@@ -407,6 +409,8 @@ struct msmsdcc_host {
 	bool tuning_in_progress;
 	bool tuning_needed;
 	bool tuning_done;
+	bool en_auto_cmd19;
+	bool en_auto_cmd21;
 	bool sdio_gpio_lpm;
 	bool irq_wake_enabled;
 	struct pm_qos_request pm_qos_req_dma;
@@ -417,17 +421,28 @@ struct msmsdcc_host {
 	bool sdio_wakeupirq_disabled;
 	struct mutex clk_mutex;
 	bool pending_resume;
-	unsigned int idle_tout_ms;			/* Timeout in msecs */
+	unsigned int idle_tout;			/* Timeout in msecs */
+	bool pending_dpsm_reset;
+	bool enforce_pio_mode;
+	bool print_pm_stats;
 	struct msmsdcc_msm_bus_vote msm_bus_vote;
 	struct device_attribute	max_bus_bw;
 	struct device_attribute	polling;
 	struct device_attribute idle_timeout;
+	struct device_attribute auto_cmd19_attr;
+	struct device_attribute auto_cmd21_attr;
+	struct dentry *debugfs_host_dir;
+	struct dentry *debugfs_idle_tout;
+	struct dentry *debugfs_pio_mode;
+	struct dentry *debugfs_pm_stats;
 	int saved_tuning_phase;
 };
 
 #define MSMSDCC_VERSION_STEP_MASK	0x0000FFFF
 #define MSMSDCC_VERSION_MINOR_MASK	0x0FFF0000
 #define MSMSDCC_VERSION_MINOR_SHIFT	16
+#define MSMSDCC_VERSION_MAJOR_MASK	0xF0000000
+#define MSMSDCC_VERSION_MAJOR_SHIFT	28
 #define MSMSDCC_DMA_SUP	(1 << 0)
 #define MSMSDCC_SPS_BAM_SUP	(1 << 1)
 #define MSMSDCC_SOFT_RESET	(1 << 2)
@@ -437,6 +452,8 @@ struct msmsdcc_host {
 #define MSMSDCC_SW_RST_CFG	(1 << 6)
 #define MSMSDCC_WAIT_FOR_TX_RX	(1 << 7)
 #define MSMSDCC_IO_PAD_PWR_SWITCH	(1 << 8)
+#define MSMSDCC_AUTO_CMD19	(1 << 9)
+#define MSMSDCC_AUTO_CMD21	(1 << 10)
 
 #define set_hw_caps(h, val)		((h)->hw_caps |= val)
 #define is_sps_mode(h)			((h)->hw_caps & MSMSDCC_SPS_BAM_SUP)
@@ -448,6 +465,10 @@ struct msmsdcc_host {
 #define is_sw_reset_save_config(h)	((h)->hw_caps & MSMSDCC_SW_RST_CFG)
 #define is_wait_for_tx_rx_active(h)	((h)->hw_caps & MSMSDCC_WAIT_FOR_TX_RX)
 #define is_io_pad_pwr_switch(h)	((h)->hw_caps & MSMSDCC_IO_PAD_PWR_SWITCH)
+#define is_auto_cmd19(h)		((h)->hw_caps & MSMSDCC_AUTO_CMD19)
+#define is_auto_cmd21(h)		((h)->hw_caps & MSMSDCC_AUTO_CMD21)
+
+extern unsigned int system_rev;
 
 /* Set controller capabilities based on version */
 static inline void set_default_hw_caps(struct msmsdcc_host *host)
@@ -467,19 +488,22 @@ static inline void set_default_hw_caps(struct msmsdcc_host *host)
 
 	step = version & MSMSDCC_VERSION_STEP_MASK;
 	minor = (version & MSMSDCC_VERSION_MINOR_MASK) >>
-		MSMSDCC_VERSION_MINOR_SHIFT;
+			MSMSDCC_VERSION_MINOR_SHIFT;
 
 	if (version) /* SDCC v4 and greater */
 		host->hw_caps |= MSMSDCC_AUTO_PROG_DONE |
 			MSMSDCC_SOFT_RESET | MSMSDCC_REG_WR_ACTIVE
-			| MSMSDCC_WAIT_FOR_TX_RX | MSMSDCC_IO_PAD_PWR_SWITCH;
+			| MSMSDCC_WAIT_FOR_TX_RX | MSMSDCC_IO_PAD_PWR_SWITCH
+			| MSMSDCC_AUTO_CMD19;
 
-	if ((step == 0x18) && (minor >= 3))
+	if ((step == 0x18) && (minor >= 3)) {
 		/* Version 0x06000018 need hard reset on errors */
 		host->hw_caps &= ~MSMSDCC_SOFT_RESET;
+		host->hw_caps |= MSMSDCC_AUTO_CMD21;
+	}
 
 	if (step >= 0x2b) /* SDCC v4 2.1.0 and greater */
-		host->hw_caps |= MSMSDCC_SW_RST | MSMSDCC_SW_RST_CFG;
+		host->hw_caps |= MSMSDCC_SW_RST | MSMSDCC_AUTO_CMD21;
 }
 
 int msmsdcc_set_pwrsave(struct mmc_host *mmc, int pwrsave);

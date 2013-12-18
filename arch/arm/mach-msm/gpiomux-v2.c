@@ -30,3 +30,17 @@ void __msm_gpiomux_write(unsigned gpio, struct gpiomux_setting val)
 	__raw_writel(bits, GPIO_CFG(gpio));
 	mb();
 }
+
+void msm_gpiomux_read(unsigned gpio, struct gpiomux_setting *val)
+{
+	uint32_t bits = readl_relaxed(GPIO_CFG(gpio));
+
+	val->pull = bits & 0x3;
+	val->func = (bits >> 2) & 0xf;
+	val->drv = (bits >> 6) & 0x7;
+	val->dir = bits & BIT_MASK(9) ? 1 : GPIOMUX_IN;
+
+	if ((val->func == GPIOMUX_FUNC_GPIO) && (val->dir))
+		val->dir = readl_relaxed(GPIO_IN_OUT(gpio)) & BIT_MASK(1) ?
+			GPIOMUX_OUT_HIGH : GPIOMUX_OUT_LOW;
+}

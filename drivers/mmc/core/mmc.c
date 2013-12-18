@@ -292,8 +292,9 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	}
 
 	card->ext_csd.rev = ext_csd[EXT_CSD_REV];
-	if (card->ext_csd.rev > 6) {
-		printk(KERN_ERR "%s: unrecognised EXT_CSD revision %d\n",
+	if (card->ext_csd.rev > 7)
+	{
+			printk(KERN_ERR "%s: unrecognised EXT_CSD revision %d\n",
 			mmc_hostname(card->host), card->ext_csd.rev);
 		err = -EINVAL;
 		goto out;
@@ -466,11 +467,12 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		/* check whether the eMMC card supports BKOPS */
 		if (ext_csd[EXT_CSD_BKOPS_SUPPORT] & 0x1) {
 			card->ext_csd.bkops = 1;
-			card->ext_csd.bkops_en = ext_csd[EXT_CSD_BKOPS_EN];
+			card->ext_csd.bkops_en = ext_csd[EXT_CSD_BKOPS_EN] & 0x1;
 			card->ext_csd.raw_bkops_status =
 				ext_csd[EXT_CSD_BKOPS_STATUS];
-			if (!card->ext_csd.bkops_en &&
-				card->host->caps2 & MMC_CAP2_INIT_BKOPS) {
+			if (!(card->host->caps2 & MMC_CAP2_INIT_BKOPS)) {
+				card->ext_csd.bkops_en = 0;
+			} else if (!card->ext_csd.bkops_en) {
 				err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					EXT_CSD_BKOPS_EN, 1, 0);
 				if (err)
@@ -542,6 +544,17 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 			ext_csd[EXT_CSD_MAX_PACKED_WRITES];
 		card->ext_csd.max_packed_reads =
 			ext_csd[EXT_CSD_MAX_PACKED_READS];
+	} else {
+		/*
+		 * enable discard feature if emmc is 4.41+ Toshiba eMMC 19nm
+		 * Normally, emmc 4.5 use EXT_CSD[501]
+		*/
+		if ((ext_csd[501] & 0x3F) && (card->cid.manfid == 0x11))
+			card->ext_csd.feature_support |= MMC_DISCARD_FEATURE;
+
+		/* enable discard feature if emmc is 4.41+ moviNand (EXT_CSD_VENDOR_SPECIFIC_FIELD:64)*/
+		if ((ext_csd[64] & 0x1) && (card->cid.manfid == 0x15))
+			card->ext_csd.feature_support |= MMC_DISCARD_FEATURE;
 	}
 
 out:
@@ -632,6 +645,15 @@ MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
 MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
 		card->ext_csd.enhanced_area_offset);
 MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
+MMC_DEV_ATTR(caps, "0x%08x\n", (unsigned int)(card->host->caps));
+MMC_DEV_ATTR(caps2, "0x%08x\n", card->host->caps2);
+MMC_DEV_ATTR(erase_type, "MMC_CAP_ERASE %s, type %s, SECURE %s, Sanitize %s\n",
+			card->host->caps & MMC_CAP_ERASE ? "enabled" : "disabled",
+			mmc_can_discard(card) ? "DISCARD" :
+			(mmc_can_trim(card) ? "TRIM" : "NORMAL"),
+			mmc_can_secure_erase_trim(card) ?    // 이 부분의 조건을 확인해주세요.
+			"supportable" : "disabled",
+			mmc_can_sanitize(card) ? "enabled" : "disabled");
 
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -647,6 +669,9 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_serial.attr,
 	&dev_attr_enhanced_area_offset.attr,
 	&dev_attr_enhanced_area_size.attr,
+	&dev_attr_caps.attr,
+	&dev_attr_caps2.attr,
+	&dev_attr_erase_type.attr,
 	NULL,
 };
 
@@ -1398,6 +1423,17 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			if (card->bkops_info.host_delay_ms)
 				card->bkops_info.delay_ms =
 					card->bkops_info.host_delay_ms;
+		}
+	}
+
+	/* if it is from resume. check bkops mode */
+	if (oldcard) {
+		if (oldcard->bkops_enable) {
+			/*
+			 * if bkops mode is enable before getting suspend.
+			 * turn on the bkops mode
+			 */
+			mmc_bkops_enable(oldcard->host, oldcard->bkops_enable);
 		}
 	}
 

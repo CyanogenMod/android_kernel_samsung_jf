@@ -915,6 +915,33 @@ config USB_G_ANDROID
 	  Each function can be configured and enabled/disabled
 	  dynamically from userspace through a sysfs interface.
 
+config USB_ANDROID_SAMSUNG_COMPOSITE
+	boolean "Samsung Composite function"
+	depends on USB_G_ANDROID
+	help
+		Provides SAMSUNG composite driver.
+		It also provides KIES connection and
+		Multi Configuration.
+		If you enable this option, android composite will be changed.
+
+config USB_DUN_SUPPORT
+	boolean "DUN support function"
+	depends on USB_G_ANDROID
+	help
+	  Provides USB modem serial driver.
+	  This function makes connection to acm from data router.
+	  It uses misc register.
+	  Support fops : open, close, release, read, poll, llseek, ioctl
+
+config USB_ANDROID_SAMSUNG_MTP
+	boolean "Samsung MTP function"
+	depends on USB_G_ANDROID
+	help
+		Provides Media Transfer Protocol (MTP) support
+		for samsung gadget driver.
+		If you enable this option,
+		google mtp will be changed to samsung mtp.
+
 config USB_CDC_COMPOSITE
 	tristate "CDC Composite Device (Ethernet and ACM)"
 	depends on NET

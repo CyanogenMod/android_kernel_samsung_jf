@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -108,8 +108,7 @@ int msm_mctl_check_pp(struct msm_cam_media_controller *p_mctl,
 			*pp_type = OUTPUT_TYPE_R;
 		break;
 	case MSM_V4L2_EXT_CAPTURE_MODE_RDI2:
-		if (p_mctl->pp_info.pp_key & PP_RDI)
-			*pp_divert_type = OUTPUT_TYPE_R2;
+		*pp_divert_type = OUTPUT_TYPE_R2;
 		break;
 	default:
 		break;
@@ -273,16 +272,7 @@ int msm_mctl_do_pp_divert(
 		p_mctl->pp_info.cur_frame_id[pcam_inst->image_mode];
 	div.frame.buf_idx  = buf_idx;
 	div.frame.handle = (uint32_t)vb;
-
-        /*Extract AVTimer TimeStamps if enabled*/
-	if(pcam_inst->avtimerOn){
-	    msm_mctl_getAVTimer(pcam_inst,&div.frame.timestamp);
-	    D("%s: Timestamp from AVTimer %ld.%ld", __func__,
-             div.frame.timestamp.tv_sec, div.frame.timestamp.tv_usec);
-	} else {
-	    msm_mctl_gettimeofday(&div.frame.timestamp);
-	}
-
+	msm_mctl_gettimeofday(&div.frame.timestamp);
 	vb->vidbuf.v4l2_buf.timestamp = div.frame.timestamp;
 	div.do_pp = pp_type;
 	D("%s Diverting frame %x id %d to userspace ", __func__,
@@ -387,9 +377,8 @@ static int msm_mctl_pp_get_phy_addr(
 		for (i = 0; i < pp_frame->num_planes; i++) {
 			mem = vb2_plane_cookie(&vb->vidbuf, i);
 			if (mem == NULL) {
-				pr_err("%s frame id %d buffer %d plane %d, invalid plane cookie "
-					, __func__, pp_frame->frame_id,
-					 buf_idx, i);
+				pr_err("%s Inst %p Buffer %d, invalid plane cookie ", __func__,
+					pcam_inst, buf_idx);
 				return -EINVAL;
 			}
 			pp_frame->mp[i].addr_offset = mem->addr_offset;
@@ -399,7 +388,7 @@ static int msm_mctl_pp_get_phy_addr(
 			pcam_inst->buf_offset[buf_idx][i].data_offset;
 			pp_frame->mp[i].fd = (int)mem->vaddr;
 			pp_frame->mp[i].length = mem->size;
-			D("%s frame id %d buffer %d plane %d phy addr 0x%x"
+			D("%s frame id %d buffer %d plane %d phy addr 0x%x"\
 				" fd %d length %d\n", __func__,
 				pp_frame->frame_id, buf_idx, i,
 				(uint32_t)pp_frame->mp[i].phy_addr,
@@ -593,8 +582,6 @@ int msm_mctl_pp_release_free_frame(
 			__func__);
 		return -EINVAL;
 	}
-	memset(&p_mctl->pp_info.div_frame[image_mode],
-		   0, sizeof(struct msm_free_buf));
 
 	rc = msm_mctl_release_free_buf(p_mctl, pcam_inst, &free_buf);
 	D("%s: release free buf, rc = %d, phy = 0x%x",
@@ -649,7 +636,7 @@ int msm_mctl_pp_done(
 			msm_mctl_pp_path_to_img_mode(frame.path);
 		image_mode = buf_handle.image_mode;
 	}
-	if (image_mode < 0 || image_mode >= MSM_MAX_IMG_MODE) {
+	if (image_mode < 0) {
 		pr_err("%s Invalid image mode\n", __func__);
 		return image_mode;
 	}

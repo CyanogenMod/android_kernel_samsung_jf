@@ -255,12 +255,15 @@ static int32_t msm_actuator_move_focus(
 
 	if (dest_step_pos == a_ctrl->curr_step_pos)
 		return rc;
+#if 0
 	if ((sign_dir > MSM_ACTUATOR_MOVE_SIGNED_NEAR) ||
 		(sign_dir < MSM_ACTUATOR_MOVE_SIGNED_FAR)) {
 		pr_err("%s:%d Invalid sign_dir = %d\n",
 		__func__, __LINE__, sign_dir);
 		return -EFAULT;
 	}
+#endif
+
 	if ((dir > MOVE_FAR) || (dir < MOVE_NEAR)) {
 		pr_err("%s:%d Invalid direction = %d\n",
 		 __func__, __LINE__, dir);
@@ -359,12 +362,15 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 	kfree(a_ctrl->step_position_table);
 	a_ctrl->step_position_table = NULL;
 
+#if 0
 	if (set_info->af_tuning_params.total_steps
 		>  MAX_ACTUATOR_AF_TOTAL_STEPS) {
 		pr_err("%s: Max actuator totalsteps exceeded = %d\n",
 		__func__, set_info->af_tuning_params.total_steps);
 		return -EFAULT;
 	}
+#endif
+
 	/* Fill step position table */
 	a_ctrl->step_position_table =
 		kmalloc(sizeof(uint16_t) *
@@ -454,12 +460,14 @@ static int32_t msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl,
 		pr_err("%s: Actuator function table not found\n", __func__);
 		return rc;
 	}
+#if 0
 	if (set_info->af_tuning_params.total_steps
 		>  MAX_ACTUATOR_AF_TOTAL_STEPS) {
 		pr_err("%s: Max actuator totalsteps exceeded = %d\n",
 		__func__, set_info->af_tuning_params.total_steps);
 		return -EFAULT;
 	}
+#endif
 	if (set_info->af_tuning_params.region_size <= MAX_ACTUATOR_REGION) {
 		a_ctrl->region_size = set_info->af_tuning_params.region_size;
 	} else {

@@ -134,6 +134,4 @@ source "drivers/staging/ramster/Kconfig"
 
 source "drivers/staging/ozwpan/Kconfig"
 
-source "drivers/staging/prima/Kconfig"
-
 endif # STAGING

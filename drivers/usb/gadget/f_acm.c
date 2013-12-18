@@ -964,7 +964,11 @@ int acm_bind_config(struct usb_configuration *c, u8 port_num)
 	acm->port.send_break = acm_send_break;
 	acm->port.send_modem_ctrl_bits = acm_send_modem_ctrl_bits;
 
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+	acm->port.func.name = kasprintf(GFP_KERNEL, "acm%u", port_num);
+#else
 	acm->port.func.name = kasprintf(GFP_KERNEL, "acm%u", port_num + 1);
+#endif
 	if (!acm->port.func.name) {
 		kfree(acm);
 		return -ENOMEM;

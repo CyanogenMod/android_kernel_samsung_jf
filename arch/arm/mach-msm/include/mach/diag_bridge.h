@@ -29,6 +29,7 @@ extern int diag_bridge_read(int id, char *data, int size);
 extern int diag_bridge_write(int id, char *data, int size);
 extern int diag_bridge_open(int id, struct diag_bridge_ops *ops);
 extern void diag_bridge_close(int id);
+extern void request_autopm_lock(int status);
 
 #else
 

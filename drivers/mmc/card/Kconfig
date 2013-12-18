@@ -77,6 +77,11 @@ config MMC_TEST
 	  This driver is only of interest to those developing or
 	  testing a host driver. Most people should say N here.
 
+config MMC_SUPPORT_BKOPS_MODE
+	tristate "Support the bkops mode of eMMC 5.0"
+	help
+	  Say Y here to enable the bkops mode
+
 config MMC_BLOCK_TEST
 	tristate "MMC block test"
 	depends on MMC_BLOCK && IOSCHED_TEST
@@ -86,3 +91,8 @@ config MMC_BLOCK_TEST
 	  Currently used to test eMMC 4.5 features (packed commands, sanitize,
 	  BKOPs).
 
+config MMC_CPRM
+	tristate "MMC CPRM driver"
+	default n
+	help
+	  Say Y here to enable the MMC cprm driver

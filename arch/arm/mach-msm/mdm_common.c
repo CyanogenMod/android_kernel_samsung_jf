@@ -42,6 +42,9 @@
 #include "msm_watchdog.h"
 #include "mdm_private.h"
 #include "sysmon.h"
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 #define MDM_MODEM_TIMEOUT	6000
 #define MDM_MODEM_DELTA	100
@@ -228,6 +231,14 @@ static void mdm_ssr_completed(struct mdm_device *mdev)
 	spin_unlock_irqrestore(&ssr_lock, flags);
 }
 
+static int mdm_force_crash(struct mdm_device *mdev)
+{
+	pr_info("%s: Start mdm force crash\n", __func__);
+
+	mdm_start_ssr(mdev);
+
+	return 0;
+}
 static irqreturn_t mdm_vddmin_change(int irq, void *dev_id)
 {
 	struct mdm_device *mdev = (struct mdm_device *)dev_id;
@@ -385,6 +396,29 @@ static void mdm_update_gpio_configs(struct mdm_device *mdev,
 	}
 }
 
+#ifdef CONFIG_SEC_DEBUG_MDM_FILE_INFO
+static unsigned char *mdm_read_err_report(void)
+{
+	/* Read CP error report from mdm_err.log in tombstones */
+	static unsigned char buf[1000] = { 0, };
+	struct file *filp;
+	mm_segment_t old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	do {
+		filp =filp_open("/tombstones/mdm/mdm_err.log", \
+			O_RDWR, S_IRUSR|S_IWUSR);
+		if (IS_ERR(filp)) {
+			set_fs(old_fs);
+			return (unsigned char *) buf;
+		}
+		vfs_read(filp, buf, 1000, &filp->f_pos);
+		filp_close(filp, NULL);
+		set_fs(old_fs);
+	} while (0);
+	return (unsigned char *) buf;
+}
+#endif
+
 static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 				unsigned long arg)
 {
@@ -452,6 +486,13 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 		else {
 			pr_info("%s: ramdump collection completed\n", __func__);
 			mdm_drv->mdm_ram_dump_status = 0;
+#ifdef CONFIG_SEC_DEBUG_MDM_FILE_INFO
+			if (sec_debug_is_enabled()) {
+				sec_set_mdm_subsys_info(mdm_read_err_report());
+				panic("external_modem %s", mdm_read_err_report());
+			}
+#endif
+
 		}
 		complete(&mdev->mdm_ram_dumps);
 		break;
@@ -506,6 +547,13 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 			   __func__, ret);
 		put_user(ret, (unsigned long __user *) arg);
 		break;
+	case USER_FORCE_CRASH:
+		pr_info("%s: User force crash ioctl received\n", __func__);
+		mdm_force_crash(mdev);
+	case SILENT_RESET_CONTROL:
+		pr_info("%s: mdm doing silent reset\n", __func__);
+		mdm_drv->mdm_ram_dump_status = 0;
+		complete(&mdev->mdm_ram_dumps);
 	default:
 		pr_err("%s: invalid ioctl cmd = %d\n", __func__, _IOC_NR(cmd));
 		ret = -EINVAL;
@@ -1200,7 +1248,10 @@ static struct platform_driver mdm_modem_driver = {
 static int __init mdm_modem_init(void)
 {
 	int ret;
-
+#ifdef CONFIG_SAMSUNG_LPM_MODE
+	if (poweroff_charging)
+		return 0;
+#endif
 	ret = mdm_get_ops(&mdm_ops);
 	if (ret)
 		return ret;

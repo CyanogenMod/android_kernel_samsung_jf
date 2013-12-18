@@ -162,7 +162,10 @@ static int sdio_read_cccr(struct mmc_card *card, u32 ocr)
 			if (ret)
 				goto out;
 
-			if (mmc_host_uhs(card->host)) {
+			if (card->host->caps &
+				(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+				 MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |
+				 MMC_CAP_UHS_DDR50)) {
 				if (data & SDIO_UHS_DDR50)
 					card->sw_caps.sd3_bus_mode
 						|= SD_MODE_UHS_DDR50;
@@ -565,6 +568,16 @@ static int mmc_sdio_init_uhs_card(struct mmc_card *card)
 	if (err)
 		goto out;
 
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
+	/*
+	* Prevent tuning operation when init a card
+	* for WiFi operation with sdmmc.
+	*/
+	if (!strcmp(mmc_hostname(card->host), "mmc1"))
+		printk("%s: remove initialize and start re-tuning timer"
+			"to prevent CMD53 request timeout \n", mmc_hostname(card->host));
+	else
+#endif
 	/* Initialize and start re-tuning timer */
 	if (!mmc_host_is_spi(card->host) && card->host->ops->execute_tuning)
 		err = card->host->ops->execute_tuning(card->host,
@@ -589,6 +602,17 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
+
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
+	/* If host that supports UHS-I sets S18R to 1 in arg of CMD5 to request
+	 * change of signaling level to 1.8V
+	 */
+	if (host->caps &
+			(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+			 MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |
+			 MMC_CAP_UHS_DDR50))
+		host->ocr |= R4_18V_PRESENT;
+#endif
 
 	/*
 	 * Inform the card of the voltage
@@ -1243,6 +1267,41 @@ err:
 
 int sdio_reset_comm(struct mmc_card *card)
 {
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
+	struct mmc_host *host = card->host;
+	u32 ocr;
+	int err;
+
+	printk("%s():\n", __func__);
+	mmc_claim_host(host);
+
+	mmc_go_idle(host);
+
+	mmc_set_clock(host, host->f_min);
+
+	err = mmc_send_io_op_cond(host, 0, &ocr);
+	if (err)
+		goto err;
+
+	host->ocr = mmc_select_voltage(host, ocr);
+	if (!host->ocr) {
+		err = -EINVAL;
+		goto err;
+	}
+
+	err = mmc_sdio_init_card(host, host->ocr, card, 0);
+	if (err)
+		goto err;
+
+	mmc_release_host(host);
+	return 0;
+err:
+	printk("%s: Error resetting SDIO communications (%d)\n",
+	       mmc_hostname(host), err);
+	mmc_release_host(host);
+	return err;
+#else
 	return mmc_power_restore_host(card->host);
+#endif /* CONFIG_BCM4335 || CONFIG_BCM4335_MODULE */
 }
 EXPORT_SYMBOL(sdio_reset_comm);

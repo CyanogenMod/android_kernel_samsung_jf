@@ -236,9 +236,11 @@ static int __init lpass_fatal_init(void)
 	ret = smsm_state_cb_register(SMSM_Q6_STATE, SMSM_RESET,
 		lpass_smsm_state_cb, 0);
 
-	if (ret < 0)
+	if (ret < 0) {
 		pr_err("%s: Unable to register SMSM callback! (%d)\n",
 				__func__, ret);
+		goto exit;
+	}
 
 	ret = request_irq(LPASS_Q6SS_WDOG_EXPIRED, lpass_wdog_bite_irq,
 			IRQF_TRIGGER_RISING, "q6_wdog", NULL);
@@ -246,13 +248,13 @@ static int __init lpass_fatal_init(void)
 	if (ret < 0) {
 		pr_err("%s: Unable to request LPASS_Q6SS_WDOG_EXPIRED irq.",
 			__func__);
-		goto out;
+		goto exit_smsm_deregister;
 	}
 	ret = lpass_restart_init();
 	if (ret < 0) {
 		pr_err("%s: Unable to reg with lpass ssr. (%d)\n",
 				__func__, ret);
-		goto out;
+		goto exit_free_irq;
 	}
 
 	lpass_ssr_8960.lpass_ramdump_dev = create_ramdump_device("lpass");
@@ -261,7 +263,7 @@ static int __init lpass_fatal_init(void)
 		pr_err("%s: Unable to create ramdump device.\n",
 				__func__);
 		ret = -ENOMEM;
-		goto out;
+		goto exit_subsys_unregister;
 	}
 	ssr_notif_hdle = subsys_notif_register_notifier("riva",
 							&rnb);
@@ -269,8 +271,7 @@ static int __init lpass_fatal_init(void)
 		ret = PTR_ERR(ssr_notif_hdle);
 		pr_err("%s: subsys_register_notifier for Riva: err = %d\n",
 			__func__, ret);
-		free_irq(LPASS_Q6SS_WDOG_EXPIRED, NULL);
-		goto out;
+		goto exit_destroy_ramdump_device;
 	}
 
 	ssr_modem_notif_hdle = subsys_notif_register_notifier("modem",
@@ -279,13 +280,23 @@ static int __init lpass_fatal_init(void)
 		ret = PTR_ERR(ssr_modem_notif_hdle);
 		pr_err("%s: subsys_register_notifier for Modem: err = %d\n",
 			__func__, ret);
-		subsys_notif_unregister_notifier(ssr_notif_hdle, &rnb);
-		free_irq(LPASS_Q6SS_WDOG_EXPIRED, NULL);
-		goto out;
+		goto exit_subsys_unregister_notifier;
 	}
 
 	pr_info("%s: lpass SSR driver init'ed.\n", __func__);
-out:
+
+exit_subsys_unregister_notifier:
+	subsys_notif_unregister_notifier(ssr_notif_hdle, &rnb);
+exit_destroy_ramdump_device:
+	destroy_ramdump_device(lpass_ssr_8960.lpass_ramdump_dev);
+exit_subsys_unregister:
+	subsys_unregister(lpass_8960_dev);
+exit_free_irq:
+	free_irq(LPASS_Q6SS_WDOG_EXPIRED, NULL);
+exit_smsm_deregister:
+	smsm_state_cb_deregister(SMSM_Q6_STATE, SMSM_RESET,
+			lpass_smsm_state_cb, 0);
+exit:
 	return ret;
 }
 

@@ -30,7 +30,8 @@
 #include "msm-pcm-routing.h"
 #include "qdsp6/q6voice.h"
 
-#define VOIP_MAX_Q_LEN 10
+#define VOIP_MIN_Q_LEN 2
+#define VOIP_MAX_Q_LEN 2
 #define VOIP_MAX_VOC_PKT_SIZE 640
 #define VOIP_MIN_VOC_PKT_SIZE 320
 
@@ -162,7 +163,7 @@ static struct snd_pcm_hardware msm_pcm_hardware = {
 	.buffer_bytes_max =	sizeof(struct voip_buf_node) * VOIP_MAX_Q_LEN,
 	.period_bytes_min =	VOIP_MIN_VOC_PKT_SIZE,
 	.period_bytes_max =	VOIP_MAX_VOC_PKT_SIZE,
-	.periods_min =		VOIP_MAX_Q_LEN,
+	.periods_min =		VOIP_MIN_Q_LEN,
 	.periods_max =		VOIP_MAX_Q_LEN,
 	.fifo_size =            0,
 };

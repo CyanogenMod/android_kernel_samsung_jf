@@ -22,6 +22,8 @@
 #include <linux/delay.h>
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/mfd/pm8xxx/misc.h>
+#include <asm/system_info.h>
+#include <mach/apq8064-gpio.h>
 
 /* PON CTRL 1 register */
 #define REG_PM8XXX_PON_CTRL_1			0x01C
@@ -1245,6 +1247,26 @@ static int __devinit pm8xxx_misc_probe(struct platform_device *pdev)
 	spin_unlock_irqrestore(&pm8xxx_misc_chips_lock, flags);
 
 	platform_set_drvdata(pdev, chip);
+
+#ifdef CONFIG_MACH_JF_ATT
+	/* disable pmic coincell charging under att rev06
+	 * because super cap cannot be charged under att rev06
+	 */
+	if (system_rev < BOARD_REV06) {
+		struct pm8xxx_coincell_chg chg_config = {
+			.state = PM8XXX_COINCELL_CHG_DISABLE,
+			.voltage = PM8XXX_COINCELL_VOLTAGE_3p2V,
+			.resistor = PM8XXX_COINCELL_RESISTOR_2100_OHMS,
+		};
+		int ret = pm8xxx_coincell_chg_config(&chg_config);
+		if (ret)
+			pr_err("%s: coincell disabling failed ret = %d",
+					__func__, ret);
+		else
+			pr_info("%s: att rev%d coincell disabled",
+					__func__, system_rev);
+	}
+#endif
 
 	return rc;
 

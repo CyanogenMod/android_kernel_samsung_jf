@@ -75,6 +75,7 @@ int platform_cpu_kill(unsigned int cpu)
 	ret = msm_pm_wait_cpu_shutdown(cpu);
 	if (ret)
 		return 0;
+
 	return 1;
 }
 

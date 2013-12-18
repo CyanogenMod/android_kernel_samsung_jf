@@ -141,4 +141,15 @@ obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
 #MobiCore
 obj-$(CONFIG_MOBICORE_SUPPORT)  += gud/
 
-obj-$(CONFIG_CORESIGHT)		+= coresight/
+obj-$(CONFIG_BATTERY_SAMSUNG)	+= battery/
+obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
+obj-$(CONFIG_VIBETONZ)          += motor/
+obj-$(CONFIG_SEC_FPGA)	+= barcode_emul/
+obj-$(CONFIG_IRDA_MC96)		+= irda/
+
+obj-$(CONFIG_FELICA) += felica/
+
+ifeq (1, $(shell if [ -d ../../../../../../kernel/drivers/exfat ] ; then echo 1 ; fi))
+	obj-y   += exfat/
+endif
+

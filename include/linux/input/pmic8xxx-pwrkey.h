@@ -34,5 +34,5 @@ struct pm8xxx_pwrkey_platform_data  {
 	u32  kpd_trigger_delay_us;
 	u32  wakeup;
 };
-
+extern struct class *sec_class;
 #endif /* __PMIC8XXX_PWRKEY_H__ */

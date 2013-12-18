@@ -56,6 +56,8 @@ static struct clk *pcm_clk;
 static struct clk *sec_pcm_clk;
 static DEFINE_MUTEX(aux_pcm_mutex);
 static int aux_pcm_count;
+static int aux_tx;
+static int aux_rx;
 static struct msm_dai_auxpcm_pdata *auxpcm_plat_data;
 static struct msm_dai_auxpcm_pdata *sec_auxpcm_plat_data;
 
@@ -723,6 +725,24 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 
 	mutex_lock(&aux_pcm_mutex);
 
+	if (dai->id == PCM_RX)
+		aux_rx--;
+	else if (dai->id == PCM_TX)
+		aux_tx--;
+
+	pr_info("%s: dai->id : %d, rx cnt = %d, tx cnt = %d, all = %d\n", __func__,
+			dai->id, aux_rx, aux_tx, aux_pcm_count);
+
+	if (aux_rx < 0) {
+		aux_rx = 0;
+		mutex_unlock(&aux_pcm_mutex);
+		return;
+	} else if (aux_tx < 0) {
+		aux_tx = 0;
+		mutex_unlock(&aux_pcm_mutex);
+		return;
+	}
+
 	if (aux_pcm_count == 0) {
 		dev_dbg(dai->dev, "%s(): dai->id %d aux_pcm_count is 0. Just"
 				" return\n", __func__, dai->id);
@@ -844,6 +864,14 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	unsigned long pcm_clk_rate;
 
 	mutex_lock(&aux_pcm_mutex);
+
+	if (dai->id == PCM_RX)
+		aux_rx++;
+	else if (dai->id == PCM_TX)
+		aux_tx++;
+
+	pr_info("%s: dai->id : %d, rx cnt = %d, tx cnt = %d, all = %d\n", __func__,
+			dai->id, aux_rx, aux_tx, aux_pcm_count);
 
 	if (aux_pcm_count == 2) {
 		dev_dbg(dai->dev, "%s(): dai->id %d aux_pcm_count is 2. Just"
@@ -1161,6 +1189,24 @@ static int msm_dai_q6_dai_auxpcm_remove(struct snd_soc_dai *dai)
 	dai_data = dev_get_drvdata(dai->dev);
 
 	mutex_lock(&aux_pcm_mutex);
+
+	if (dai->id == PCM_RX)
+		aux_rx--;
+	else if (dai->id == PCM_TX)
+		aux_tx--;
+
+	pr_info("%s: dai->id : %d, rx cnt = %d, tx cnt = %d, all = %d\n", __func__,
+			dai->id, aux_rx, aux_tx, aux_pcm_count);
+
+	if (aux_rx < 0) {
+		aux_rx = 0;
+		mutex_unlock(&aux_pcm_mutex);
+		return 0;
+	} else if (aux_tx < 0) {
+		aux_tx = 0;
+		mutex_unlock(&aux_pcm_mutex);
+		return 0;
+	}
 
 	if (aux_pcm_count == 0) {
 		dev_dbg(dai->dev, "%s(): dai->id %d aux_pcm_count is 0. clean"

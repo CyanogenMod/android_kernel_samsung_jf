@@ -113,8 +113,9 @@ static void vsg_work_func(struct work_struct *task)
 	INIT_LIST_HEAD(&buf_info->node);
 
 	ktime_get_ts(&buf_info->time);
-	hrtimer_forward_now(&context->threshold_timer, ns_to_ktime(
-				context->max_frame_interval));
+	hrtimer_cancel(&context->threshold_timer);
+	hrtimer_start(&context->threshold_timer, ns_to_ktime(context->
+		max_frame_interval), HRTIMER_MODE_REL);
 
 	temp = NULL;
 	list_for_each_entry(temp, &context->busy_queue.node, node) {
@@ -433,8 +434,9 @@ static long vsg_queue_buffer(struct v4l2_subdev *sd, void *arg)
 			 * otherwise, diff between two consecutive frames might
 			 * be less than max_frame_interval (for just one sample)
 			 */
-			hrtimer_forward_now(&context->threshold_timer,
-				ns_to_ktime(context->max_frame_interval));
+			hrtimer_cancel(&context->threshold_timer);
+			hrtimer_start(&context->threshold_timer, ns_to_ktime(context->
+				max_frame_interval), HRTIMER_MODE_REL);
 		}
 	}
 

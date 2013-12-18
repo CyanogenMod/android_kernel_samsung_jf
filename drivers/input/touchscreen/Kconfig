@@ -98,6 +98,25 @@ config TOUCHSCREEN_AD7879_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad7879-spi.
 
+config TOUCHSCREEN_ATMEL_MXTS
+	tristate "Atmel mXTS I2C Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have Atmel mXT S series I2C touchscreen,
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxts.
+config TOUCHSCREEN_ATMEL_MXT540S
+	  tristate "Atmel MXT540S Touchscreen Interface"
+	  depends on I2C
+	  help
+	  Say Y here if you want support for atmel_MXT540S touchscreen controllers.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxt540s.
 config TOUCHSCREEN_ATMEL_MXT
 	tristate "Atmel mXT I2C Touchscreen"
 	depends on I2C
@@ -477,6 +496,11 @@ config TOUCHSCREEN_SYNAPTICS_I2C_RMI
 	depends on I2C
 	help
 	  This enables support for Synaptics RMI over I2C based touchscreens.
+
+config TOUCHSCREEN_FACTORY_PLATFORM
+	tristate "Touchscreen use factory platform firmware"
+	help
+	  This enables support for factory platform firmware.
 
 config TOUCHSCREEN_SYNAPTICS_RMI4_I2C
 	tristate "Synaptics i2c touchscreen(ClearPad 3000)"

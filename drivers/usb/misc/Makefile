@@ -3,7 +3,7 @@
 # (the ones that don't fit into any other categories)
 #
 
-ccflags-$(CONFIG_USB_DEBUG) := -DDEBUG
+# ccflags-$(CONFIG_USB_DEBUG) := -DDEBUG
 
 obj-$(CONFIG_USB_ADUTUX)		+= adutux.o
 obj-$(CONFIG_USB_APPLEDISPLAY)		+= appledisplay.o

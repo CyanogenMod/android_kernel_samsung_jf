@@ -23,6 +23,26 @@
 #define MSM_SSBI2_I2C_BUS_ID     7
 #define MSM_SSBI3_I2C_BUS_ID     8
 
+#define MSM_MHL_I2C_BUS_ID              9
+#define MSM_FUELGAUGE_I2C_BUS_ID	11
+#ifdef CONFIG_MFD_MAX77693
+#define MSM_FSA9485_I2C_BUS_ID		12
+#endif
+#define MSM_SEC_FPGA_I2C_BUS_ID     13
+#ifdef CONFIG_IRDA_MC96
+#define MSM_MC96_I2C_BUS_ID		14
+#endif
+#ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
+#define MSM_TOUCHKEY_I2C_BUS_ID		16
+#endif
+/*I2C BUS ID*/
+#define I2C_LEDS_BUS_ID			21
+#define MSM_NFC_I2C_BUS_ID		17
+
+#if defined(CONFIG_CAMERA_SW_I2C)|| defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+#define MSM_CAMERA_SW_I2C_BUS_ID		27//CAMERA_SW_I2C
+#endif
+
 #ifdef CONFIG_SND_SOC_MSM8660_APQ
 extern struct platform_device msm_pcm;
 extern struct platform_device msm_pcm_routing;

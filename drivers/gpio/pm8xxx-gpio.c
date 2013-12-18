@@ -73,6 +73,8 @@ struct pm_gpio_chip {
 	spinlock_t		pm_lock;
 	u8			*bank1;
 	int			irq_base;
+	int			*dbg_gpios;
+	int			dbg_gpio_len;
 };
 
 static LIST_HEAD(pm_gpio_chips);
@@ -260,6 +262,129 @@ static void pm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *gpio_chip)
 	}
 }
 
+#define PM_GPIO_CONFIG_READ(bank, gpio_chip, gpio, j) \
+	do {	\
+		bank = j << PM_GPIO_BANK_SHIFT;	\
+		pm8xxx_writeb(gpio_chip->dev->parent,	\
+				SSBI_REG_ADDR_GPIO(gpio),	\
+				bank);	\
+		pm8xxx_readb(gpio_chip->dev->parent,	\
+				SSBI_REG_ADDR_GPIO(gpio),	\
+				&bank);	\
+	} while (0);
+
+static void pm_gpio_pr_config(
+		int gpio, struct gpio_chip *gpio_chip)
+{
+	u8 bank;
+	static const char * const dir[] = {
+		"input", "both", "output", "off"};
+	static const char * const pull[] = {
+		"up_30", "up_1p5", "up_31p5", "up_1p5_30", "dn", "no"};
+	static const char * const vin_sel[] = {
+		"vph", "bb", "s4", "l15", "l4", "l3", "l17"};
+	static const char * const strength[] = {
+		"no", "high", "med", "low"};
+	static const char * const func[] = {
+		"fnormal", "fpaired", "func_1", "func_2",
+		"dtest1", "dtest2", "dtest3", "dtest4"};
+
+	PM_GPIO_CONFIG_READ(bank, gpio_chip, gpio, 0);
+	pr_cont("%s  ", bank & PM_GPIO_MODE_ENABLE ? "genable" : "gdisable");
+	pr_cont("vin_%s  ",
+			vin_sel[(bank & PM_GPIO_VIN_MASK) >>
+			PM_GPIO_VIN_SHIFT]);
+
+	PM_GPIO_CONFIG_READ(bank, gpio_chip, gpio, 1);
+	pr_cont("%s  ", dir[(bank & PM_GPIO_MODE_MASK) >> PM_GPIO_MODE_SHIFT]);
+	pr_cont("%s  ", bank & PM_GPIO_OUT_BUFFER ? "open" : "cmos");
+	pr_cont("out_%s  ", bank & 0x01 ? "hi" : "lo");
+
+	PM_GPIO_CONFIG_READ(bank, gpio_chip, gpio, 2);
+	pr_cont("pull_%s  ",
+			pull[(bank & PM_GPIO_PULL_MASK) >> PM_GPIO_PULL_SHIFT]);
+
+	PM_GPIO_CONFIG_READ(bank, gpio_chip, gpio, 3);
+	pr_cont("strength_%s  ",
+			strength[(bank & PM_GPIO_OUT_STRENGTH_MASK) >>
+			PM_GPIO_OUT_STRENGTH_SHIFT]);
+	pr_cont("%s  ", bank & 0x01 ? "disable" : "enable");
+
+	PM_GPIO_CONFIG_READ(bank, gpio_chip, gpio, 4);
+	pr_cont("%s  ",
+			func[(bank & PM_GPIO_FUNC_MASK) >> PM_GPIO_FUNC_SHIFT]);
+
+	PM_GPIO_CONFIG_READ(bank, gpio_chip, gpio, 5);
+	pr_cont("%s\n", bank & 0x01 ? "inv" : "noinv");
+}
+
+static void pm_gpio_pr_short_config(
+		struct pm_gpio_chip *pgc, int gpio)
+{
+	switch ((pgc->bank1[gpio] &
+				PM_GPIO_MODE_MASK) >>
+			PM_GPIO_MODE_SHIFT) {
+		case PM_GPIO_MODE_INPUT:
+			pr_cont("in],");
+			break;
+		case PM_GPIO_MODE_OUTPUT:
+			if (pgc->bank1[gpio] &
+					PM_GPIO_OUT_INVERT)
+				pr_cont("oh],");
+			else
+				pr_cont("ol],");
+			break;
+		default:
+			pr_cont("no],");
+			break;
+	}
+}
+
+void pm_gpio_dbg_showall(unsigned int level)
+{
+	struct pm_gpio_chip *pgc;
+	struct gpio_chip *gpio_chip;
+	u8 state;
+	const char *label;
+	int i, gpio;
+
+	list_for_each_entry(pgc, &pm_gpio_chips, link) {
+		gpio_chip = &pgc->gpio_chip;
+		if (!(level || pgc->dbg_gpio_len ||
+					pgc->dbg_gpios))
+			continue;
+
+		if (likely(!level))
+			pr_cont("PM_GPIOS:");
+		else
+			pr_info("\n");
+		for (i = 0; i < gpio_chip->ngpio; i++) {
+			if (unlikely(level)) {
+				label = gpiochip_is_requested(gpio_chip, i);
+				state = pm_gpio_get(pgc, i);
+
+				/* dump all gpios */
+				pr_cont("gpio-%-3d:%d:%s  %s  ",
+						gpio_chip->base + i, i + 1,
+						label ? label : "",
+						state ? "hi" : "lo");
+				pm_gpio_pr_config(i, gpio_chip);
+
+			} else {
+				if (i >= pgc->dbg_gpio_len)
+					break;
+				gpio = pgc->dbg_gpios[i] - 1;
+
+				/* show interesting gpios only */
+				pr_cont("%-2.2u[", gpio + 1);
+				pm_gpio_pr_short_config(pgc, gpio);
+			}
+		}
+		if (likely(!level))
+			pr_cont("\n");
+	}
+}
+
 static int __devinit pm_gpio_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -298,6 +423,12 @@ static int __devinit pm_gpio_probe(struct platform_device *pdev)
 	pm_gpio_chip->gpio_chip.dev = &pdev->dev;
 	pm_gpio_chip->gpio_chip.base = pdata->gpio_base;
 	pm_gpio_chip->irq_base = platform_get_irq(pdev, 0);
+
+	if (pdata->dbg_gpios && pdata->dbg_gpio_len) {
+		pm_gpio_chip->dbg_gpios = pdata->dbg_gpios;
+		pm_gpio_chip->dbg_gpio_len = pdata->dbg_gpio_len;
+	}
+
 	mutex_lock(&pm_gpio_chips_lock);
 	list_add(&pm_gpio_chip->link, &pm_gpio_chips);
 	mutex_unlock(&pm_gpio_chips_lock);

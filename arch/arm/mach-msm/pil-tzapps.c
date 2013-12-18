@@ -58,8 +58,10 @@ static int __devinit pil_tzapps_driver_probe(struct platform_device *pdev)
 	desc->ops = &pil_tzapps_ops;
 	desc->owner = THIS_MODULE;
 	pil = msm_pil_register(desc);
-	if (IS_ERR(pil))
+	if (IS_ERR(pil)) {
+		devm_kfree(&pdev->dev, desc);
 		return PTR_ERR(pil);
+	}
 	platform_set_drvdata(pdev, pil);
 	return 0;
 }

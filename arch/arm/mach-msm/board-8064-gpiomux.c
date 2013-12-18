@@ -1480,8 +1480,10 @@ void __init apq8064_init_gpiomux(void)
 		return;
 	}
 
+#ifdef CONFIG_WCNSS_CORE
 	msm_gpiomux_install(wcnss_5wire_interface,
 			ARRAY_SIZE(wcnss_5wire_interface));
+#endif
 
 	if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
 		 machine_is_mpq8064_dtv()) {

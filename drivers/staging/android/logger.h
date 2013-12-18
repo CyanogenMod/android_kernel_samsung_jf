@@ -56,6 +56,12 @@ struct logger_entry {
 #define LOGGER_LOG_SYSTEM	"log_system"	/* system/framework messages */
 #define LOGGER_LOG_MAIN		"log_main"	/* everything else */
 
+#define LOGGER_128KB_SIZE (128*1024)
+#define LOGGER_256KB_SIZE (256*1024)
+#define LOGGER_512KB_SIZE (512*1024)
+#define LOGGER_1MB_SIZE (1024*1024)
+#define LOGGER_2MB_SIZE (2*1024*1024)
+
 #define LOGGER_ENTRY_MAX_PAYLOAD	4076
 
 #define __LOGGERIO	0xAE

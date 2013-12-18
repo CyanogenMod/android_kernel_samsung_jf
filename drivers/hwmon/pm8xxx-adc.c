@@ -173,6 +173,7 @@ static struct pm8xxx_adc_scale_fn adc_scale_fn[] = {
 	[ADC_SCALE_PA_THERM] = {pm8xxx_adc_scale_pa_therm},
 	[ADC_SCALE_PMIC_THERM] = {pm8xxx_adc_scale_pmic_therm},
 	[ADC_SCALE_XOTHERM] = {pm8xxx_adc_tdkntcg_therm},
+	[ADC_SCALE_SEC_BOARD_THERM] = {pm8xxx_adc_sec_board_therm_default},
 };
 
 /* On PM8921 ADC the MPP needs to first be configured
@@ -729,6 +730,12 @@ uint32_t pm8xxx_adc_read(enum pm8xxx_adc_channels channel,
 		mpp_scale = PREMUX_MPP_SCALE_1_DIV3;
 		adc_pmic->conv->amux_channel = channel %
 				PM8XXX_CHANNEL_MPP_SCALE3_IDX;
+	}
+
+	if (channel == ADC_MPP_1_AMUX6_SCALE_DEFAULT) {
+		mpp_scale = PREMUX_MPP_SCALE_1;
+		adc_pmic->conv->amux_channel =
+		ADC_MPP_1_AMUX6 % PM8XXX_CHANNEL_MPP_SCALE1_IDX;
 	}
 
 	adc_pmic->conv->amux_mpp_channel = mpp_scale;

@@ -78,6 +78,24 @@
 #define NO_TIMESTAMP      0xFF00
 #define SET_TIMESTAMP     0x0000
 
+#define MODULE_ID_PP_SA                             0x10001fa0
+#define PARAM_ID_PP_SA_PARAMS                       0x10001fa1
+
+//#define MODULE_ID_PP_SA_VOL                         0x10001fa3
+//#define PARAM_ID_PP_SA_VOLUME                       0x10001fa4
+#define MODULE_ID_PP_SA_VSP                             0x10001fb0
+#define PARAM_ID_PP_SA_VSP_PARAMS                       0x10001fb1
+
+#define MODULE_ID_PP_DHA                             0x10001fc0
+#define PARAM_ID_PP_DHA_PARAMS                       0x10001fc1
+
+#define MODULE_ID_PP_LRSM                             0x10001fe0
+#define PARAM_ID_PP_LRSM_PARAMS                       0x10001fe1
+
+#define MODULE_ID_PP_SA_EP                             0x10001fd0
+#define PARAM_ID_PP_SA_EP_PARAMS                       0x10001fd1
+#define PARAM_ID_PP_SA_EP_GET_PARAMS                       0x10001fd2
+
 #define SOFT_PAUSE_ENABLE	1
 #define SOFT_PAUSE_DISABLE	0
 
@@ -85,7 +103,7 @@
 
 #define SOFT_PAUSE_PERIOD       30   /* ramp up/down for 30ms */
 #define SOFT_PAUSE_STEP_LINEAR  0    /* Step value 0ms or 0us */
-#define SOFT_PAUSE_STEP         0    /* Step value 0ms or 0us */
+#define SOFT_PAUSE_STEP         100 /* Step value 2000ms or 2000us */
 enum {
 	SOFT_PAUSE_CURVE_LINEAR = 0,
 	SOFT_PAUSE_CURVE_EXP,
@@ -94,7 +112,7 @@ enum {
 
 #define SOFT_VOLUME_PERIOD       30   /* ramp up/down for 30ms */
 #define SOFT_VOLUME_STEP_LINEAR  0    /* Step value 0ms or 0us */
-#define SOFT_VOLUME_STEP         0    /* Step value 0ms or 0us */
+#define SOFT_VOLUME_STEP         100 /* Step value 2000ms or 2000us */
 enum {
 	SOFT_VOLUME_CURVE_LINEAR = 0,
 	SOFT_VOLUME_CURVE_EXP,
@@ -132,6 +150,37 @@ struct audio_aio_read_param {
 	uint32_t len;
 	uint32_t uid;
 };
+
+struct sa_params {
+    int16_t OutDevice;
+    int16_t Preset;
+    int32_t EqLev[7];
+    int16_t m3Dlevel;
+    int16_t BElevel;
+    int16_t CHlevel;
+    int16_t CHRoomSize;
+    int16_t Clalevel;
+    int16_t volume;
+} __packed;
+
+struct vsp_params {
+    uint32_t speed_int;
+} __packed ;
+
+struct dha_params {
+    int32_t enable;
+    int16_t gain[2][6];
+} __packed ;
+
+struct lrsm_params {
+    int16_t sm;
+    int16_t lr;
+} __packed ;
+
+struct sa_ep_params {
+    int32_t enable;
+    int32_t score;
+} __packed ;
 
 struct audio_port_data {
 	struct audio_buffer *buf;
@@ -340,5 +389,12 @@ int q6asm_get_apr_service_id(int session_id);
 /* Common format block without any payload
 */
 int q6asm_media_format_block(struct audio_client *ac, uint32_t format);
+
+int q6asm_set_sa(struct audio_client *ac,int *param);
+int q6asm_set_vsp(struct audio_client *ac,int *param);
+int q6asm_set_dha(struct audio_client *ac,int *param);
+int q6asm_set_lrsm(struct audio_client *ac,int *param);
+int q6asm_set_sa_ep(struct audio_client *ac,int *param);
+int q6asm_get_sa_ep(struct audio_client *ac);
 
 #endif /* __Q6_ASM_H__ */

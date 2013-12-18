@@ -31,6 +31,10 @@
 #include <linux/kobject.h>
 #include <linux/ctype.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <linux/proc_avc.h>
+#endif
+
 /* selinuxfs pseudo filesystem for exporting the security policy API.
    Based on the proc code and the fs/nfsd/nfsctl.c code. */
 

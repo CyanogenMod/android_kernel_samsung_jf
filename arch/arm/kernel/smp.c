@@ -43,6 +43,9 @@
 #include <asm/localtimer.h>
 #include <asm/smp_plat.h>
 
+#if CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 /*
  * as from 2.5, kernels no longer have an init_tasks structure
  * so we need some other way of telling a new secondary core
@@ -504,6 +507,9 @@ static void ipi_cpu_stop(unsigned int cpu)
 		raw_spin_lock(&stop_lock);
 		printk(KERN_CRIT "CPU%u: stopping\n", cpu);
 		dump_stack();
+#if CONFIG_SEC_DEBUG
+		sec_debug_dump_stack();
+#endif
 		raw_spin_unlock(&stop_lock);
 	}
 

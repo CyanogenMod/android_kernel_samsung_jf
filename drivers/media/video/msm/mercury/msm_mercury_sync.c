@@ -24,7 +24,6 @@
 #include "msm_mercury_macros.h"
 #include "msm_mercury_hw_reg.h"
 
-#define UINT32_MAX    (4294967295U)
 static struct msm_mercury_core_buf out_buf_local;
 static struct msm_mercury_core_buf in_buf_local;
 
@@ -197,6 +196,7 @@ int msm_mercury_evt_get(struct msm_mercury_device *pmercury_dev,
 	int rc = 0;
 
 	MCR_DBG("(%d)%s() Enter\n", __LINE__, __func__);
+	memset(&ctrl_cmd, 0, sizeof(ctrl_cmd));
 	ctrl_cmd.type = (uint32_t)msm_mercury_q_wait(&pmercury_dev->evt_q);
 
 	rc = copy_to_user(arg, &ctrl_cmd, sizeof(ctrl_cmd));
@@ -471,7 +471,7 @@ int msm_mercury_ioctl_hw_cmds(struct msm_mercury_device *pmercury_dev,
 	void * __user arg)
 {
 	int is_copy_to_user;
-	uint32_t len;
+	int len;
 	uint32_t m;
 	struct msm_mercury_hw_cmds *hw_cmds_p;
 	struct msm_mercury_hw_cmd *hw_cmd_p;
@@ -480,12 +480,7 @@ int msm_mercury_ioctl_hw_cmds(struct msm_mercury_device *pmercury_dev,
 		MCR_PR_ERR("%s:%d] failed\n", __func__, __LINE__);
 		return -EFAULT;
 	}
-	if ((m == 0) || (m > ((UINT32_MAX-sizeof(struct msm_mercury_hw_cmds))/
-		sizeof(struct msm_mercury_hw_cmd)))) {
-		MCR_PR_ERR("%s:%d] outof range of hwcmds\n",
-			__func__, __LINE__);
-		return -EINVAL;
-	}
+
 	len = sizeof(struct msm_mercury_hw_cmds) +
 		sizeof(struct msm_mercury_hw_cmd) * (m - 1);
 	hw_cmds_p = kmalloc(len, GFP_KERNEL);

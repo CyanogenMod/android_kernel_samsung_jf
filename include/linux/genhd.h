@@ -129,6 +129,9 @@ struct hd_struct {
 #define GENHD_FL_NATIVE_CAPACITY		128
 #define GENHD_FL_BLOCK_EVENTS_ON_EXCL_WRITE	256
 #define GENHD_FL_NO_PART_SCAN			512
+#ifdef CONFIG_USB_STORAGE_DETECT
+#define GENHD_IF_USB	1
+#endif
 
 enum {
 	DISK_EVENT_MEDIA_CHANGE			= 1 << 0, /* media changed */
@@ -191,6 +194,10 @@ struct gendisk {
 	struct blk_integrity *integrity;
 #endif
 	int node_id;
+#ifdef CONFIG_USB_STORAGE_DETECT
+	int media_present;
+	int interfaces;
+#endif
 };
 
 static inline struct gendisk *part_to_disk(struct hd_struct *part)
@@ -227,6 +234,10 @@ static inline int disk_max_parts(struct gendisk *disk)
 	if (disk->flags & GENHD_FL_EXT_DEVT)
 		return DISK_MAX_PARTS;
 	return disk->minors;
+}
+static inline bool disk_partitionable(struct gendisk *disk)
+{
+	return disk_max_parts(disk) > 1;
 }
 
 static inline bool disk_part_scan_enabled(struct gendisk *disk)

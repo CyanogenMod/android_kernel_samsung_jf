@@ -4656,7 +4656,9 @@ static bool nl80211_valid_auth_type(enum nl80211_auth_type auth_type)
 static bool nl80211_valid_wpa_versions(u32 wpa_versions)
 {
 	return !(wpa_versions & ~(NL80211_WPA_VERSION_1 |
-				  NL80211_WPA_VERSION_2));
+				  NL80211_WPA_VERSION_2 |
+				  /*WAPI*/
+				  NL80211_WAPI_VERSION_1));
 }
 
 static int nl80211_authenticate(struct sk_buff *skb, struct genl_info *info)
@@ -4829,8 +4831,12 @@ static int nl80211_crypto_settings(struct cfg80211_registered_device *rdev,
 		if (len % sizeof(u32))
 			return -EINVAL;
 
-		if (settings->n_akm_suites > NL80211_MAX_NR_AKM_SUITES)
-			return -EINVAL;
+		if (settings->akm_suites[0] != WLAN_AKM_SUITE_CCKM) {
+			if (settings->n_akm_suites > NL80211_MAX_NR_AKM_SUITES)
+				return -EINVAL;
+		} else {
+			printk(KERN_INFO "nl80211_crypto_settings(CCKM)\n");
+		}
 
 		memcpy(settings->akm_suites, data, len);
 	}

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1999-2012, Broadcom Corporation
- * 
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -21,7 +21,7 @@
  *
  * Fundamental types and constants relating to WFA P2P (aka WiFi Direct)
  *
- * $Id: p2p.h 326276 2012-04-06 23:16:42Z $
+ * $Id: p2p.h 384536 2013-02-12 04:13:09Z $
  */
 
 #ifndef _P2P_H_
@@ -374,8 +374,9 @@ typedef struct wifi_p2p_pub_act_frame wifi_p2p_pub_act_frame_t;
 #define P2P_PAF_INVITE_RSP	4	
 #define P2P_PAF_DEVDIS_REQ	5	
 #define P2P_PAF_DEVDIS_RSP	6	
-#define P2P_PAF_PROVDIS_REQ	7	
-#define P2P_PAF_PROVDIS_RSP	8	
+#define P2P_PAF_PROVDIS_REQ	7
+#define P2P_PAF_PROVDIS_RSP	8
+#define P2P_PAF_SUBTYPE_INVALID	255
 
 
 #define P2P_TYPE_MNREQ		P2P_PAF_GON_REQ
@@ -402,10 +403,12 @@ typedef struct wifi_p2p_noa_se wifi_p2p_noa_se_t;
 
 #define P2P_NOA_SE_FIXED_LEN	5
 
+#define P2P_NOA_SE_MAX_DESC	2
 
-#define P2P_NOA_DESC_CNT_RESERVED	0	
-#define P2P_NOA_DESC_CNT_REPEAT		255	
-#define P2P_NOA_DESC_TYPE_PREFERRED	1	
+
+#define P2P_NOA_DESC_CNT_RESERVED	0
+#define P2P_NOA_DESC_CNT_REPEAT		255
+#define P2P_NOA_DESC_TYPE_PREFERRED	1
 #define P2P_NOA_DESC_TYPE_ACCEPTABLE	2	
 
 

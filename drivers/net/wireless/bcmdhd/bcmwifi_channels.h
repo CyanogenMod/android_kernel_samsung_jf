@@ -3,8 +3,8 @@
  * This header file housing the define and function prototype use by
  * both the wl driver, tools & Apps.
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
- * 
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -42,9 +42,10 @@ typedef uint16 chanspec_t;
 #define CH_20MHZ_APART			4
 #define CH_10MHZ_APART			2
 #define CH_5MHZ_APART			1	
-#define CH_MAX_2G_CHANNEL		14	
-#define	MAXCHANNEL		224	
-#define CHSPEC_CTLOVLP(sp1, sp2, sep)	ABS(wf_chspec_ctlchan(sp1) - wf_chspec_ctlchan(sp2)) < (sep)
+#define CH_MAX_2G_CHANNEL		14
+#define	MAXCHANNEL		224
+#define CHSPEC_CTLOVLP(sp1, sp2, sep)	(ABS(wf_chspec_ctlchan(sp1) - wf_chspec_ctlchan(sp2)) < \
+				  (sep))
 
 
 #undef  D11AC_IOTYPES
@@ -69,6 +70,12 @@ typedef uint16 chanspec_t;
 
 #define WL_CHANSPEC_BAND_MASK		0xf000
 #define WL_CHANSPEC_BAND_SHIFT		12
+#ifdef WL_CHANSPEC_BAND_5G
+#undef WL_CHANSPEC_BAND_5G
+#endif
+#ifdef WL_CHANSPEC_BAND_2G
+#undef WL_CHANSPEC_BAND_2G
+#endif
 #define WL_CHANSPEC_BAND_5G		0x1000
 #define WL_CHANSPEC_BAND_2G		0x2000
 #define INVCHANSPEC			255
@@ -77,6 +84,13 @@ typedef uint16 chanspec_t;
 #define LOWER_20_SB(channel)	(((channel) > CH_10MHZ_APART) ? ((channel) - CH_10MHZ_APART) : 0)
 #define UPPER_20_SB(channel)	(((channel) < (MAXCHANNEL - CH_10MHZ_APART)) ? \
 				((channel) + CH_10MHZ_APART) : 0)
+
+#define LL_20_SB(channel) (((channel) > 3 * CH_10MHZ_APART) ? ((channel) - 3 * CH_10MHZ_APART) : 0)
+#define UU_20_SB(channel) 	(((channel) < (MAXCHANNEL - 3 * CH_10MHZ_APART)) ? \
+				((channel) + 3 * CH_10MHZ_APART) : 0)
+#define LU_20_SB(channel) LOWER_20_SB(channel)
+#define UL_20_SB(channel) UPPER_20_SB(channel)
+
 #define CHSPEC_WLCBANDUNIT(chspec)	(CHSPEC_IS5G(chspec) ? BAND_5G_INDEX : BAND_2G_INDEX)
 #define CH20MHZ_CHSPEC(channel)	(chanspec_t)((chanspec_t)(channel) | WL_CHANSPEC_BW_20 | \
 				WL_CHANSPEC_CTL_SB_NONE | (((channel) <= CH_MAX_2G_CHANNEL) ? \
@@ -175,6 +189,13 @@ typedef uint16 chanspec_t;
 					((channel) - CH_10MHZ_APART) : 0)
 #define UPPER_20_SB(channel)		(((channel) < (MAXCHANNEL - CH_10MHZ_APART)) ? \
 					((channel) + CH_10MHZ_APART) : 0)
+
+#define LL_20_SB(channel) (((channel) > 3 * CH_10MHZ_APART) ? ((channel) - 3 * CH_10MHZ_APART) : 0)
+#define UU_20_SB(channel) 	(((channel) < (MAXCHANNEL - 3 * CH_10MHZ_APART)) ? \
+				((channel) + 3 * CH_10MHZ_APART) : 0)
+#define LU_20_SB(channel) LOWER_20_SB(channel)
+#define UL_20_SB(channel) UPPER_20_SB(channel)
+
 #define LOWER_40_SB(channel)		((channel) - CH_20MHZ_APART)
 #define UPPER_40_SB(channel)		((channel) + CH_20MHZ_APART)
 #define CHSPEC_WLCBANDUNIT(chspec)	(CHSPEC_IS5G(chspec) ? BAND_5G_INDEX : BAND_2G_INDEX)
@@ -285,7 +306,12 @@ typedef uint16 chanspec_t;
 
 #define LCHSPEC_CREATE(chan, band, bw, sb)  ((uint16)((chan) | (sb) | (bw) | (band)))
 
-#endif 
+#define CH20MHZ_LCHSPEC(channel) \
+	(chanspec_t)((chanspec_t)(channel) | WL_LCHANSPEC_BW_20 | \
+	WL_LCHANSPEC_CTL_SB_NONE | (((channel) <= CH_MAX_2G_CHANNEL) ? \
+	WL_LCHANSPEC_BAND_2G : WL_LCHANSPEC_BAND_5G))
+
+#endif
 
 
 
@@ -296,24 +322,9 @@ typedef uint16 chanspec_t;
 #define WF_CHAN_FACTOR_5_G		10000	
 
 
-#define WF_CHAN_FACTOR_4_G		8000	
+#define WF_CHAN_FACTOR_4_G		8000
 
-
-#define WLC_MAXRATE	108	
-#define WLC_RATE_1M	2	
-#define WLC_RATE_2M	4	
-#define WLC_RATE_5M5	11	
-#define WLC_RATE_11M	22	
-#define WLC_RATE_6M	12	
-#define WLC_RATE_9M	18	
-#define WLC_RATE_12M	24	
-#define WLC_RATE_18M	36	
-#define WLC_RATE_24M	48	
-#define WLC_RATE_36M	72	
-#define WLC_RATE_48M	96	
-#define WLC_RATE_54M	108	
-
-#define WLC_2G_25MHZ_OFFSET		5	
+#define WLC_2G_25MHZ_OFFSET		5
 
 
 extern char * wf_chspec_ntoa(chanspec_t chspec, char *buf);
@@ -342,4 +353,11 @@ extern int wf_mhz2channel(uint freq, uint start_factor);
 
 extern int wf_channel2mhz(uint channel, uint start_factor);
 
-#endif	
+
+extern uint16 wf_channel2chspec(uint ctl_ch, uint bw);
+
+extern uint wf_channel2freq(uint channel);
+extern uint wf_freq2channel(uint freq);
+
+
+#endif

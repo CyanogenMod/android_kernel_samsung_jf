@@ -36,6 +36,8 @@ static void stop_drawing_early_suspend(struct early_suspend *h)
 	int ret;
 	unsigned long irq_flags;
 
+	pr_info("%s, fb_state : cur(%d), next(%d)\n", __func__,
+					fb_state, FB_STATE_REQUEST_STOP_DRAWING);
 	spin_lock_irqsave(&fb_state_lock, irq_flags);
 	fb_state = FB_STATE_REQUEST_STOP_DRAWING;
 	spin_unlock_irqrestore(&fb_state_lock, irq_flags);
@@ -54,6 +56,8 @@ static void start_drawing_late_resume(struct early_suspend *h)
 {
 	unsigned long irq_flags;
 
+	pr_info("%s, fb_state : cur(%d), next(%d)\n", __func__,
+					fb_state, FB_STATE_DRAWING_OK);
 	spin_lock_irqsave(&fb_state_lock, irq_flags);
 	fb_state = FB_STATE_DRAWING_OK;
 	spin_unlock_irqrestore(&fb_state_lock, irq_flags);
@@ -72,6 +76,7 @@ static ssize_t wait_for_fb_sleep_show(struct kobject *kobj,
 	char *s = buf;
 	int ret;
 
+	pr_info("%s, fb_state : %d ++\n", __func__, fb_state);
 	ret = wait_event_interruptible(fb_state_wq,
 				       fb_state != FB_STATE_DRAWING_OK);
 	if (ret && fb_state == FB_STATE_DRAWING_OK) {
@@ -83,6 +88,7 @@ static ssize_t wait_for_fb_sleep_show(struct kobject *kobj,
 			sysfs_notify(power_kobj, NULL, "wait_for_fb_status");
 		}
 	}
+	pr_info("%s, fb_state : %d --\n", __func__, fb_state);
 
 	return s - buf;
 }
@@ -94,6 +100,7 @@ static ssize_t wait_for_fb_wake_show(struct kobject *kobj,
 	int ret;
 	unsigned long irq_flags;
 
+	pr_info("%s, fb_state : %d ++\n", __func__, fb_state);
 	spin_lock_irqsave(&fb_state_lock, irq_flags);
 	if (fb_state == FB_STATE_REQUEST_STOP_DRAWING) {
 		fb_state = FB_STATE_STOPPED_DRAWING;
@@ -103,15 +110,18 @@ static ssize_t wait_for_fb_wake_show(struct kobject *kobj,
 
 	ret = wait_event_interruptible(fb_state_wq,
 				       fb_state == FB_STATE_DRAWING_OK);
-	if (ret && fb_state != FB_STATE_DRAWING_OK)
+	if (ret && fb_state != FB_STATE_DRAWING_OK) {
+		pr_info("%s, fb_state : %d ==\n", __func__, fb_state);
 		return ret;
-	else {
+	} else {
 		s += sprintf(buf, "awake");
 		if (display == 0) {
 			display = 1;
 			sysfs_notify(power_kobj, NULL, "wait_for_fb_status");
 		}
 	}
+	pr_info("%s, fb_state : %d --\n", __func__, fb_state);
+
 	return s - buf;
 }
 

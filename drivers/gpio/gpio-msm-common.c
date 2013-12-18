@@ -438,7 +438,7 @@ void msm_gpio_show_resume_irq(void)
 		if (intstat) {
 			irq = msm_gpio_to_irq(&msm_gpio.gpio_chip, i);
 			pr_warning("%s: %d triggered\n",
-				__func__, irq);
+				__func__, irq-288);
 		}
 	}
 	spin_unlock_irqrestore(&tlmm_lock, irq_flags);

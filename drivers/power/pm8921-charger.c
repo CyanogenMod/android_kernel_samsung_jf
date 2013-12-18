@@ -1827,6 +1827,9 @@ static int get_prop_batt_temp(struct pm8921_chg_chip *chip, int *temp)
 	}
 	pr_debug("batt_temp phy = %lld meas = 0x%llx\n", result.physical,
 						result.measurement);
+
+	result.physical = 650; //for temp
+
 	if (result.physical > MAX_TOLERABLE_BATT_TEMP_DDC)
 		pr_err("BATT_TEMP= %d > 68degC, device will be shutdown\n",
 							(int) result.physical);
@@ -3672,8 +3675,8 @@ static void eoc_worker(struct work_struct *work)
 				struct pm8921_chg_chip, eoc_work);
 	static int count;
 	int end;
-	int vbat_meas_uv, vbat_meas_mv;
-	int ichg_meas_ua, ichg_meas_ma;
+	int vbat_meas_uv = 0, vbat_meas_mv;
+	int ichg_meas_ua = 0, ichg_meas_ma;
 	int vbat_batt_terminal_uv;
 
 	pm8921_bms_get_simultaneous_battery_voltage_and_current(
@@ -4724,6 +4727,90 @@ static int pm8921_charger_suspend(struct device *dev)
 
 	return 0;
 }
+#ifdef CONFIG_BATTERY_SAMSUNG
+static int is_pm8921_sec_charger_using(void)
+{
+	return 0;
+}
+
+#define BMS_CONTROL		0x224
+#define EN_BMS_BIT	BIT(7)
+#define ATC_ON_BIT	BIT(7)
+
+#define CCADC_ANA_PARAM		0x240
+#define CCADC_CONV_SEQ_CNTR	0x246
+
+#define CCADC_EN_MASK 0x01
+#define EN_CONV_SEQ_MASK 0x01
+
+static void pm8921_sec_charger_disable(struct pm8921_chg_chip *chip)
+{
+	int rc;
+	pr_debug("disable pm8921 charger\n");
+
+	rc = pm_chg_vweak_set(chip, 2500);
+	if (rc) {
+		pr_err("Failed to set weak voltage to %dmv  rc=%d\n",
+						chip->weak_voltage, rc);
+		return;
+	}
+
+	/*SW Trickle Charging mode */
+	rc = pm_chg_masked_write(chip, CHG_CNTRL_2,
+				ATC_ON_BIT, 0);
+	if (rc) {
+		pr_err("Failed to set ATC off rc=%d\n", rc);
+		return;
+	}
+
+	/* sec don't use temperature control function */
+	rc = pm_chg_masked_write(chip, CHG_CNTRL_2,
+				CHG_BAT_TEMP_DIS_BIT, CHG_BAT_TEMP_DIS_BIT);
+	if (rc) {
+		pr_err("Failed to enable temp control chg rc=%d\n", rc);
+		return;
+	}
+
+	/* Workarounds for die 3.0 */
+	if (pm8xxx_get_revision(chip->dev->parent) == PM8XXX_REVISION_8921_3p0)
+		pm8xxx_writeb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, 0xAC);
+
+	pm8xxx_writeb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, 0xD9);
+
+	/* Disable EOC FSM processing */
+	pm8xxx_writeb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, 0x91);
+
+	/* Disable Charging */
+	charging_disabled = 1;
+	rc = pm_chg_charge_dis(chip, charging_disabled);
+	if (rc) {
+		pr_err("Failed to disable CHG_CHARGE_DIS bit rc=%d\n", rc);
+		return;
+	}
+
+	rc = pm_chg_auto_enable(chip, !charging_disabled);
+	if (rc) {
+		pr_err("Failed to enable charging rc=%d\n", rc);
+		return;
+	}
+
+	/* Disable BMS */
+#ifndef CONFIG_PM8921_BMS
+	rc = pm_chg_masked_write(chip, BMS_CONTROL, EN_BMS_BIT, 0);
+	if (rc)
+		pr_err("failed to disable bms addr = %d %d", BMS_CONTROL, rc);
+#endif
+	/*  Disable CCADC */
+	rc = pm_chg_masked_write(chip, CCADC_ANA_PARAM, CCADC_EN_MASK, 0);
+	if (rc)
+		pr_err("failed to disable ccadc_ana addr = %d %d", CCADC_ANA_PARAM, rc);
+	rc = pm_chg_masked_write(chip, CCADC_CONV_SEQ_CNTR, EN_CONV_SEQ_MASK, 0);
+	if (rc)
+		pr_err("failed to disable ccadc_conv addr = %d %d", CCADC_CONV_SEQ_CNTR, rc);
+	pm8921_chg_set_hw_clk_switching(chip);
+}
+#endif
+
 static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -4744,6 +4831,15 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	}
 
 	chip->dev = &pdev->dev;
+#ifdef CONFIG_BATTERY_SAMSUNG
+	/* Disable BMS to reduce sleep current */
+	if (!is_pm8921_sec_charger_using()) {
+		pm8921_sec_charger_disable(chip);
+		pr_info("pm8921-charger driver Loading SKIP!!!\n");
+		rc = -EINVAL;
+		goto free_chip;
+	}
+#endif
 	chip->ttrkl_time = pdata->ttrkl_time;
 	chip->update_time = pdata->update_time;
 	chip->max_voltage_mv = pdata->max_voltage;

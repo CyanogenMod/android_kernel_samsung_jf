@@ -48,6 +48,28 @@ static struct acdb_cal_block mem_addr_audvol[MAX_AUDPROC_TYPES];
 
 static struct adm_ctl			this_adm;
 
+#ifdef APR_HEAD_GENERATE
+static void q6adm_add_hdr_async(struct apr_hdr *hdr,
+			uint32_t pkt_size, uint32_t cmd_flg)
+{
+	int port_id = SLIMBUS_0_RX;
+	int index = 0;
+
+	hdr->hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD, \
+				APR_HDR_LEN(sizeof(struct apr_hdr)),\
+				APR_PKT_VER);
+	hdr->src_svc = APR_SVC_ADM;
+	hdr->src_domain = APR_DOMAIN_APPS;
+	hdr->dest_svc = APR_SVC_ADM;
+	hdr->dest_domain = APR_DOMAIN_ADSP;
+	index = afe_get_port_index(port_id);
+	hdr->src_port = port_id;
+	hdr->dest_port =atomic_read(&this_adm.copp_id[index]);
+	hdr->token = port_id;
+	hdr->pkt_size  = pkt_size;
+	return;
+}
+#endif
 
 int srs_trumedia_open(int port_id, int srs_tech_id, void *srs_params)
 {
@@ -246,7 +268,7 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 	payload = data->payload;
 
 	if (data->opcode == RESET_EVENTS) {
-		pr_debug("adm_callback: Reset event is received: %d %d apr[%p]\n",
+		pr_info("adm_callback: Reset event is received: %d %d apr[%p]\n",
 				data->reset_event, data->reset_proc,
 				this_adm.apr);
 		if (this_adm.apr) {
@@ -308,6 +330,9 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			default:
 				pr_err("%s: Unknown Cmd: 0x%x\n", __func__,
 								payload[0]);
+            	pr_err("%s:err code = 0x%x %x %x size = %d\n", __func__,
+                        data->opcode, payload[0], payload[1],
+		                       data->payload_size);
 				break;
 			}
 			return 0;
@@ -340,6 +365,9 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 		default:
 			pr_err("%s: Unknown cmd:0x%x\n", __func__,
 							data->opcode);
+           	pr_err("%s:err code = 0x%x %x %x size = %d\n", __func__,
+                    data->opcode, payload[0], payload[1],
+	                       data->payload_size);
 			break;
 		}
 	}
@@ -691,7 +719,11 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology)
 			if ((open.topology_id ==
 				VPM_TX_SM_ECNS_COPP_TOPOLOGY) ||
 			    (open.topology_id ==
-				VPM_TX_DM_FLUENCE_COPP_TOPOLOGY))
+				VPM_TX_DM_FLUENCE_COPP_TOPOLOGY) ||
+				  (open.topology_id ==
+				VPM_TX_SM_LVVE_COPP_TOPOLOGY) ||
+				  (open.topology_id ==
+				VPM_TX_DM_LVVE_COPP_TOPOLOGY))
 				rate = 16000;
 		}
 
@@ -846,7 +878,11 @@ int adm_multi_ch_copp_open(int port_id, int path, int rate, int channel_mode,
 			if ((open.topology_id ==
 				VPM_TX_SM_ECNS_COPP_TOPOLOGY) ||
 			    (open.topology_id ==
-				VPM_TX_DM_FLUENCE_COPP_TOPOLOGY))
+				VPM_TX_DM_FLUENCE_COPP_TOPOLOGY) ||
+				  (open.topology_id ==
+				VPM_TX_SM_LVVE_COPP_TOPOLOGY) ||
+				  (open.topology_id ==
+				VPM_TX_DM_LVVE_COPP_TOPOLOGY))
 				rate = 16000;
 		}
 

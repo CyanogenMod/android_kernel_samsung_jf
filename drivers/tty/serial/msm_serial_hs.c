@@ -206,6 +206,21 @@ static void msm_hs_start_rx_locked(struct uart_port *uport);
 #define UARTDM_TO_MSM(uart_port) \
 	container_of((uart_port), struct msm_hs_port, uport)
 
+struct uart_port * msm_hs_get_port_by_id(int num)
+{
+	struct uart_port *uport;
+	struct msm_hs_port *msm_uport;
+
+	if (num < 0 || num >= UARTDM_NR)
+		return NULL;
+
+	msm_uport = &q_uart_port[num];
+
+	uport = &(msm_uport->uport);
+
+	return uport;
+}
+
 static ssize_t show_clock(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
@@ -758,13 +773,13 @@ static unsigned long msm_hs_set_bps_locked(struct uart_port *uport,
 	spin_unlock_irqrestore(&uport->lock, flags);
 
 	if (curr_uartclk != uport->uartclk) {
-		if (clk_set_rate(msm_uport->clk, uport->uartclk)) {
+	if (clk_set_rate(msm_uport->clk, uport->uartclk)) {
 			pr_err("%s(): Error setting clock rate on UART\n",
 								__func__);
-			WARN_ON(1);
-			spin_lock_irqsave(&uport->lock, flags);
-			return flags;
-		}
+		WARN_ON(1);
+		spin_lock_irqsave(&uport->lock, flags);
+		return flags;
+	}
 	}
 
 	spin_lock_irqsave(&uport->lock, flags);
@@ -997,11 +1012,11 @@ static void msm_hs_set_termios(struct uart_port *uport,
 
 	msm_uport->rx_discard_flush_issued = true;
 
-	/*
+		/*
 	 * Wait for above discard flush request for UART RX CMD to be
 	 * completed. completion would be signal from rx_tlet without
 	 * queueing any next UART RX CMD.
-	 */
+		 */
 	if (msm_uport->rx.dma_in_flight) {
 		spin_unlock_irqrestore(&uport->lock, flags);
 		ret = wait_event_timeout(msm_uport->rx.wait,
@@ -1746,6 +1761,7 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 		msm_uport->wakeup.ignore = 1;
 		enable_irq(msm_uport->wakeup.irq);
 	}
+	printk(KERN_INFO "(msm_serial_hs) msm_hs_check_clock_off - dma wake unlock\n");
 	wake_unlock(&msm_uport->dma_wake_lock);
 
 	spin_unlock_irqrestore(&uport->lock, flags);
@@ -1759,10 +1775,16 @@ static void hsuart_clock_off_work(struct work_struct *w)
 							clock_off_w);
 	struct uart_port *uport = &msm_uport->uport;
 
-	if (!msm_hs_check_clock_off(uport)) {
+	int check_clk_off = msm_hs_check_clock_off(uport);
+
+	if (!check_clk_off) {
 		hrtimer_start(&msm_uport->clk_off_timer,
 				msm_uport->clk_off_delay,
 				HRTIMER_MODE_REL);
+	} else if (check_clk_off == -1) {
+		printk(KERN_INFO "(msm_serial_hs) hsuart_clock_off_work WORKQUEUE - FIFO is not empty or in flight...\n");
+	} else {
+		printk(KERN_INFO "(msm_serial_hs) hsuart_clock_off_work WORKQUEUE - Maybe, clock is off-ed.\n");
 	}
 }
 
@@ -1820,9 +1842,9 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 
 		if (rx->flush == FLUSH_NONE) {
 			if (!msm_uport->termios_in_progress) {
-				rx->flush = FLUSH_DATA_READY;
+			rx->flush = FLUSH_DATA_READY;
 				/* Graceful Flush */
-				msm_dmov_flush(msm_uport->dma_rx_channel, 1);
+			msm_dmov_flush(msm_uport->dma_rx_channel, 1);
 			} else {
 				rx->flush = FLUSH_IGNORE;
 				/* Discard Flush */
@@ -1927,6 +1949,7 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 
 	switch (msm_uport->clk_state) {
 	case MSM_HS_CLK_OFF:
+		printk(KERN_INFO "(msm_serial_hs) msm_hs_check_clock_on - dma wake lock\n");
 		wake_lock(&msm_uport->dma_wake_lock);
 		disable_irq_nosync(msm_uport->wakeup.irq);
 		spin_unlock_irqrestore(&uport->lock, flags);
@@ -2047,6 +2070,7 @@ static int msm_hs_startup(struct uart_port *uport)
 	tx->dma_base = dma_map_single(uport->dev, tx_buf->buf, UART_XMIT_SIZE,
 				      DMA_TO_DEVICE);
 
+	printk(KERN_INFO "(msm_serial_hs) msm_hs_startup - dma wake lock\n");
 	wake_lock(&msm_uport->dma_wake_lock);
 	/* turn on uart clk */
 	ret = msm_hs_init_clk(uport);
@@ -2188,6 +2212,9 @@ deinit_uart_clk:
 	clk_disable_unprepare(msm_uport->clk);
 	if (msm_uport->pclk)
 		clk_disable_unprepare(msm_uport->pclk);
+
+	printk(KERN_INFO "(msm_serial_hs) msm_hs_startup deinit clk - dma wake unlock\n");
+
 	wake_unlock(&msm_uport->dma_wake_lock);
 
 	return ret;
@@ -2551,15 +2578,15 @@ static void msm_hs_shutdown(struct uart_port *uport)
 				pdev->dev.platform_data;
 
 
-	spin_lock_irqsave(&uport->lock, flags);
+		spin_lock_irqsave(&uport->lock, flags);
 
 	/* deactivate if any clock off hrtimer is active. */
 	hrtimer_try_to_cancel(&msm_uport->clk_off_timer);
 
-	/* disable UART TX interface to DM */
-	data = msm_hs_read(uport, UARTDM_DMEN_ADDR);
-	data &= ~UARTDM_TX_DM_EN_BMSK;
-	msm_hs_write(uport, UARTDM_DMEN_ADDR, data);
+		/* disable UART TX interface to DM */
+		data = msm_hs_read(uport, UARTDM_DMEN_ADDR);
+		data &= ~UARTDM_TX_DM_EN_BMSK;
+		msm_hs_write(uport, UARTDM_DMEN_ADDR, data);
 	mb();
 
 	if (msm_uport->tx.dma_in_flight) {
@@ -2572,7 +2599,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 		if (!ret) {
 			pr_err("%s():HSUART TX Stalls.\n", __func__);
 			print_uart_registers(msm_uport);
-		}
+	}
 	} else {
 		spin_unlock_irqrestore(&uport->lock, flags);
 	}
@@ -2635,6 +2662,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 		clk_disable_unprepare(msm_uport->clk);
 		if (msm_uport->pclk)
 			clk_disable_unprepare(msm_uport->pclk);
+		printk(KERN_INFO "(msm_serial_hs) msm_hs_shutdown - dma wake unlock\n");
 		wake_unlock(&msm_uport->dma_wake_lock);
 	}
 
@@ -2661,6 +2689,7 @@ static void __exit msm_serial_hs_exit(void)
 	uart_unregister_driver(&msm_hs_driver);
 }
 
+#if 0 /*Bluesleep manages uart clk control*/
 static int msm_hs_runtime_idle(struct device *dev)
 {
 	/*
@@ -2684,6 +2713,9 @@ static int msm_hs_runtime_suspend(struct device *dev)
 	struct platform_device *pdev = container_of(dev, struct
 						    platform_device, dev);
 	struct msm_hs_port *msm_uport = &q_uart_port[pdev->id];
+
+	printk(KERN_INFO "(msm_serial_hs) msm_hs_runtime_suspend.\n");
+
 	msm_hs_request_clock_off(&msm_uport->uport);
 	return 0;
 }
@@ -2693,13 +2725,15 @@ static const struct dev_pm_ops msm_hs_dev_pm_ops = {
 	.runtime_resume  = msm_hs_runtime_resume,
 	.runtime_idle    = msm_hs_runtime_idle,
 };
+#endif
 
 static struct platform_driver msm_serial_hs_platform_driver = {
 	.probe	= msm_hs_probe,
 	.remove = __devexit_p(msm_hs_remove),
 	.driver = {
 		.name = "msm_serial_hs",
-		.pm   = &msm_hs_dev_pm_ops,
+		/*Bluesleep manages uart clk control*/
+		/*.pm   = &msm_hs_dev_pm_ops,*/
 	},
 };
 

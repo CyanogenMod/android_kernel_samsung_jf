@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -35,6 +35,8 @@
 #include "mdp.h"
 #include "mdp4.h"
 
+#define DSI_VIDEO_BASE	0xE0000
+
 u32 dsi_irq;
 u32 esc_byte_ratio;
 
@@ -45,8 +47,6 @@ static int mipi_dsi_remove(struct platform_device *pdev);
 
 static int mipi_dsi_off(struct platform_device *pdev);
 static int mipi_dsi_on(struct platform_device *pdev);
-static int mipi_dsi_fps_level_change(struct platform_device *pdev,
-					u32 fps_level);
 
 static struct platform_device *pdev_list[MSM_FB_MAX_DEV_LIST];
 static int pdev_list_cnt;
@@ -65,19 +65,16 @@ static struct platform_driver mipi_dsi_driver = {
 
 struct device dsi_dev;
 
-static int mipi_dsi_fps_level_change(struct platform_device *pdev,
-					u32 fps_level)
-{
-	mipi_dsi_wait4video_done();
-	mipi_dsi_configure_fb_divider(fps_level);
-	return 0;
-}
-
+#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
+extern struct mutex power_state_chagne;
+static struct platform_device *pdev_for_esd;
+#endif
 static int mipi_dsi_off(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct msm_fb_data_type *mfd;
 	struct msm_panel_info *pinfo;
+	uint32 dsi_ctrl;
 
 	pr_debug("%s+:\n", __func__);
 
@@ -90,7 +87,7 @@ static int mipi_dsi_off(struct platform_device *pdev)
 		down(&mfd->dma->mutex);
 
 	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
-		mipi_dsi_prepare_ahb_clocks();
+		mipi_dsi_prepare_clocks();
 		mipi_dsi_ahb_ctrl(1);
 		mipi_dsi_clk_enable();
 
@@ -101,8 +98,8 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	/*
 	 * Desctiption: change to DSI_CMD_MODE since it needed to
 	 * tx DCS dsiplay off comamnd to panel
+	 * mipi_dsi_op_mode_config(DSI_CMD_MODE);
 	 */
-	mipi_dsi_op_mode_config(DSI_CMD_MODE);
 
 	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
 		if (pinfo->lcd.vsync_enable) {
@@ -121,7 +118,12 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	mipi_dsi_clk_disable();
 
 	/* disbale dsi engine */
-	MIPI_OUTP(MIPI_DSI_BASE + 0x0000, 0);
+	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
+	dsi_ctrl &= ~0x01;
+	MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl);
+
+	MIPI_OUTP(MIPI_DSI_BASE + 0x010c, 0); /* DSI_INTL_CTRL */
+	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
 
 	mipi_dsi_phy_ctrl(0);
 
@@ -129,7 +131,17 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	spin_unlock_bh(&dsi_clk_lock);
 
 	mipi_dsi_unprepare_clocks();
-	mipi_dsi_unprepare_ahb_clocks();
+
+	usleep(5000);
+
+	if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
+		mipi_dsi_pdata->active_reset(0); /* low */
+
+	usleep(2000); /*1ms delay(minimum) required between reset low and AVDD off*/
+
+	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
+		mipi_dsi_pdata->panel_power_save(0);
+
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(0);
 
@@ -156,19 +168,35 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	u32 ystride, bpp, data;
 	u32 dummy_xres, dummy_yres;
 	int target_type = 0;
+	u32 tmp;
 
 	pr_debug("%s+:\n", __func__);
 
+#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
+	pdev_for_esd = pdev;
+#endif
 	mfd = platform_get_drvdata(pdev);
 	fbi = mfd->fbi;
 	var = &fbi->var;
 	pinfo = &mfd->panel_info;
+	esc_byte_ratio = pinfo->mipi.esc_byte_ratio;
+
+	if (mipi_dsi_pdata && mipi_dsi_pdata->power_common)
+		mipi_dsi_pdata->power_common();
+
+#if defined(CONFIG_SUPPORT_SECOND_POWER)
+	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
+		mipi_dsi_pdata->panel_power_save(1);
+#endif
+
+	if (system_rev == 6)
+		mdelay(500);
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(1);
 
 	cont_splash_clk_ctrl(0);
-	mipi_dsi_prepare_ahb_clocks();
+	mipi_dsi_prepare_clocks();
 
 	mipi_dsi_ahb_ctrl(1);
 
@@ -254,9 +282,22 @@ static int mipi_dsi_on(struct platform_device *pdev)
 
 	mipi_dsi_host_init(mipi);
 
-	if (mipi->force_clk_lane_hs) {
-		u32 tmp;
+	msleep(10);
 
+	/* LP11 */
+	tmp = MIPI_INP(MIPI_DSI_BASE + 0xA8);
+	tmp &= ~(1<<28);
+	MIPI_OUTP(MIPI_DSI_BASE + 0xA8, tmp);
+	wmb();
+	/* LP11 */
+
+	usleep(5000);
+	if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
+			mipi_dsi_pdata->active_reset(1); /* high */
+	usleep(10000);
+
+	/* always high */
+	if (mipi->force_clk_lane_hs) {
 		tmp = MIPI_INP(MIPI_DSI_BASE + 0xA8);
 		tmp |= (1<<28);
 		MIPI_OUTP(MIPI_DSI_BASE + 0xA8, tmp);
@@ -318,9 +359,8 @@ static int mipi_dsi_on(struct platform_device *pdev)
 			mipi_dsi_set_tear_on(mfd);
 		}
 		mipi_dsi_clk_disable();
-		mipi_dsi_unprepare_clocks();
 		mipi_dsi_ahb_ctrl(0);
-		mipi_dsi_unprepare_ahb_clocks();
+		mipi_dsi_unprepare_clocks();
 	}
 
 	if (mdp_rev >= MDP_REV_41)
@@ -333,17 +373,68 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	return ret;
 }
 
-static int mipi_dsi_early_off(struct platform_device *pdev)
-{
-	return panel_next_early_off(pdev);
-}
-
-
 static int mipi_dsi_late_init(struct platform_device *pdev)
 {
 	return panel_next_late_init(pdev);
 }
 
+#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
+void esd_recovery(void)
+{
+	struct msm_fb_data_type *mfd;
+	u32 tmp, tmp2;
+
+	if (pdev_for_esd) {
+		mfd = platform_get_drvdata(pdev_for_esd);
+
+		if (mfd->panel_power_on == TRUE) {
+			mutex_lock(&power_state_chagne);
+
+			panel_next_off(pdev_for_esd);
+
+			if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
+				mipi_dsi_pdata->active_reset(0); /* low */
+
+			if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
+				mipi_dsi_pdata->panel_power_save(0);
+
+			msleep(10);
+
+			if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
+				mipi_dsi_pdata->panel_power_save(1);
+
+			/* LP11 */
+			tmp2 = tmp = MIPI_INP(MIPI_DSI_BASE + 0xA8);
+			tmp &= ~(1<<28);
+			MIPI_OUTP(MIPI_DSI_BASE + 0xA8, tmp);
+			wmb();
+			/* LP11 */
+
+			usleep(5000);
+			if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
+				mipi_dsi_pdata->active_reset(1); /* high */
+			msleep(10);
+			if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
+				mipi_dsi_pdata->active_reset(0); /* low */
+			msleep(10);
+			if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
+				mipi_dsi_pdata->active_reset(1); /* high */
+			msleep(10);
+
+			MIPI_OUTP(MIPI_DSI_BASE + 0xA8, tmp2);
+			wmb();
+
+			panel_next_on(pdev_for_esd);
+			mipi_dsi_late_init(pdev_for_esd);
+
+#if defined(CONFIG_MDNIE_LITE_TUNING)
+			is_negative_on();
+#endif
+			mutex_unlock(&power_state_chagne);
+		}
+	}
+}
+#endif
 
 static int mipi_dsi_resource_initialized;
 
@@ -435,16 +526,15 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 
 		if (mipi_dsi_clk_init(pdev))
 			return -EPERM;
+		mipi_dsi_prepare_clocks();
 
 		if (mipi_dsi_pdata->splash_is_enabled &&
 			!mipi_dsi_pdata->splash_is_enabled()) {
-			mipi_dsi_prepare_ahb_clocks();
 			mipi_dsi_ahb_ctrl(1);
 			MIPI_OUTP(MIPI_DSI_BASE + 0x118, 0);
 			MIPI_OUTP(MIPI_DSI_BASE + 0x0, 0);
 			MIPI_OUTP(MIPI_DSI_BASE + 0x200, 0);
 			mipi_dsi_ahb_ctrl(0);
-			mipi_dsi_unprepare_ahb_clocks();
 		}
 		mipi_dsi_resource_initialized = 1;
 
@@ -464,6 +554,13 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 
 	if (pdev_list_cnt >= MSM_FB_MAX_DEV_LIST)
 		return -ENOMEM;
+
+	if (!mfd->cont_splash_done) {
+		if (mipi_dsi_pdata->splash_is_enabled &&
+			mipi_dsi_pdata->splash_is_enabled())
+			cont_splash_clk_ctrl(1);
+	} else
+		cont_splash_clk_ctrl(0);
 
 	mdp_dev = platform_device_alloc("mdp", pdev->id);
 	if (!mdp_dev)
@@ -490,9 +587,7 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 	pdata = mdp_dev->dev.platform_data;
 	pdata->on = mipi_dsi_on;
 	pdata->off = mipi_dsi_off;
-	pdata->fps_level_change = mipi_dsi_fps_level_change;
 	pdata->late_init = mipi_dsi_late_init;
-	pdata->early_off = mipi_dsi_early_off;
 	pdata->next = pdev;
 
 	/*
@@ -602,11 +697,6 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 		goto mipi_dsi_probe_err;
 
 	pdev_list[pdev_list_cnt++] = pdev;
-
-	esc_byte_ratio = pinfo->mipi.esc_byte_ratio;
-
-	if (!mfd->cont_splash_done)
-		cont_splash_clk_ctrl(1);
 
 return 0;
 
