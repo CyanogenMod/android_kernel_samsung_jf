@@ -791,9 +791,9 @@ iRet_temp_humidity_input_free_device:
 iRet_proximity_input_free_device:
 	input_free_device(light_input_dev);
 iRet_light_input_free_device:
-	input_free_device(pressure_input_dev);
-iRet_gesture_input_free_device:
 	input_free_device(gesture_input_dev);
+iRet_gesture_input_free_device:
+	input_free_device(pressure_input_dev);
 iRet_pressure_input_free_device:
 	input_free_device(gyro_input_dev);
 iRet_gyro_input_free_device:
