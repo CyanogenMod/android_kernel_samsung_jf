@@ -1002,7 +1002,9 @@ static void run_absdelta_read(void);
 static void run_trx_short_test(void);
 static void hover_enable(void);
 static void hover_no_sleep_enable(void);
+#ifdef TSP_BOOSTER
 static void boost_level(void);
+#endif
 static void clear_cover_mode(void);
 static void glove_mode(void);
 static void get_glove_sensitivity(void);
@@ -1034,7 +1036,9 @@ struct ft_cmd ft_cmds[] = {
 	{FT_CMD("run_trx_short_test", run_trx_short_test),},
 	{FT_CMD("hover_enable", hover_enable),},
 	{FT_CMD("hover_no_sleep_enable", hover_no_sleep_enable),},
+#ifdef TSP_BOOSTER
 	{FT_CMD("boost_level", boost_level),},
+#endif
 	{FT_CMD("clear_cover_mode", clear_cover_mode),},
 	{FT_CMD("glove_mode", glove_mode),},
 	{FT_CMD("get_glove_sensitivity", get_glove_sensitivity),},
@@ -3068,6 +3072,7 @@ static void hover_rezero(void)
 	set_cmd_result(data, data->cmd_buff, strlen(data->cmd_buff));
 }
 
+#ifdef TSP_BOOSTER
 static void boost_level(void)
 {
 	struct factory_data *data = f54->factory_data;
@@ -3110,6 +3115,7 @@ static void boost_level(void)
 
 	return;
 }
+#endif
 
 static void not_support_cmd(void)
 {
