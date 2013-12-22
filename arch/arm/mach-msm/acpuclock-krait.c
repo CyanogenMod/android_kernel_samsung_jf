@@ -1136,7 +1136,7 @@ static struct pvs_table * __init select_freq_plan(
 
 #ifdef CONFIG_SEC_DEBUG_SUBSYS
 	speed_bin = drv.speed_bin;
-	pvs_bin = drv.pvs.bin;
+	pvs_bin = drv.pvs_bin;
 #endif
 
 	return &params->pvs_tables[drv.speed_bin][drv.pvs_bin];
