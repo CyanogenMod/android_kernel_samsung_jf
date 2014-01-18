@@ -331,9 +331,9 @@ static void an30259a_start_led_pattern(int mode)
 
 	/* Set to low power consumption mode */
 	if (LED_LOWPOWER_MODE == 1)
-		LED_DYNAMIC_CURRENT = 0x9;
+		LED_DYNAMIC_CURRENT = 0x8;
 	else
-		LED_DYNAMIC_CURRENT = 0x48;
+		LED_DYNAMIC_CURRENT = 0x1;
 
 	switch (mode) {
 	/* leds_set_slope_mode(client, LED_SEL, DELAY,  MAX, MID, MIN,
@@ -409,16 +409,6 @@ static void an30259a_set_led_blink(enum an30259a_led_enum led,
 	if (brightness > LED_MAX_CURRENT)
 		brightness = LED_MAX_CURRENT;
 
-	if (led == LED_R)
-		LED_DYNAMIC_CURRENT = LED_R_CURRENT;
-	else if (led == LED_G)
-		LED_DYNAMIC_CURRENT = LED_G_CURRENT;
-	else if (led == LED_B)
-		LED_DYNAMIC_CURRENT = LED_B_CURRENT;
-
-	/* In user case, LED current is restricted */
-	brightness = (brightness * LED_DYNAMIC_CURRENT) / LED_MAX_CURRENT;
-
 	if (delay_on_time > SLPTT_MAX_VALUE)
 		delay_on_time = SLPTT_MAX_VALUE;
 
@@ -433,12 +423,12 @@ static void an30259a_set_led_blink(enum an30259a_led_enum led,
 	} else
 		leds_on(led, true, true, brightness);
 
-	leds_set_slope_mode(client, led, 0, 15, 15, 0,
+	leds_set_slope_mode(client, led, 0, 15, 7, 0,
 				(delay_on_time + AN30259A_TIME_UNIT - 1) /
 				AN30259A_TIME_UNIT,
 				(delay_off_time + AN30259A_TIME_UNIT - 1) /
 				AN30259A_TIME_UNIT,
-				0, 0, 0, 0);
+				1, 1, 1, 1);
 }
 
 static ssize_t store_an30259a_led_lowpower(struct device *dev,
