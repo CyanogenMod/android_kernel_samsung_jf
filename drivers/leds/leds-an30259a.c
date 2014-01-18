@@ -142,10 +142,11 @@ struct i2c_client *b_client;
 #define LED_DEEP_DEBUG
 
 #ifdef SEC_LED_SPECIFIC
+extern struct class *sec_class;
 struct device *led_dev;
 /*path : /sys/class/sec/led/led_pattern*/
 /*path : /sys/class/sec/led/led_blink*/
-/*path : /sys/class/sec/led/led_brightness*/
+/*path : /sys/class/sec/led/led_fade*/
 /*path : /sys/class/leds/led_r/brightness*/
 /*path : /sys/class/leds/led_g/brightness*/
 /*path : /sys/class/leds/led_b/brightness*/
@@ -331,51 +332,40 @@ static void an30259a_start_led_pattern(int mode)
 
 	/* Set to low power consumption mode */
 	if (LED_LOWPOWER_MODE == 1)
-		LED_DYNAMIC_CURRENT = 0x9;
+		LED_DYNAMIC_CURRENT = 0x8;
 	else
-		LED_DYNAMIC_CURRENT = 0x48;
+		LED_DYNAMIC_CURRENT = 0x1;
 
 	switch (mode) {
 	/* leds_set_slope_mode(client, LED_SEL, DELAY,  MAX, MID, MIN,
 		SLPTT1, SLPTT2, DT1, DT2, DT3, DT4) */
 	case CHARGING:
-		pr_info("LED Battery Charging Pattern on\n");
-		leds_on(LED_R, true, false,
-					LED_DYNAMIC_CURRENT);
+		leds_on(LED_R, true, false, LED_DYNAMIC_CURRENT);
 		break;
 
 	case CHARGING_ERR:
-		pr_info("LED Battery Charging error Pattern on\n");
-		leds_on(LED_R, true, true,
-					LED_DYNAMIC_CURRENT);
+		leds_on(LED_R, true, true, LED_DYNAMIC_CURRENT);
 		leds_set_slope_mode(client, LED_R,
 				1, 15, 15, 0, 1, 1, 0, 0, 0, 0);
 		break;
 
 	case MISSED_NOTI:
-		pr_info("LED Missed Notifications Pattern on\n");
-		leds_on(LED_B, true, true,
-					LED_DYNAMIC_CURRENT);
+		leds_on(LED_B, true, true, LED_DYNAMIC_CURRENT);
 		leds_set_slope_mode(client, LED_B,
 					10, 15, 15, 0, 1, 10, 0, 0, 0, 0);
 		break;
 
 	case LOW_BATTERY:
-		pr_info("LED Low Battery Pattern on\n");
-		leds_on(LED_R, true, true,
-					LED_DYNAMIC_CURRENT);
+		leds_on(LED_R, true, true, LED_DYNAMIC_CURRENT);
 		leds_set_slope_mode(client, LED_R,
 					10, 15, 15, 0, 1, 10, 0, 0, 0, 0);
 		break;
 
 	case FULLY_CHARGED:
-		pr_info("LED full Charged battery Pattern on\n");
-		leds_on(LED_G, true, false,
-					LED_DYNAMIC_CURRENT);
+		leds_on(LED_G, true, false, LED_DYNAMIC_CURRENT);
 		break;
 
 	case POWERING:
-		pr_info("LED Powering Pattern on\n");
 		leds_on(LED_G, true, true, LED_DYNAMIC_CURRENT);
 		leds_on(LED_B, true, true, LED_DYNAMIC_CURRENT);
 		leds_set_slope_mode(client, LED_G,
@@ -409,15 +399,8 @@ static void an30259a_set_led_blink(enum an30259a_led_enum led,
 	if (brightness > LED_MAX_CURRENT)
 		brightness = LED_MAX_CURRENT;
 
-	if (led == LED_R)
-		LED_DYNAMIC_CURRENT = LED_R_CURRENT;
-	else if (led == LED_G)
-		LED_DYNAMIC_CURRENT = LED_G_CURRENT;
-	else if (led == LED_B)
-		LED_DYNAMIC_CURRENT = LED_B_CURRENT;
-
-	/* In user case, LED current is restricted */
-	brightness = (brightness * LED_DYNAMIC_CURRENT) / LED_MAX_CURRENT;
+	/* In user case, LED current is restricted to less than 2mA */
+	//brightness = (brightness * LED_R_CURRENT) / LED_MAX_CURRENT + 1;
 
 	if (delay_on_time > SLPTT_MAX_VALUE)
 		delay_on_time = SLPTT_MAX_VALUE;
@@ -433,12 +416,12 @@ static void an30259a_set_led_blink(enum an30259a_led_enum led,
 	} else
 		leds_on(led, true, true, brightness);
 
-	leds_set_slope_mode(client, led, 0, 15, 15, 0,
+	leds_set_slope_mode(client, led, 0, 15, 7, 0,
 				(delay_on_time + AN30259A_TIME_UNIT - 1) /
 				AN30259A_TIME_UNIT,
 				(delay_off_time + AN30259A_TIME_UNIT - 1) /
 				AN30259A_TIME_UNIT,
-				0, 0, 0, 0);
+				1, 1, 1, 1);
 }
 
 static ssize_t store_an30259a_led_lowpower(struct device *dev,
@@ -472,7 +455,7 @@ static ssize_t store_an30259a_led_br_lev(struct device *dev,
 	struct an30259a_data *data = dev_get_drvdata(dev);
 	client = b_client;
 
-	retval = kstrtoul(buf, 16, &brightness_lev);
+	retval = strict_strtoul(buf, 16, &brightness_lev);
 	if (retval != 0) {
 		dev_err(&data->client->dev, "fail to get led_br_lev.\n");
 		return count;
@@ -488,19 +471,17 @@ static ssize_t store_an30259a_led_pattern(struct device *dev,
 					const char *buf, size_t count)
 {
 	int retval;
-	unsigned int mode = 0;
-	unsigned int type = 0;
+	unsigned long mode;
 	struct an30259a_data *data = dev_get_drvdata(dev);
 
-	retval = sscanf(buf, "%d %d", &mode, &type);
-
-	if (retval == 0) {
+	retval = strict_strtoul(buf, 16, &mode);
+	if (retval != 0) {
 		dev_err(&data->client->dev, "fail to get led_pattern mode.\n");
 		return count;
 	}
 
 	an30259a_start_led_pattern(mode);
-	printk(KERN_DEBUG "led pattern : %d is activated\n", mode);
+	printk(KERN_DEBUG "led pattern : %lu is activated\n", mode);
 
 	return count;
 }
@@ -650,7 +631,7 @@ static ssize_t led_delay_on_show(struct device *dev,
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct an30259a_led *led = cdev_to_led(led_cdev);
 
-	return snprintf(buf, 10, "%lu\n", led->delay_on_time_ms);
+	return sprintf(buf, "%lu\n", led->delay_on_time_ms);
 }
 
 static ssize_t led_delay_on_store(struct device *dev,
@@ -661,7 +642,7 @@ static ssize_t led_delay_on_store(struct device *dev,
 	struct an30259a_led *led = cdev_to_led(led_cdev);
 	unsigned long time;
 
-	if (kstrtoul(buf, 0, &time))
+	if (strict_strtoul(buf, 0, &time))
 		return -EINVAL;
 
 	led->delay_on_time_ms = (int)time;
@@ -674,7 +655,7 @@ static ssize_t led_delay_off_show(struct device *dev,
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct an30259a_led *led = cdev_to_led(led_cdev);
 
-	return snprintf(buf, 10, "%lu\n", led->delay_off_time_ms);
+	return sprintf(buf, "%lu\n", led->delay_off_time_ms);
 }
 
 static ssize_t led_delay_off_store(struct device *dev,
@@ -685,7 +666,7 @@ static ssize_t led_delay_off_store(struct device *dev,
 	struct an30259a_led *led = cdev_to_led(led_cdev);
 	unsigned long time;
 
-	if (kstrtoul(buf, 0, &time))
+	if (strict_strtoul(buf, 0, &time))
 		return -EINVAL;
 
 	led->delay_off_time_ms = (int)time;
@@ -701,7 +682,7 @@ static ssize_t led_blink_store(struct device *dev,
 	struct an30259a_led *led = cdev_to_led(led_cdev);
 	unsigned long blink_set;
 
-	if (kstrtoul(buf, 0, &blink_set))
+	if (strict_strtoul(buf, 0, &blink_set))
 		return -EINVAL;
 
 	if (!blink_set) {
