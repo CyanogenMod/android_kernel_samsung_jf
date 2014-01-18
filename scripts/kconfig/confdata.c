@@ -182,7 +182,7 @@ static int conf_set_sym_val(struct symbol *sym, int def, int def_flags, char *p)
 	return 0;
 }
 
-int conf_read_simple(const char *name, int def, int sym_init)
+int conf_read_simple(const char *name, int def)
 {
 	FILE *in = NULL;
 	char line[1024];
@@ -229,10 +229,6 @@ load:
 	conf_unsaved = 0;
 
 	def_flags = SYMBOL_DEF << def;
-
-	if (!sym_init)
-		goto readsym;
-
 	for_all_symbols(i, sym) {
 		sym->flags |= SYMBOL_CHANGED;
 		sym->flags &= ~(def_flags|SYMBOL_VALID);
@@ -251,7 +247,6 @@ load:
 		}
 	}
 
-readsym:
 	while (fgets(line, sizeof(line), in)) {
 		conf_lineno++;
 		sym = NULL;
@@ -354,7 +349,7 @@ int conf_read(const char *name)
 
 	sym_set_change_count(0);
 
-	if (conf_read_simple(name, S_DEF_USER, true))
+	if (conf_read_simple(name, S_DEF_USER))
 		return 1;
 
 	for_all_symbols(i, sym) {
@@ -785,7 +780,7 @@ static int conf_split_config(void)
 	int res, i, fd;
 
 	name = conf_get_autoconfig_name();
-	conf_read_simple(name, S_DEF_AUTO, true);
+	conf_read_simple(name, S_DEF_AUTO);
 
 	if (chdir("include/config"))
 		return 1;
