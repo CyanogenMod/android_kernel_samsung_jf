@@ -179,6 +179,8 @@ static int cpu_hotplug_handler(struct notifier_block *nb,
 
 	switch (val) {
 	case CPU_ONLINE:
+		if (!this_cpu->cur_freq)
+			this_cpu->cur_freq = cpufreq_quick_get(cpu) * 1000;
 	case CPU_ONLINE_FROZEN:
 		this_cpu->avg_load_maxfreq = 0;
 	}
@@ -397,10 +399,8 @@ static int __init msm_rq_stats_init(void)
 		mutex_init(&pcpu->cpu_load_mutex);
 		cpufreq_get_policy(&cpu_policy, i);
 		pcpu->policy_max = cpu_policy.cpuinfo.max_freq;
-#ifdef CONFIG_MACH_JF
-		/* This is initial frequency */
-		pcpu->cur_freq = 1566000;
-#endif
+		if (cpu_online(i))
+			pcpu->cur_freq = cpufreq_quick_get(i) * 1000;
 		cpumask_copy(pcpu->related_cpus, cpu_policy.cpus);
 	}
 	freq_transition.notifier_call = cpufreq_transition_handler;
