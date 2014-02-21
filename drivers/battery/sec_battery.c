@@ -2674,7 +2674,12 @@ static int sec_bat_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = battery->cable_type;
-		if (val->intval == POWER_SUPPLY_TYPE_BATTERY) {
+		if ((val->intval == POWER_SUPPLY_TYPE_BATTERY) &&
+				(battery->pdata->is_lpm())
+#ifdef CONFIG_WIRELESS_CHARGER
+				&& (current_cable_type != POWER_SUPPLY_TYPE_WIRELESS)
+#endif
+			) {
 			/* Userspace expects 0 for no-supply */
 			val->intval = 0;
 			}
