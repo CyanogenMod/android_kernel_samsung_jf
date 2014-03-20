@@ -39,7 +39,16 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
 
 	f2fs_balance_fs(sbi);
 
-	sb_start_pagefault(inode->i_sb);
+	/* F2FS backport: We replace in old kernels sb_start_pagefault(inode->i_sb) with vfs_check_frozen()
+	 * and remove the original sb_end_pagefault(inode->i_sb) after the out label
+	 *
+	 * The introduction of sb_{start,end}_pagefault() was made post-3.2 kernels by Jan Kara
+	 * and merged in commit a0e881b7c189fa2bd76c024dbff91e79511c971d.
+	 * Discussed at https://lkml.org/lkml/2012/3/5/278
+	 *
+	 * - Alex
+	 */
+	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
 
 	/* block allocation */
 	f2fs_lock_op(sbi);
@@ -93,14 +102,12 @@ mapped:
 	/* fill the page */
 	wait_on_page_writeback(page);
 out:
-	sb_end_pagefault(inode->i_sb);
 	return block_page_mkwrite_return(err);
 }
 
 static const struct vm_operations_struct f2fs_file_vm_ops = {
-	.fault		= filemap_fault,
-	.page_mkwrite	= f2fs_vm_page_mkwrite,
-	.remap_pages	= generic_file_remap_pages,
+	.fault        = filemap_fault,
+	.page_mkwrite = f2fs_vm_page_mkwrite,
 };
 
 static int get_parent_ino(struct inode *inode, nid_t *pino)
@@ -204,6 +211,7 @@ static int f2fs_file_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	file_accessed(file);
 	vma->vm_ops = &f2fs_file_vm_ops;
+	vma->vm_flags |= VM_CAN_NONLINEAR;
 	return 0;
 }
 

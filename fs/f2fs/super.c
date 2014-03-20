@@ -434,22 +434,6 @@ int f2fs_sync_fs(struct super_block *sb, int sync)
 	return 0;
 }
 
-static int f2fs_freeze(struct super_block *sb)
-{
-	int err;
-
-	if (f2fs_readonly(sb))
-		return 0;
-
-	err = f2fs_sync_fs(sb, 1);
-	return err;
-}
-
-static int f2fs_unfreeze(struct super_block *sb)
-{
-	return 0;
-}
-
 static int f2fs_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
 	struct super_block *sb = dentry->d_sb;
@@ -533,7 +517,7 @@ static int segment_info_seq_show(struct seq_file *seq, void *offset)
 
 static int segment_info_open_fs(struct inode *inode, struct file *file)
 {
-	return single_open(file, segment_info_seq_show, PDE_DATA(inode));
+	return single_open(file, segment_info_seq_show, PDE(inode)->data);
 }
 
 static const struct file_operations f2fs_seq_segment_info_fops = {
@@ -606,8 +590,6 @@ static struct super_operations f2fs_sops = {
 	.evict_inode	= f2fs_evict_inode,
 	.put_super	= f2fs_put_super,
 	.sync_fs	= f2fs_sync_fs,
-	.freeze_fs	= f2fs_freeze,
-	.unfreeze_fs	= f2fs_unfreeze,
 	.statfs		= f2fs_statfs,
 	.remount_fs	= f2fs_remount,
 };
