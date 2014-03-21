@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -71,81 +71,97 @@
 #include "comm_transp_impl.h"
 
 typedef struct WSParams {
-   uint32 callno;
-   union {
-      /**
-       * @brief Used for both WSCALL_ACQUIRE_PAGE and WSCALL_RELEASE_PAGE.
-       */
-      struct {
-         uint16 pages;                 ///< IN Number of pages
-         uint16 order;                 /**< IN Size of each page -
-                                               2^(12+order) sized and aligned
-                                               in machine space.
-                                               (WSCALL_ACQUIRE_PAGE only) */
-         PhysMem_RegionType forRegion; /**< IN Region identifier for pages
-                                               (WSCALL_ACQUIRE_PAGE only) */
-         MPN mpns[WSCALL_MAX_MPNS];    /**< OUT (on WSCALL_ACQUIRE_PAGE)
-                                            IN (on WSCALL_RELEASE_PAGE)
-                                               Vector of page base MPNs. */
-      } pages;
+	uint32 callno;
+	union {
+	/**
+	 * @brief Used for both WSCALL_ACQUIRE_PAGE and WSCALL_RELEASE_PAGE.
+	 */
+	struct {
+		/** IN Number of pages */
+		uint16 pages;
 
-      union {
-         MPN mpn;                  ///< IN MPN to query refcount.
-         _Bool referenced;         ///< OUT Do host page tables contain the MPN?
-      } refCount;
+		/**
+		 *  IN Size of each page - 2^(12+order) sized and
+		 *  aligned in machine space. (WSCALL_ACQUIRE_PAGE only)
+		 */
+		uint16 order;
 
-      struct {
-         ExitStatus   status;      ///< IN the final status of the monitor
-      } abort;
+		/** IN Region identifier for pages (WSCALL_ACQUIRE_PAGE only) */
+		PhysMem_RegionType forRegion;
 
-      struct {
-         int level;
-         char messg[WSCALL_LOG_MAX];
-      } log;
+		/**
+		 * OUT (on WSCALL_ACQUIRE_PAGE)
+		 * IN (on WSCALL_RELEASE_PAGE)
+		 * Vector of page base MPNs
+		 */
+		MPN mpns[WSCALL_MAX_MPNS];
+	} pages;
 
-      struct {
-         HKVA mtxHKVA;             ///< IN mutex's host kernel virt addr
-         MutexMode mode;           ///< IN shared or exclusive
-         uint32 cvi;               ///< IN condition variable index
-         _Bool all;                ///< IN wake all waiting threads?
-         _Bool ok;                 ///< OUT Mutex_Lock completed
-      } mutex;
+	union {
+		MPN mpn;          /**< IN MPN to query refcount. */
+		_Bool referenced; /**< OUT Host page tables contain the MPN? */
+	} refCount;
 
-      struct {
-         Mksck_VmId  vmId;         ///< IN translate and lock this vmID
-         _Bool found;              /**< OUT true if the lookup was successful,
-                                            page is found, and refc incremented */
-         MPN mpn[MKSCKPAGE_TOTAL]; ///< OUT array of MPNs of the requested vmId
-      } pageMgmnt;
+	struct {
+		ExitStatus   status; /**< IN the final status of the monitor */
+	} abort;
 
-      struct {
-         unsigned int now;         ///< OUT current time-of-day seconds
-         unsigned int nowusec;     ///< OUT current time-of-day microseconds
-      } tod;
+	struct {
+		int level;
+		char messg[WSCALL_LOG_MAX];
+	} log;
 
-      struct {
-         QPId id;                 ///< IN/OUT shared memory id
-         uint32 capacity;         ///< IN size of shared region requested
-         uint32 type;             ///< IN type of queue pair
-         uint32 base;             ///< IN base MPN of PA vector page
-         uint32 nrPages;          ///< IN number of pages to map
-         int32 rc;                ///< OUT return code
-      } qp;
+	struct {
+		HKVA mtxHKVA;           /**< IN mutex's host kernel virt addr */
+		MutexMode mode;         /**< IN shared or exclusive */
+		uint32 cvi;             /**< IN condition variable index */
+		_Bool all;              /**< IN wake all waiting threads? */
+		_Bool ok;               /**< OUT Mutex_Lock completed */
+	} mutex;
 
-      struct {
-         CommTranspID transpID;
-         CommTranspIOEvent event;
-      } commEvent;
+	struct {
+		Mksck_VmId  vmId;       /**< IN translate and lock this vmID */
 
-      struct {
-         uint64 when64;           ///< IN timer request
-      } timer;
+		/**
+		 * OUT true if the lookup was successful, page is found,
+		 * and refc incremented
+		 */
+		_Bool found;
 
-      struct {
-         _Bool suspendMode;       ///< Is the guest in suspend mode?
-      } wait;
+		/** OUT array of MPNs of the requested vmId */
+		MPN mpn[MKSCKPAGE_TOTAL];
+	} pageMgmnt;
 
-   };                              ///< anonymous union
+	struct {
+		/** OUT current time-of-day seconds */
+		unsigned int now;
+		/** OUT current time-of-day microseconds */
+		unsigned int nowusec;
+	} tod;
+
+	struct {
+		QPId id;             /**< IN/OUT shared memory id */
+		uint32 capacity;     /**< IN size of shared region requested */
+		uint32 type;         /**< IN type of queue pair */
+		uint32 base;         /**< IN base MPN of PA vector page */
+		uint32 nrPages;      /**< IN number of pages to map */
+		int32 rc;            /**< OUT return code */
+	} qp;
+
+	struct {
+		CommTranspID transpID;
+		CommTranspIOEvent event;
+	} commEvent;
+
+	struct {
+		uint64 when64;       /**< IN timer request */
+	} timer;
+
+	struct {
+		_Bool suspendMode;   /**< Is the guest in suspend mode? */
+	} wait;
+
+	};                           /**< anonymous union */
 } WSParams;
 
 
@@ -154,12 +170,12 @@ typedef struct WSParams {
  * @param wsp_ the world switch page structure pointer
  * @return the cast pointer
  */
-static inline WSParams* UNUSED
+static inline WSParams *UNUSED
 WSP_Params(WorldSwitchPage *wsp_) {
-   return (WSParams*)(wsp_->params_);
+	return (WSParams *)(wsp_->params_);
 }
 
 MY_ASSERTS(WSParFn,
-   ASSERT_ON_COMPILE(sizeof(WSParams) <= WSP_PARAMS_SIZE);
+	   ASSERT_ON_COMPILE(sizeof(WSParams) <= WSP_PARAMS_SIZE);
 )
 #endif

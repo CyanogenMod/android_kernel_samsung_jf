@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP PVTCP Server
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -65,10 +65,10 @@
  */
 
 typedef struct CommPacket {
-   unsigned int len;                        // Total length
-   unsigned char flags;                     // Operation flags
-   unsigned char opCode;                    // Operation to call
-   unsigned short data16;                   // Auxiliary data
+   unsigned int len;                        /* Total length */
+   unsigned char flags;                     /* Operation flags */
+   unsigned char opCode;                    /* Operation to call */
+   unsigned short data16;                   /* Auxiliary data */
    unsigned long long data64;
    unsigned long long data64ex;
    union {
@@ -175,5 +175,5 @@ Comm_WriteVec(CommChannel channel,
 unsigned int Comm_RequestInlineEvents(CommChannel channel);
 unsigned int Comm_ReleaseInlineEvents(CommChannel channel);
 
-#endif // _COMM_H_
+#endif /* _COMM_H_ */
 

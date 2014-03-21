@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP PVTCP Server
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -33,7 +33,7 @@
 /* Module parameters -- passed as one 'name=value'-list string. */
 
 static char modParams[256];
-module_param_string(COMM_OS_MOD_SHORT_NAME, modParams, sizeof modParams, 0644);
+module_param_string(COMM_OS_MOD_SHORT_NAME, modParams, sizeof(modParams), 0644);
 
 
 /**
@@ -45,26 +45,27 @@ module_param_string(COMM_OS_MOD_SHORT_NAME, modParams, sizeof modParams, 0644);
 static int __init
 ModInit(void)
 {
-   int rc;
+	int rc;
 
-   if (!commOSModInit) {
-      CommOS_Log(("%s: Can't find \'init\' function for module \'" \
-                  COMM_OS_MOD_SHORT_NAME_STRING "\'.\n", __FUNCTION__));
-      return -1;
-   }
+	if (!commOSModInit) {
+		CommOS_Log(("%s: Can't find \'init\' function for module \'"
+			    COMM_OS_MOD_SHORT_NAME_STRING "\'.\n", __func__));
+		return -1;
+	}
 
-   CommOS_Debug(("%s: Module parameters: [%s].\n", __FUNCTION__, modParams));
+	CommOS_Debug(("%s: Module parameters: [%s].\n", __func__, modParams));
 
-   rc = (*commOSModInit)(modParams);
-   if (rc == 0) {
-      CommOS_Log(("%s: Module \'" COMM_OS_MOD_SHORT_NAME_STRING \
-                  "\' has been successfully initialized.\n", __FUNCTION__));
-   } else {
-      CommOS_Log(("%s: Module \'" COMM_OS_MOD_SHORT_NAME_STRING \
-                  "\' could not be initialized [%d].\n", __FUNCTION__, rc));
-   }
+	rc = (*commOSModInit)(modParams);
+	if (rc == 0)
+		CommOS_Log(("%s: Module \'" COMM_OS_MOD_SHORT_NAME_STRING
+			    "\' has been successfully initialized.\n",
+			    __func__));
+	else
+		CommOS_Log(("%s: Module \'" COMM_OS_MOD_SHORT_NAME_STRING
+			    "\' could not be initialized [%d].\n",
+			    __func__, rc));
 
-   return rc > 0 ? -rc : rc;
+	return rc > 0 ? -rc : rc;
 }
 
 
@@ -76,15 +77,15 @@ ModInit(void)
 static void __exit
 ModExit(void)
 {
-   if (!commOSModExit) {
-      CommOS_Log(("%s: Can't find \'fini\' function for module \'" \
-                  COMM_OS_MOD_SHORT_NAME_STRING "\'.\n", __FUNCTION__));
-      return;
-   }
+	if (!commOSModExit) {
+		CommOS_Log(("%s: Can't find \'fini\' function for module \'"
+			    COMM_OS_MOD_SHORT_NAME_STRING "\'.\n", __func__));
+		return;
+	}
 
-   (*commOSModExit)();
-   CommOS_Log(("%s: Module \'" COMM_OS_MOD_SHORT_NAME_STRING \
-               "\' has been stopped.\n", __FUNCTION__));
+	(*commOSModExit)();
+	CommOS_Log(("%s: Module \'" COMM_OS_MOD_SHORT_NAME_STRING
+		    "\' has been stopped.\n", __func__));
 }
 
 

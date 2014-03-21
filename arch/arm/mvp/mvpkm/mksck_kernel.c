@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -58,7 +58,7 @@
 
 #include <asm/memory.h>
 #include <asm/system.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 #include "mvp.h"
 #include "actions.h"
@@ -67,68 +67,71 @@
 #include "mksck_sockaddr.h"
 #include "mutex_kernel.h"
 
-void NORETURN FatalError(char const *file,
-                int line,
-                FECode feCode,
-                int bugno,
-                char const *fmt,
-                ...)
+void NORETURN
+FatalError(char const *file,
+	   int line,
+	   FECode feCode,
+	   int bugno,
+	   char const *fmt,
+	   ...)
 {
-   /* Lock around printing the error details so that the messages from multiple
-    * threads are not interleaved. */
-   static DEFINE_MUTEX(fatalErrorMutex);
-   mutex_lock(&fatalErrorMutex);
+	static DEFINE_MUTEX(fatalErrorMutex);
 
-   FATALERROR_COMMON(printk, vprintk, file, line, feCode, bugno, fmt);
+	/*
+	 * Lock around printing the error details so that messages from multiple
+	 * threads are not interleaved.
+	 */
+	mutex_lock(&fatalErrorMutex);
 
-   dump_stack();
+	FATALERROR_COMMON(printk, vprintk, file, line, feCode, bugno, fmt);
 
-   /* done printing */
-   mutex_unlock(&fatalErrorMutex);
+	dump_stack();
 
-   /* do_exit below exits the current thread but does not crash the kernel.
-    * Hence the stack dump will actually be readable from other user threads.
-    */
-   do_exit(1);
+	/* done printing */
+	mutex_unlock(&fatalErrorMutex);
+
+	/*
+	 * do_exit below exits the current thread but does not crash the kernel.
+	 * Hence, the stack dump will actually be readable from other user
+	 * threads.
+	 */
+	do_exit(1);
 }
 
 
 /*
- * The project uses a new address family: AF_MKSCK. Optimally this address
- * family were accepted with the Linux community and a permanent number
- * were assigned. This, however, is a dream only, not even the x86 team
- * has been able to pull it off.
+ * The project uses a new address family: AF_MKSCK. Optimally, this address
+ * family would be registered/assigned its own constant.
  *
- * Instead we ASSUME that DECnet is dead and re-use it's address family number.
- * This is what the x86 world is moving too in the latest versions.
+ * Instead, we ASSUME that DECnet is not needed, so we re-use its constant.
  */
 
 static struct proto mksckProto = {
-   .name     = "AF_MKSCK",
-   .owner    = THIS_MODULE,
-   .obj_size = sizeof (struct sock),
+	.name     = "AF_MKSCK",
+	.owner    = THIS_MODULE,
+	.obj_size = sizeof(struct sock),
 };
 
-static int MksckCreate(struct net *net,
-                       struct socket *sock,
-                       int protocol,
-                       int kern);
+static int
+MksckCreate(struct net *net,
+	    struct socket *sock,
+	    int protocol,
+	    int kern);
 
 static struct net_proto_family mksckFamilyOps = {
-   .family = AF_MKSCK,
-   .owner  = THIS_MODULE,
-   .create = MksckCreate,
+	.family = AF_MKSCK,
+	.owner  = THIS_MODULE,
+	.create = MksckCreate,
 };
 
 static int MksckFault(struct vm_area_struct *vma, struct vm_fault *vmf);
 
 
 /**
- * @brief Linux vma operations for receive windows established via Mksck
- *        mmap.
+ * @brief Linux vma operations for receive windows established via Mksck mmap.
  */
 static struct vm_operations_struct mksckVMOps = {
-   .fault = MksckFault
+	.fault = MksckFault
 };
 
 /*
@@ -143,56 +146,62 @@ static MksckPage *mksckPages[MKSCK_MAX_SHARES];
 static int MksckRelease(struct socket *sock);
 static int MksckBacklogRcv(struct sock *sk, struct sk_buff *skb);
 static void MksckSkDestruct(struct sock *sk);
-static int MksckBind(struct socket *sock,
-                     struct sockaddr *addr,
-                     int addrLen);
-static int MksckBindGeneric(struct sock *sk,
-                            Mksck_Address addr);
-static int MksckDgramRecvMsg(struct kiocb *kiocb,
-                             struct socket *sock,
-                             struct msghdr *msg,
-                             size_t len,
-                             int flags);
-static int MksckDgramSendMsg(struct kiocb *kiocb,
-                             struct socket *sock,
-                             struct msghdr *msg,
-                             size_t len);
-static int MksckGetName(struct socket *sock,
-                        struct sockaddr *addr,
-                        int *addrLen,
-                        int peer);
-static unsigned int MksckPoll(struct file *filp,
-                              struct socket *sock,
-                              poll_table *wait);
-static int MksckDgramConnect(struct socket *sock,
-                             struct sockaddr *addr,
-                             int addrLen,
-                             int flags);
-static int MksckMMap(struct file *file,
-                     struct socket *sock,
-                     struct vm_area_struct *vma);
+static int
+MksckBind(struct socket *sock,
+	  struct sockaddr *addr,
+	  int addrLen);
+static int MksckBindGeneric(struct sock *sk, Mksck_Address addr);
+static int
+MksckDgramRecvMsg(struct kiocb *kiocb,
+		  struct socket *sock,
+		  struct msghdr *msg,
+		  size_t len,
+		  int flags);
+static int
+MksckDgramSendMsg(struct kiocb *kiocb,
+		  struct socket *sock,
+		  struct msghdr *msg,
+		  size_t len);
+static int
+MksckGetName(struct socket *sock,
+	     struct sockaddr *addr,
+	     int *addrLen,
+	     int peer);
+static unsigned int
+MksckPoll(struct file *filp,
+	  struct socket *sock,
+	  poll_table *wait);
+static int
+MksckDgramConnect(struct socket *sock,
+		  struct sockaddr *addr,
+		  int addrLen,
+		  int flags);
+static int
+MksckMMap(struct file *file,
+	  struct socket *sock,
+	  struct vm_area_struct *vma);
 
-static void MksckPageRelease(MksckPage *mksckPage);
+static void MksckPageRelease(struct MksckPage *mksckPage);
 
-static struct proto_ops mksckDgramOps = {
-   .family     = AF_MKSCK,
-   .owner      = THIS_MODULE,
-   .release    = MksckRelease,
-   .bind       = MksckBind,
-   .connect    = MksckDgramConnect,
-   .socketpair = sock_no_socketpair,
-   .accept     = sock_no_accept,
-   .getname    = MksckGetName,
-   .poll       = MksckPoll,
-   .ioctl      = sock_no_ioctl,
-   .listen     = sock_no_listen,
-   .shutdown   = sock_no_shutdown, /* MksckShutdown, */
-   .setsockopt = sock_no_setsockopt,
-   .getsockopt = sock_no_getsockopt,
-   .sendmsg    = MksckDgramSendMsg,
-   .recvmsg    = MksckDgramRecvMsg,
-   .mmap       = MksckMMap,
-   .sendpage   = sock_no_sendpage,
+static const struct proto_ops mksckDgramOps = {
+	.family     = AF_MKSCK,
+	.owner      = THIS_MODULE,
+	.release    = MksckRelease,
+	.bind       = MksckBind,
+	.connect    = MksckDgramConnect,
+	.socketpair = sock_no_socketpair,
+	.accept     = sock_no_accept,
+	.getname    = MksckGetName,
+	.poll       = MksckPoll,
+	.ioctl      = sock_no_ioctl,
+	.listen     = sock_no_listen,
+	.shutdown   = sock_no_shutdown, /* MksckShutdown, */
+	.setsockopt = sock_no_setsockopt,
+	.getsockopt = sock_no_getsockopt,
+	.sendmsg    = MksckDgramSendMsg,
+	.recvmsg    = MksckDgramRecvMsg,
+	.mmap       = MksckMMap,
+	.sendpage   = sock_no_sendpage,
 };
 
 
@@ -204,32 +213,25 @@ static struct proto_ops mksckDgramOps = {
 int
 Mksck_Init(void)
 {
-   int err;
+	int err;
 
-   spin_lock_init(&mksckPageListLock);
+	spin_lock_init(&mksckPageListLock);
 
-   /*
-    * Create a slab to allocate socket structs from.
-    */
-   err = proto_register(&mksckProto, 1);
-   if (err != 0) {
-      printk(KERN_ERR
-             "Mksck_Init: Cannot register MKSCK protocol, errno = %d.\n", err);
-      return err;
-   }
+	err = proto_register(&mksckProto, 1);
+	if (err != 0) {
+		pr_err("Mksck_Init: Cannot register AF_MKSCK protocol" \
+		       ", errno = %d.\n", err);
+		return err;
+	}
 
-   /*
-    * Register the socket family
-    */
-   err = sock_register(&mksckFamilyOps);
-   if (err < 0) {
-      printk(KERN_ERR
-            "Mksck_Init: Could not register address family AF_MKSCK"
-            " (errno = %d).\n", err);
-      return err;
-   }
+	err = sock_register(&mksckFamilyOps);
+	if (err < 0) {
+		pr_err("Mksck_Init: Could not register address family" \
+		       " AF_MKSCK (errno = %d).\n", err);
+		return err;
+	}
 
-   return 0;
+	return 0;
 }
 
 
@@ -239,8 +241,8 @@ Mksck_Init(void)
 void
 Mksck_Exit(void)
 {
-   sock_unregister(mksckFamilyOps.family);
-   proto_unregister(&mksckProto);
+	sock_unregister(mksckFamilyOps.family);
+	proto_unregister(&mksckProto);
 }
 
 
@@ -256,111 +258,101 @@ Mksck_Exit(void)
  */
 static int
 MksckCreate(struct net *net,
-            struct socket *sock,
-            int protocol,
-            int kern)
+	    struct socket *sock,
+	    int protocol,
+	    int kern)
 {
-   struct sock *sk;
-   uid_t currentUid = current_euid();
+	struct sock *sk;
+	uid_t currentUid = current_euid();
 
-   if (!(currentUid == 0 ||
-         currentUid == Mvpkm_vmwareUid)) {
-      printk(KERN_WARNING
-             "MksckCreate: rejected from process %s tgid=%d, pid=%d euid:%d.\n",
-             current->comm,
-             task_tgid_vnr(current),
-             task_pid_vnr(current),
-             currentUid);
-      return -EPERM;
-   }
+	if (!(currentUid == 0 ||
+	    currentUid == Mvpkm_vmwareUid)) {
+		pr_warn("MksckCreate: rejected from process %s " \
+			"tgid=%d, pid=%d euid:%d.\n",
+			current->comm,
+			task_tgid_vnr(current),
+			task_pid_vnr(current),
+			currentUid);
+		return -EPERM;
+	}
 
-   if (!sock) {
-      return -EINVAL;
-   }
+	if (!sock)
+		return -EINVAL;
 
-   if (protocol) {
-      return -EPROTONOSUPPORT;
-   }
+	if (protocol)
+		return -EPROTONOSUPPORT;
 
-   switch (sock->type) {
-      case SOCK_DGRAM: {
-         sock->ops = &mksckDgramOps;
-         break;
-      }
-      default: {
-         return -ESOCKTNOSUPPORT;
-      }
-   }
+	switch (sock->type) {
+	case SOCK_DGRAM:
+		sock->ops = &mksckDgramOps;
+		break;
+	default:
+		return -ESOCKTNOSUPPORT;
+	}
 
-   sock->state = SS_UNCONNECTED;
+	sock->state = SS_UNCONNECTED;
 
-   /*
-    * Most recently (in 2.6.24), sk_alloc() was changed to expect the
-    * network namespace, and the option to zero the sock was dropped.
-    */
-   sk = sk_alloc(net, mksckFamilyOps.family, GFP_KERNEL, &mksckProto);
+	sk = sk_alloc(net, mksckFamilyOps.family, GFP_KERNEL, &mksckProto);
+	if (!sk)
+		return -ENOMEM;
 
-   if (!sk) {
-      return -ENOMEM;
-   }
+	sock_init_data(sock, sk);
 
-   sock_init_data(sock, sk);
+	sk->sk_type        = SOCK_DGRAM;
+	sk->sk_destruct    = MksckSkDestruct;
+	sk->sk_backlog_rcv = MksckBacklogRcv;
 
-   sk->sk_type        = SOCK_DGRAM;
-   sk->sk_destruct    = MksckSkDestruct;
-   sk->sk_backlog_rcv = MksckBacklogRcv;
+	/*
+	 * On socket lock...
+	 *
+	 * A bound socket will have an associated private area, the Mksck
+	 * structure part of MksckPage. That area is pointed to by
+	 * sk->sk_protinfo. In addition, a connected socket will have the
+	 * peer field in its associated area set to point to the associated
+	 * private area of the peer socket. A mechanism is needed to ensure
+	 * that these private areas area not freed while they are being
+	 * accessed within the scope of a function. A simple lock would not
+	 * suffice as the interface functions (like MksckDgramRecvMsg())
+	 * may block. Hence a reference count mechanism is employed. When
+	 * the mentioned references (sk->sk_protinfo and mksck->peer) to
+	 * the respective private areas are set a refcount is incremented,
+	 * and decremented when the references are deleted.
+	 *
+	 * The refcounts of areas pointed to by sk->sk_protinfo and
+	 * mksck->peer will be decremented under the lock of the socket.
+	 * Hence these private areas cannot disappear as long as the socket
+	 * lock is held.
+	 *
+	 * The interface functions will have one of the following
+	 * structures:
+	 *
+	 * simpleFn(sk)
+	 * {
+	 *	lock_sock(sk);
+	 *	if ((mksck = sk->sk_protinfo)) {
+	 *		<non-blocking use of mksck>
+	 *	}
+	 *	release_sock(sk);
+	 * }
+	 *
+	 * complexFn(sk)
+	 * {
+	 *	lock_sock(sk);
+	 *	if ((mksck = sk->sk_protinfo))
+	 *		IncRefc(mksck);
+	 *	release_sock(sk);
+	 *
+	 *	if (mksck) {
+	 *		<use of mksck in a potentially blocking manner>
+	 *		DecRefc(mksck);
+	 *	}
+	 * }
+	 */
 
-   /*
-    * On socket lock...
-    *
-    * A bound socket will have an associated private area, the Mksck
-    * structure part of MksckPage. That area is pointed to by
-    * sk->sk_protinfo. In addition, a connected socket will have the
-    * peer field in its associated area set to point to the associated
-    * private area of the peer socket. A mechanism is needed to ensure
-    * that these private areas area not freed while they are being
-    * accessed within the scope of a function. A simple lock would not
-    * suffice as the interface functions (like MksckDgramRecvMsg())
-    * may block. Hence a reference count mechanism is employed. When
-    * the mentioned references (sk->sk_protinfo and mksck->peer) to
-    * the respective private areas are set a refcount is incremented,
-    * and decremented when the references are deleted.
-    *
-    * The refcounts of areas pointed to by sk->sk_protinfo and
-    * mksck->peer will be decremented under the lock of the socket.
-    * Hence these private areas cannot disappear as long as the socket
-    * lock is held.
-    *
-    * The interface functions will have one of the following
-    * structures:
-    *
-    * simpleFn(sk)
-    * {
-    *    lock_sock(sk);
-    *    if ((mksck = sk->sk_protinfo)) {
-    *        <non-blocking use of mksck>
-    *    }
-    *    release_sock(sk);
-    * }
-    *
-    * complexFn(sk)
-    * {
-    *    lock_sock(sk);
-    *    if ((mksck = sk->sk_protinfo)) {
-    *       IncRefc(mksck);
-    *    }
-    *    release_sock(sk);
-    *
-    *    if (mksck) {
-    *       <use of mksck in a potentially blocking manner>
-    *       DecRefc(mksck);
-    *    }
-    * }
-    */
-   sk->sk_protinfo = NULL;
-   sock_reset_flag(sk, SOCK_DONE);
+	sk->sk_protinfo = NULL;
+	sock_reset_flag(sk, SOCK_DONE);
 
-   return 0;
+	return 0;
 }
 
 
@@ -374,30 +366,31 @@ MksckCreate(struct net *net,
 static int
 MksckRelease(struct socket *sock)
 {
-   struct sock *sk = sock->sk;
+	struct sock *sk = sock->sk;
 
-   if (sk) {
-      lock_sock(sk);
-      sock_orphan(sk);
-      release_sock(sk);
-      sock_put(sk);
-   }
+	if (sk) {
+		lock_sock(sk);
+		sock_orphan(sk);
+		release_sock(sk);
+		sock_put(sk);
+	}
 
-   sock->sk = NULL;
-   sock->state = SS_FREE;
+	sock->sk = NULL;
+	sock->state = SS_FREE;
 
-   return 0;
+	return 0;
 }
 
 
 static int
-MksckBacklogRcv(struct sock *sk, struct sk_buff *skb)
+MksckBacklogRcv(struct sock *sk,
+		struct sk_buff *skb)
 {
-   /*
-    * We should never get these as we never queue an skb.
-    */
-   printk("MksckBacklogRcv: should never get here\n");
-   return -EIO;
+	/*
+	 * We should never get these as we never queue an skb.
+	 */
+	pr_err("MksckBacklogRcv: should never get here\n");
+	return -EIO;
 }
 
 
@@ -409,22 +402,22 @@ MksckBacklogRcv(struct sock *sk, struct sk_buff *skb)
 static void
 MksckSkDestruct(struct sock *sk)
 {
-   Mksck *mksck;
+	Mksck *mksck;
 
-   lock_sock(sk);
-   mksck = sk->sk_protinfo;
+	lock_sock(sk);
+	mksck = sk->sk_protinfo;
 
-   if (mksck != NULL) {
-      sk->sk_protinfo = NULL;
-      Mksck_CloseCommon(mksck);
-   }
+	if (mksck != NULL) {
+		sk->sk_protinfo = NULL;
+		Mksck_CloseCommon(mksck);
+	}
 
-   if (sk->sk_user_data != NULL) {
-      sock_kfree_s(sk, sk->sk_user_data, sizeof(int));
-      sk->sk_user_data = NULL;
-   }
+	if (sk->sk_user_data != NULL) {
+		sock_kfree_s(sk, sk->sk_user_data, sizeof(int));
+		sk->sk_user_data = NULL;
+	}
 
-   release_sock(sk);
+	release_sock(sk);
 }
 
 
@@ -445,84 +438,82 @@ MksckSkDestruct(struct sock *sk)
  */
 static int
 MksckBindGeneric(struct sock *sk,
-                 Mksck_Address addr)
+		 Mksck_Address addr)
 {
-   int err;
-   Mksck *mksck;
-   MksckPage *mksckPage;
+	int err;
+	Mksck *mksck;
+	struct MksckPage *mksckPage;
 
-   if (sk->sk_protinfo != NULL) {
-      return -EISCONN;
-   }
+	if (sk->sk_protinfo != NULL)
+		return -EISCONN;
 
-   /*
-    * Locate the page for the given host and increment its reference
-    * count so it can't get freed off while we are working on it.
-    */
-   if (addr.vmId == MKSCK_VMID_UNDEF) {
-      mksckPage = MksckPage_GetFromTgidIncRefc();
-   } else {
-      printk(KERN_ERR "MksckBind: host bind called on vmid 0x%X\n", addr.vmId);
-      mksckPage = MksckPage_GetFromVmIdIncRefc(addr.vmId);
-   }
+	/*
+	 * Locate the page for the given host and increment its reference
+	 * count so it can't get freed off while we are working on it.
+	 */
+	if (addr.vmId == MKSCK_VMID_UNDEF) {
+		mksckPage = MksckPage_GetFromTgidIncRefc();
+	} else {
+		pr_err("MksckBind: host bind called on vmid 0x%X\n", addr.vmId);
+		mksckPage = MksckPage_GetFromVmIdIncRefc(addr.vmId);
+	}
 
-   if (mksckPage == NULL) {
-      printk(KERN_ERR "MksckBind: no mksckPage for vm 0x%X\n", addr.vmId);
-      return -ENETUNREACH;
-   }
-   addr.vmId = mksckPage->vmId;
+	if (mksckPage == NULL) {
+		pr_err("MksckBind: no mksckPage for vm 0x%X\n", addr.vmId);
+		return -ENETUNREACH;
+	}
+	addr.vmId = mksckPage->vmId;
 
-   /*
-    * Before we can find an unused socket port on the page we have to
-    * lock the page for exclusive access so another thread can't
-    * allocate the same port.
-    */
-   err = Mutex_Lock(&mksckPage->mutex, MutexModeEX);
-   if (err < 0) {
-      goto outDec;
-   }
+	/*
+	 * Before we can find an unused socket port on the page we have to
+	 * lock the page for exclusive access so another thread can't
+	 * allocate the same port.
+	 */
+	err = Mutex_Lock(&mksckPage->mutex, MutexModeEX);
+	if (err < 0)
+		goto outDec;
 
-   addr.port = MksckPage_GetFreePort(mksckPage, addr.port);
-   if (addr.port == MKSCK_PORT_UNDEF) {
-      err = -EINVAL;
-      goto outUnlockDec;
-   }
+	addr.port = MksckPage_GetFreePort(mksckPage, addr.port);
+	if (addr.port == MKSCK_PORT_UNDEF) {
+		err = -EINVAL;
+		goto outUnlockDec;
+	}
 
-   /*
-    * At this point we have the mksckPage locked for exclusive access
-    * and its reference count incremented.  Also, addr is completely
-    * filled in with vmId and port that we want to bind.
-    *
-    * Find an available mksck struct on the shared page and initialize
-    * it.
-    */
-   mksck = MksckPage_AllocSocket(mksckPage, addr);
-   if (mksck == NULL) {
-      err = -EMFILE;
-      goto outUnlockDec;
-   }
+	/*
+	 * At this point we have the mksckPage locked for exclusive access
+	 * and its reference count incremented.  Also, addr is completely
+	 * filled in with vmId and port that we want to bind.
+	 *
+	 * Find an available mksck struct on the shared page and initialize it.
+	 */
+	mksck = MksckPage_AllocSocket(mksckPage, addr);
+	if (mksck == NULL) {
+		err = -EMFILE;
+		goto outUnlockDec;
+	}
 
-   /*
-    * Stable, release mutex.  Leave mksckPage->refCount incremented so
-    * mksckPage can't be freed until socket is closed.
-    */
-   Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
+	/*
+	 * Stable, release mutex.  Leave mksckPage->refCount incremented so
+	 * mksckPage can't be freed until socket is closed.
+	 */
+	Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
 
-   /*
-    * This is why we start mksck->refCount at 1.  When sk_protinfo gets
-    * cleared, we decrement mksck->refCount.
-    */
-   sk->sk_protinfo = mksck;
+	/*
+	 * This is why we start mksck->refCount at 1.  When sk_protinfo gets
+	 * cleared, we decrement mksck->refCount.
+	 */
+	sk->sk_protinfo = mksck;
 
-   PRINTK(KERN_DEBUG "MksckBind: socket bound to %08X\n", mksck->addr.addr);
+	PRINTK("MksckBind: socket bound to %08X\n",
+	       mksck->addr.addr);
 
-   return 0;
+	return 0;
 
 outUnlockDec:
-   Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
+	Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
 outDec:
-   MksckPage_DecRefc(mksckPage);
-   return err;
+	MksckPage_DecRefc(mksckPage);
+	return err;
 }
 
 
@@ -538,13 +529,14 @@ outDec:
 static inline int
 MksckTryBind(struct sock *sk)
 {
-   int err = 0;
+	int err = 0;
 
-   if (!sk->sk_protinfo) {
-      static const Mksck_Address addr = { .addr = MKSCK_ADDR_UNDEF };
-      err = MksckBindGeneric(sk, addr);
-   }
-   return err;
+	if (!sk->sk_protinfo) {
+		static const Mksck_Address addr = { .addr = MKSCK_ADDR_UNDEF };
+
+		err = MksckBindGeneric(sk, addr);
+	}
+	return err;
 }
 
 
@@ -560,28 +552,27 @@ MksckTryBind(struct sock *sk)
  */
 static int
 MksckBind(struct socket *sock,
-          struct sockaddr *addr,
-          int addrLen)
+	  struct sockaddr *addr,
+	  int addrLen)
 {
-   int err;
-   struct sock *sk            = sock->sk;
-   struct sockaddr_mk *addrMk = (struct sockaddr_mk *)addr;
+	int err;
+	struct sock *sk            = sock->sk;
+	struct sockaddr_mk *addrMk = (struct sockaddr_mk *)addr;
 
-   if (addrLen != sizeof *addrMk) {
-      return -EINVAL;
-   }
-   if (addrMk->mk_family != AF_MKSCK) {
-      return -EAFNOSUPPORT;
-   }
+	if (addrLen != sizeof(*addrMk))
+		return -EINVAL;
 
-   /*
-    * Obtain the socket lock and call the generic Bind function.
-    */
-   lock_sock(sk);
-   err = MksckBindGeneric(sk, addrMk->mk_addr);
-   release_sock(sk);
+	if (addrMk->mk_family != AF_MKSCK)
+		return -EAFNOSUPPORT;
 
-   return err;
+	/*
+	 * Obtain the socket lock and call the generic Bind function.
+	 */
+	lock_sock(sk);
+	err = MksckBindGeneric(sk, addrMk->mk_addr);
+	release_sock(sk);
+
+	return err;
 }
 
 /**
@@ -594,53 +585,53 @@ MksckBind(struct socket *sock,
 static int
 LockPeer(Mksck_Address addr, Mksck **peerMksckR)
 {
-   int        err = 0;
-   MksckPage *peerMksckPage = MksckPage_GetFromVmIdIncRefc(addr.vmId);
-   Mksck     *peerMksck;
+	int err = 0;
+	struct MksckPage *peerMksckPage =
+		MksckPage_GetFromVmIdIncRefc(addr.vmId);
+	Mksck *peerMksck;
 
-   /*
-    * Find corresponding destination shared page and increment its
-    * reference count so it can't be freed while we are sending to the
-    * socket. Make sure that the address is indeed an address of a
-    * monitor/guest socket.
-    */
-   if (peerMksckPage == NULL) {
-      printk(KERN_INFO "LockPeer: vmId %x is not in use!\n", addr.vmId);
-      return -ENETUNREACH;
-   }
-   if (!peerMksckPage->isGuest) {
-      MksckPage_DecRefc(peerMksckPage);
-      printk(KERN_ERR "LockPeer: vmId %x does not belong to a guest!\n",
-             addr.vmId);
-      return -ENETUNREACH;
-   }
+	/*
+	 * Find corresponding destination shared page and increment its
+	 * reference count so it can't be freed while we are sending to the
+	 * socket. Make sure that the address is indeed an address of a
+	 * monitor/guest socket.
+	 */
+	if (peerMksckPage == NULL) {
+		pr_info("LockPeer: vmId %x is not in use!\n", addr.vmId);
+		return -ENETUNREACH;
+	}
+	if (!peerMksckPage->isGuest) {
+		MksckPage_DecRefc(peerMksckPage);
+		pr_err("LockPeer: vmId %x does not belong to a guest!\n",
+		       addr.vmId);
+		return -ENETUNREACH;
+	}
 
+	err = Mutex_Lock(&peerMksckPage->mutex, MutexModeSH);
+	if (err < 0) {
+		MksckPage_DecRefc(peerMksckPage);
+		return err;
+	}
 
-   err = Mutex_Lock(&peerMksckPage->mutex, MutexModeSH);
-   if (err < 0) {
-      MksckPage_DecRefc(peerMksckPage);
-      return err;
-   }
+	/*
+	 * Find corresponding destination socket on that shared page and
+	 * increment its reference count so it can't be freed while we are
+	 * trying to send to it.
+	 */
+	peerMksck = MksckPage_GetFromAddr(peerMksckPage, addr);
 
-   /*
-    * Find corresponding destination socket on that shared page and
-    * increment its reference count so it can't be freed while we are
-    * trying to send to it.
-    */
-   peerMksck = MksckPage_GetFromAddr(peerMksckPage, addr);
+	if (peerMksck) {
+		ATOMIC_ADDV(peerMksck->refCount, 1);
+		*peerMksckR = peerMksck;
+	} else {
+		pr_err("LockPeer: addr %x is not a defined socket!\n",
+		       addr.addr);
+		err = -ENETUNREACH;
+	}
 
-   if (peerMksck) {
-      ATOMIC_ADDV(peerMksck->refCount, 1);
-      *peerMksckR = peerMksck;
-   } else {
-      printk(KERN_ERR "LockPeer: addr %x is not a defined socket!\n",
-             addr.addr);
-      err = -ENETUNREACH;
-   }
-
-   Mutex_Unlock(&peerMksckPage->mutex, MutexModeSH);
-   MksckPage_DecRefc(peerMksckPage);
-   return err;
+	Mutex_Unlock(&peerMksckPage->mutex, MutexModeSH);
+	MksckPage_DecRefc(peerMksckPage);
+	return err;
 }
 
 /**
@@ -655,52 +646,53 @@ LockPeer(Mksck_Address addr, Mksck **peerMksckR)
  */
 static int
 MksckDgramConnect(struct socket *sock,
-                  struct sockaddr *addr,
-                  int addrLen,
-                  int flags)
+		  struct sockaddr *addr,
+		  int addrLen,
+		  int flags)
 {
-   struct sock *sk = sock->sk;
-   Mksck *mksck;
-   struct sockaddr_mk *peerAddrMk = (struct sockaddr_mk *)addr;
-   int err = 0;
+	struct sock *sk = sock->sk;
+	Mksck *mksck;
+	struct sockaddr_mk *peerAddrMk = (struct sockaddr_mk *)addr;
+	int err = 0;
 
-   if (addrLen != sizeof *peerAddrMk) {
-      printk(KERN_INFO "MksckConnect: wrong address length!\n");
-      return -EINVAL;
-   }
-   if (peerAddrMk->mk_family != AF_MKSCK) {
-      printk(KERN_INFO "MksckConnect: wrong address family!\n");
-      return -EAFNOSUPPORT;
-   }
+	if (addrLen != sizeof(*peerAddrMk)) {
+		pr_info("MksckConnect: wrong address length!\n");
+		return -EINVAL;
+	}
+	if (peerAddrMk->mk_family != AF_MKSCK) {
+		pr_info("MksckConnect: wrong address family!\n");
+		return -EAFNOSUPPORT;
+	}
 
-   lock_sock(sk);
+	lock_sock(sk);
 
-   if ((err = MksckTryBind(sk))) {
-      goto releaseSock;
-   }
-   mksck = sk->sk_protinfo;
+	err = MksckTryBind(sk);
+	if (err)
+		goto releaseSock;
 
-   /*
-    * First severe any past peer connections
-    */
-   Mksck_DisconnectPeer(mksck);
-   sock->state = SS_UNCONNECTED;
+	mksck = sk->sk_protinfo;
 
-   /*
-    * Then build new connections ...
-    */
-   if (peerAddrMk->mk_addr.addr != MKSCK_ADDR_UNDEF) {
-      sock->state = SS_CONNECTED;
-      mksck->peerAddr = peerAddrMk->mk_addr;
-      err = LockPeer(mksck->peerAddr, &mksck->peer);
-      PRINTK(KERN_DEBUG "MksckConnect: socket %x is connected to %x!\n",
-             mksck->addr.addr,  mksck->peerAddr.addr);
-   }
+	/*
+	 * First sever any past peer connections...
+	 */
+	Mksck_DisconnectPeer(mksck);
+	sock->state = SS_UNCONNECTED;
+
+	/*
+	 * ... and build new connections.
+	 */
+	if (peerAddrMk->mk_addr.addr != MKSCK_ADDR_UNDEF) {
+		sock->state = SS_CONNECTED;
+		mksck->peerAddr = peerAddrMk->mk_addr;
+		err = LockPeer(mksck->peerAddr, &mksck->peer);
+		PRINTK("MksckConnect: socket %x is connected" \
+		       " to %x!\n", mksck->addr.addr,  mksck->peerAddr.addr);
+	}
 
 releaseSock:
-   release_sock(sk);
+	release_sock(sk);
 
-   return err;
+	return err;
 }
 
 
@@ -716,51 +708,54 @@ releaseSock:
  */
 static int
 MksckGetName(struct socket *sock,
-             struct sockaddr *addr,
-             int *addrLen,
-             int peer)
+	     struct sockaddr *addr,
+	     int *addrLen,
+	     int peer)
 {
-   int err;
-   Mksck *mksck;
-   struct sock *sk = sock->sk;
+	int err;
+	Mksck *mksck;
+	struct sock *sk = sock->sk;
 
-   // MAX_SOCK_ADDR is size of *addr, Linux doesn't export it!
-   // ASSERT_ON_COMPILE(sizeof (struct sockaddr_mk) <= MAX_SOCK_ADDR);
+	/*
+	 * MAX_SOCK_ADDR is size of *addr, but it's not exported.
+	 * ASSERT_ON_COMPILE(sizeof(struct sockaddr_mk) <= MAX_SOCK_ADDR);
+	 */
 
-   lock_sock(sk);
-   mksck = sk->sk_protinfo;
+	lock_sock(sk);
+	mksck = sk->sk_protinfo;
 
-   if (mksck == NULL) {
-      if (peer) {
-          err = -ENOTCONN;
-      } else {
-         ((struct sockaddr_mk *)addr)->mk_family    = AF_MKSCK;
-         ((struct sockaddr_mk *)addr)->mk_addr.addr = MKSCK_ADDR_UNDEF;
-         *addrLen = sizeof (struct sockaddr_mk);
-         err = 0;
-      }
-   } else if (!peer) {
-      ((struct sockaddr_mk *)addr)->mk_family = AF_MKSCK;
-      ((struct sockaddr_mk *)addr)->mk_addr   = mksck->addr;
-      *addrLen = sizeof (struct sockaddr_mk);
-      err = 0;
-   } else if (mksck->peerAddr.addr == MKSCK_ADDR_UNDEF) {
-      err = -ENOTCONN;
-   } else {
-      ((struct sockaddr_mk *)addr)->mk_family = AF_MKSCK;
-      ((struct sockaddr_mk *)addr)->mk_addr   = mksck->peerAddr;
-      *addrLen = sizeof (struct sockaddr_mk);
-      err = 0;
-   }
+	if (mksck == NULL) {
+		if (peer) {
+			err = -ENOTCONN;
+		} else {
+			((struct sockaddr_mk *)addr)->mk_family = AF_MKSCK;
+			((struct sockaddr_mk *)addr)->mk_addr.addr =
+				MKSCK_ADDR_UNDEF;
+			*addrLen = sizeof(struct sockaddr_mk);
+			err = 0;
+		}
+	} else if (!peer) {
+		((struct sockaddr_mk *)addr)->mk_family = AF_MKSCK;
+		((struct sockaddr_mk *)addr)->mk_addr   = mksck->addr;
+		*addrLen = sizeof(struct sockaddr_mk);
+		err = 0;
+	} else if (mksck->peerAddr.addr == MKSCK_ADDR_UNDEF) {
+		err = -ENOTCONN;
+	} else {
+		((struct sockaddr_mk *)addr)->mk_family = AF_MKSCK;
+		((struct sockaddr_mk *)addr)->mk_addr   = mksck->peerAddr;
+		*addrLen = sizeof(struct sockaddr_mk);
+		err = 0;
+	}
 
-   release_sock(sk);
+	release_sock(sk);
 
-   return err;
+	return err;
 }
 
 
 /**
- * @brief VMX polling a receipted packet from VMM.
+ * @brief VMX polling a received packet from VMM.
  *
  * @param filp  kernel file pointer to poll for
  * @param sock  user socket structure
@@ -769,65 +764,75 @@ MksckGetName(struct socket *sock,
  * @return poll mask state given from socket state.
  */
 static unsigned int MksckPoll(struct file *filp,
-                              struct socket *sock,
-                              poll_table *wait)
+			      struct socket *sock,
+			      poll_table *wait)
 {
-   struct sock *sk = sock->sk;
-   unsigned int mask = 0;
-   Mksck *mksck = NULL;
-   uint32 read;
-   int err;
+	struct sock *sk = sock->sk;
+	unsigned int mask = 0;
+	Mksck *mksck = NULL;
+	uint32 read;
+	int err;
 
-   lock_sock(sk);
-   if ((err = MksckTryBind(sk))) {
-      release_sock(sk);
-      return err;
-   }
-   mksck = sk->sk_protinfo;
+	lock_sock(sk);
+	err = MksckTryBind(sk);
+	if (err) {
+		release_sock(sk);
+		return err;
+	}
 
-   /*
-    * To avoid mksck disappearing right after the release_sock the
-    * refcount needs to be incremented. For more details read the
-    * block comment on locking in MksckCreate.
-    */
-   ATOMIC_ADDV(mksck->refCount, 1);
-   release_sock(sk);
+	mksck = sk->sk_protinfo;
 
-   /*
-    * Wait to make sure this is the only thread trying to access socket.
-    */
-   if ((err = Mutex_Lock(&mksck->mutex, MutexModeEX)) < 0) {
-      /* we might get in this situation if we are signaled
-         (select() may handle this, so leave) */
-      PRINTK(KERN_INFO "MksckPoll: try to abort\n");
-      return mask;
-   }
+	/*
+	 * To avoid mksck disappearing right after the release_sock the
+	 * refcount needs to be incremented. For more details read the
+	 * block comment on locking in MksckCreate.
+	 */
+	ATOMIC_ADDV(mksck->refCount, 1);
+	release_sock(sk);
 
-   /*
-    * See if packet in ring.
-    */
-   read = mksck->read;
-   if (read != mksck->write) {
-      mask |= POLLIN | POLLRDNORM; /* readable, socket is unlocked */
-      /* Note that if we are implementing support for POLLOUT, we SHOULD
-         change this Mutex_Unlock by Mutex_UnlPoll, because there is no
-         obvious knowledge about the sleepy reason that is intended by user */
-      Mutex_Unlock(&mksck->mutex, MutexModeEX);
-   } else {
-      Mutex_UnlPoll(&mksck->mutex, MutexModeEX, MKSCK_CVAR_FILL, filp, wait);
-   }
+	/*
+	 * Wait to make sure this is the only thread trying to access socket.
+	 */
+	err = Mutex_Lock(&mksck->mutex, MutexModeEX);
+	if (err < 0) {
+		/*
+		 * We might get in this situation if we are signaled
+		 * (select() may handle this, so leave)
+		 */
+		PRINTK("MksckPoll: try to abort\n");
+		return mask;
+	}
 
-   /*
-    * Note that locking rules differ a little inside MksckPoll, since we are
-    * not only given a pointer to the struct socket but also a pointer to a
-    * struct file. This means that during the whole operation of this function
-    * and during any pending wait (registered with poll_wait()), the file itself
-    * is reference counted up, and we should rely on that 'upper' reference
-    * counting to prevent from tearing the Mksck down. That holds true since one
-    * never re-bind sockets !
-    */
-   Mksck_DecRefc(mksck);
-   return mask;
+	/*
+	* See if packet in ring.
+	*/
+	read = mksck->read;
+	if (read != mksck->write) {
+		mask |= POLLIN | POLLRDNORM; /* readable, socket is unlocked */
+
+		/*
+		 * Note that if we implement support for POLLOUT, we SHOULD
+		 * change this Mutex_Unlock by Mutex_UnlPoll, because there is
+		 * no obvious knowledge about the sleepy reason that is
+		 * intended by user
+		 */
+		Mutex_Unlock(&mksck->mutex, MutexModeEX);
+	} else {
+		Mutex_UnlPoll(&mksck->mutex, MutexModeEX,
+			      MKSCK_CVAR_FILL, filp, wait);
+	}
+
+	/*
+	 * Note that locking rules differ a little inside MksckPoll, since we
+	 * are not only given a pointer to the struct socket but also a pointer
+	 * to a struct file. This means that during the whole operation of this
+	 * function and during any pending wait (registered with poll_wait()),
+	 * the file itself is reference counted up, and we should rely on that
+	 * 'upper' reference counting to prevent from tearing the Mksck down.
+	 * That holds true since we don't re-bind sockets.
+	 */
+	Mksck_DecRefc(mksck);
+	return mask;
 }
 
 /**
@@ -842,46 +847,45 @@ static unsigned int MksckPoll(struct file *filp,
  */
 static size_t
 MksckPageDescManage(Mksck_PageDesc *pd,
-                    uint32 pages,
-                    int incr)
+		    uint32 pages,
+		    int incr)
 {
-   size_t payloadLen = 0;
-   uint32 i;
+	size_t payloadLen = 0;
+	uint32 i;
 
-   for (i = 0; i < pages && pd[i].mpn != INVALID_MPN; ++i) {
-      uint32 j;
+	for (i = 0; i < pages && pd[i].mpn != INVALID_MPN; ++i) {
+		uint32 j;
 
-      for (j = 0; j < 1 << pd[i].order; ++j) {
-         struct page *page;
-         MPN currMPN = pd[i].mpn + j;
+		for (j = 0; j < 1 << pd[i].order; ++j) {
+			struct page *page;
+			MPN currMPN = pd[i].mpn + j;
 
-         /*
-          * The monitor tried to send an invalid MPN, bad.
-          */
-         if (!pfn_valid(currMPN)) {
-            printk("MksckPageDescManage: Invalid MPN %x\n", currMPN);
-         } else {
-            page = pfn_to_page(currMPN);
+			/*
+			 * The monitor tried to send an invalid MPN, bad.
+			 */
+			if (!pfn_valid(currMPN)) {
+				pr_warn("MksckPageDescManage: Invalid MPN %x\n",
+					currMPN);
+			} else {
+				page = pfn_to_page(currMPN);
 
-            if (incr == +1) {
-               get_page(page);
-            }
-            if (incr == -1) {
-               put_page(page);
-            }
-         }
+				if (incr == 1)
+					get_page(page);
+				if (incr == -1)
+					put_page(page);
+			}
 
-         payloadLen += PAGE_SIZE;
-      }
-   }
+			payloadLen += PAGE_SIZE;
+		}
+	}
 
-   return payloadLen;
+	return payloadLen;
 }
 
 /**
  * @brief Management values to be used as third parameter of MksckPageDescManage
  */
-#define MANAGE_INCREMENT +1
+#define MANAGE_INCREMENT  1
 #define MANAGE_DECREMENT -1
 #define MANAGE_COUNT      0
 
@@ -905,96 +909,99 @@ MksckPageDescManage(Mksck_PageDesc *pd,
  */
 static size_t
 MksckPageDescMap(Mksck_PageDesc *pd,
-                 uint32 pages,
-                 struct iovec *iov,
-                 int iovCount,
-                 struct vm_area_struct *vma)
+		 uint32 pages,
+		 struct iovec *iov,
+		 int iovCount,
+		 struct vm_area_struct *vma)
 {
-   size_t payloadLen = 0;
-   uint32 i;
+	size_t payloadLen = 0;
+	uint32 i;
 
-   for (i = 0; i < pages && pd[i].mpn != INVALID_MPN; ++i) {
-      uint32 j;
+	for (i = 0; i < pages && pd[i].mpn != INVALID_MPN; ++i) {
+		uint32 j;
 
-      for (j = 0; j < 1 << pd[i].order; ++j) {
-         HUVA huva = 0;
-         struct page *page;
-         MPN currMPN = pd[i].mpn + j;
+		for (j = 0; j < 1 << pd[i].order; ++j) {
+			HUVA huva = 0;
+			struct page *page;
+			MPN currMPN = pd[i].mpn + j;
 
-         while (iovCount > 0 && iov->iov_len == 0) {
-            iovCount--;
-            iov++;
-         }
+			while (iovCount > 0 && iov->iov_len == 0) {
+				iovCount--;
+				iov++;
+			}
 
-         if (iovCount == 0) {
-            printk("MksckPageDescMap: Invalid iov length\n");
-            goto map_done;
-         }
+			if (iovCount == 0) {
+				pr_warn("MksckPageDescMap: Invalid " \
+					"iov length\n");
+				goto map_done;
+			}
 
-         huva = (HUVA)iov->iov_base;
+			huva = (HUVA)iov->iov_base;
 
-         /*
-          * iovecs for receiving the typed component of the message should
-          * have page aligned base and size sufficient for page descriptor's
-          * mappings.
-          */
-         if (huva & (PAGE_SIZE - 1) || iov->iov_len < PAGE_SIZE) {
-            printk("MksckPageDescMap: Invalid huva %x or iov_len %d\n",
-                   huva,
-                   iov->iov_len);
-            goto map_done;
-         }
+			/*
+			 * iovecs for receiving the typed component of the
+			 * message should have page aligned base and size
+			 * sufficient for page descriptor mappings.
+			 */
+			if (huva & (PAGE_SIZE - 1) ||
+			    iov->iov_len < PAGE_SIZE) {
+				pr_warn("MksckPageDescMap: Invalid huva %x " \
+					"or iov_len %d\n", huva, iov->iov_len);
+				goto map_done;
+			}
 
-         /*
-          * Might be in a new vma...
-          */
-         if (vma == NULL || huva < vma->vm_start || huva >= vma->vm_end) {
-            vma = find_vma(current->mm, huva);
+			/*
+			 * Might be in a new vma...
+			 */
+			if (vma == NULL || huva < vma->vm_start ||
+			    huva >= vma->vm_end) {
+				vma = find_vma(current->mm, huva);
 
-            /*
-             * Couldn't find a matching vma for huva.
-             */
-            if (vma == NULL ||
-                huva < vma->vm_start ||
-                vma->vm_ops != &mksckVMOps) {
-               printk("MksckPageDescMap: Invalid vma\n");
-               goto map_done;
-            }
-         }
+				/*
+				 * Couldn't find a matching vma for huva.
+				*/
+				if (vma == NULL ||
+				    huva < vma->vm_start ||
+				    vma->vm_ops != &mksckVMOps) {
+					pr_warn("MksckPageDescMap: " \
+						"Invalid vma\n");
+					goto map_done;
+				}
+			}
 
-         /*
-          * The monitor tried to send an invalid MPN, bad.
-          */
-         if (!pfn_valid(currMPN)) {
-            printk("MksckPageDescMap: Invalid MPN %x\n", currMPN);
-         } else {
-            int rc;
+			/*
+			 * The monitor tried to send an invalid MPN, bad.
+			 */
+			if (!pfn_valid(currMPN)) {
+				pr_warn("MksckPageDescMap: Invalid MPN %x\n",
+					currMPN);
+			} else {
+				int rc;
 
-            page = pfn_to_page(currMPN);
+				page = pfn_to_page(currMPN);
 
-            /*
-             * Map into the receive window.
-             */
-            rc = vm_insert_page(vma, huva, page);
-            if (rc) {
-               printk("MksckPageDescMap: Failed to insert %x at %x, error %d\n",
-                      currMPN,
-                      huva,
-                      rc);
-               goto map_done;
-            }
+				/*
+				 * Map into the receive window.
+				 */
+				rc = vm_insert_page(vma, huva, page);
+				if (rc) {
+					pr_warn("MksckPageDescMap: Failed to " \
+						"insert %x at %x, error %d\n",
+						currMPN, huva, rc);
+					goto map_done;
+				}
 
-            ASSERT(iov->iov_len >= PAGE_SIZE);
-            iov->iov_base += PAGE_SIZE;
-            iov->iov_len -= PAGE_SIZE;
-         }
+				ASSERT(iov->iov_len >= PAGE_SIZE);
+				iov->iov_base += PAGE_SIZE;
+				iov->iov_len -= PAGE_SIZE;
+			}
 
-         payloadLen += PAGE_SIZE;
-      }
-   }
+			payloadLen += PAGE_SIZE;
+		}
+	}
 
 map_done:
-   return payloadLen;
+	return payloadLen;
 }
 
 
@@ -1007,15 +1014,15 @@ map_done:
 static int
 MsgHdrHasAvailableRoom(struct msghdr *msg)
 {
-   struct iovec *vec = msg->msg_iov;
-   uint32 count = msg->msg_iovlen;
+	struct iovec *vec = msg->msg_iov;
+	uint32 count = msg->msg_iovlen;
 
-   while (count > 0 && vec->iov_len == 0) {
-      count--;
-      vec++;
-   }
+	while (count > 0 && vec->iov_len == 0) {
+		count--;
+		vec++;
+	}
 
-   return (count != 0);
+	return (count != 0);
 }
 
 
@@ -1024,21 +1031,23 @@ MsgHdrHasAvailableRoom(struct msghdr *msg)
  * all the page descriptor content in a linked state of descriptors, through the
  * following information context
  */
-typedef struct MksckPageDescInfo {
-   struct MksckPageDescInfo *next;
-   uint32 flags;
-   uint32 pages;
-   uint32 mapCounts;
-   Mksck_PageDesc descs[0];
-} MksckPageDescInfo;
+struct MksckPageDescInfo {
+	struct MksckPageDescInfo *next;
+	uint32 flags;
+	uint32 pages;
+	uint32 mapCounts;
+	Mksck_PageDesc descs[0];
+};
 
 static void MksckPageDescSkDestruct(struct sock *sk);
-static int MksckPageDescMMap(struct file *file,
-                             struct socket *sock,
-                             struct vm_area_struct *vma);
-static int MksckPageDescIoctl(struct socket *sock,
-                              unsigned int cmd,
-                              unsigned long arg);
+static int
+MksckPageDescMMap(struct file *file,
+		  struct socket *sock,
+		  struct vm_area_struct *vma);
+static int
+MksckPageDescIoctl(struct socket *sock,
+		   unsigned int cmd,
+		   unsigned long arg);
 
 /**
  * @brief Delete a page descriptor container socket
@@ -1049,20 +1058,20 @@ static int MksckPageDescIoctl(struct socket *sock,
 static int
 MksckPageDescRelease(struct socket *sock)
 {
-   /* This is generic socket release */
-   struct sock *sk = sock->sk;
+	/* This is generic socket release */
+	struct sock *sk = sock->sk;
 
-   if (sk) {
-      lock_sock(sk);
-      sock_orphan(sk);
-      release_sock(sk);
-      sock_put(sk);
-   }
+	if (sk) {
+		lock_sock(sk);
+		sock_orphan(sk);
+		release_sock(sk);
+		sock_put(sk);
+	}
 
-   sock->sk = NULL;
-   sock->state = SS_FREE;
+	sock->sk = NULL;
+	sock->state = SS_FREE;
 
-   return 0;
+	return 0;
 }
 
 
@@ -1075,25 +1084,25 @@ MksckPageDescRelease(struct socket *sock)
  * default "PageDesc(s) accumulating" mode (inside ioctl), mapping the context,
  * and generic socket destruction.
  */
-static struct proto_ops mksckPageDescOps = {
-   .family     = AF_MKSCK,
-   .owner      = THIS_MODULE,
-   .release    = MksckPageDescRelease,
-   .bind       = sock_no_bind,
-   .connect    = sock_no_connect,
-   .socketpair = sock_no_socketpair,
-   .accept     = sock_no_accept,
-   .getname    = sock_no_getname,
-   .poll       = sock_no_poll,
-   .ioctl      = MksckPageDescIoctl,
-   .listen     = sock_no_listen,
-   .shutdown   = sock_no_shutdown,
-   .setsockopt = sock_no_setsockopt,
-   .getsockopt = sock_no_getsockopt,
-   .sendmsg    = sock_no_sendmsg,
-   .recvmsg    = sock_no_recvmsg,
-   .mmap       = MksckPageDescMMap,
-   .sendpage   = sock_no_sendpage,
+static const struct proto_ops mksckPageDescOps = {
+	.family     = AF_MKSCK,
+	.owner      = THIS_MODULE,
+	.release    = MksckPageDescRelease,
+	.bind       = sock_no_bind,
+	.connect    = sock_no_connect,
+	.socketpair = sock_no_socketpair,
+	.accept     = sock_no_accept,
+	.getname    = sock_no_getname,
+	.poll       = sock_no_poll,
+	.ioctl      = MksckPageDescIoctl,
+	.listen     = sock_no_listen,
+	.shutdown   = sock_no_shutdown,
+	.setsockopt = sock_no_setsockopt,
+	.getsockopt = sock_no_getsockopt,
+	.sendmsg    = sock_no_sendmsg,
+	.recvmsg    = sock_no_recvmsg,
+	.mmap       = MksckPageDescMMap,
+	.sendpage   = sock_no_sendpage,
 };
 
 
@@ -1110,171 +1119,183 @@ static struct proto_ops mksckPageDescOps = {
  */
 static int
 MksckPageDescToFd(struct socket *sock,
-                  struct msghdr *msg,
-                  Mksck_PageDesc *pd,
-                  uint32 pages)
+		  struct msghdr *msg,
+		  Mksck_PageDesc *pd,
+		  uint32 pages)
 {
-   int retval;
-   int newfd;
-   struct socket *newsock;
-   struct sock *newsk;
-   struct sock *sk = sock->sk;
-   MksckPageDescInfo **pmpdi, *mpdi;
-   lock_sock(sk);
+	int retval;
+	int newfd;
+	struct socket *newsock;
+	struct sock *newsk;
+	struct sock *sk = sock->sk;
+	struct MksckPageDescInfo **pmpdi, *mpdi;
 
-   /*
-    * Relation between any mk socket and the PageDesc context is as follow:
-    *
-    * From the mk socket to the PageDesc context:
-    * - sk->sk_user_data is a WEAK LINK, containing only a file descriptor
-    *                    numerical value such that accumulating is keyed on it.
-    *
-    * From the PageDesc context to the mk socket:
-    * - sk->sk_protinfo contains a MksckPageDescInfo struct.
-    * - sk->sk_user_data is a pointer REF-COUNTED sock_hold() LINK, also it is
-    *                    rarely dereferenced but usually used to check that the
-    *                    right socket pair is used. Full dereferencing is used
-    *                    only to break the described links.
-    */
-   if (sk->sk_user_data) {
-      MksckPageDescInfo *mpdi2;
+	lock_sock(sk);
 
-      /* continue any previous on-going mapping, i.e accumulate */
-      newfd = *((int *)sk->sk_user_data);
-      newsock = sockfd_lookup(newfd, &retval); // promote the weak link
-      if (!newsock) {
-         retval = -EINVAL;
-         goto endProcessingReleaseSock;
-      }
+	/*
+	 * Relation between any mk socket and the PageDesc context is as follow:
+	 *
+	 * From the mk socket to the PageDesc context:
+	 * - sk->sk_user_data is a WEAK LINK, containing only a file descriptor
+	 *		numerical value such that accumulating is keyed on it.
+	 *
+	 * From the PageDesc context to the mk socket:
+	 * - sk->sk_protinfo contains a MksckPageDescInfo struct.
+	 * - sk->sk_user_data is a pointer REF-COUNTED sock_hold() LINK, also it
+	 *		is rarely dereferenced but usually used to check that
+	 *		the right socket pair is used. Full dereferencing is
+	 *		used only to break the described links.
+	 */
+	if (sk->sk_user_data) {
+		struct MksckPageDescInfo *mpdi2;
 
-      newsk = newsock->sk;
-      lock_sock(newsk);
-      sockfd_put(newsock);
+		/* Continue any previous on-going mapping, i.e accumulate */
+		newfd = *((int *)sk->sk_user_data);
 
-      if (((struct sock *)newsk->sk_user_data) != sk) {
-         /* One way of going into this situation would be for userland to dup
-            the file descriptor just received, close the original number, and
-            open a new mk socket in the very same spot. The userland code have
-            a lot of way of interacting with the kernel without this driver
-            code to be notified. */
-         retval = -EINVAL;
-         release_sock(newsk);
-         goto endProcessingReleaseSock;
-      }
+		/* Promote the weak link */
+		newsock = sockfd_lookup(newfd, &retval);
+		if (!newsock) {
+			retval = -EINVAL;
+			goto endProcessingReleaseSock;
+		}
 
-      mpdi = sock_kmalloc(newsk, sizeof(MksckPageDescInfo) +
-                          pages*sizeof(Mksck_PageDesc), GFP_KERNEL);
-      if (IS_ERR(mpdi)) {
-         retval = PTR_ERR(mpdi);
-         release_sock(newsk);
-         goto endProcessingReleaseSock;
-      }
+		newsk = newsock->sk;
+		lock_sock(newsk);
+		sockfd_put(newsock);
 
-      /* There is no mandatory needs for us to notify userland from
-         the progress in "appending" to the file descriptor, but it
-         would feel strange if the userland would have no mean to
-         tell if the received message was just not thrown away. So, in
-         order to be consistent one fill the ancillary message while
-         "creating" and "appending to" file descriptors. */
-      retval = put_cmsg(msg, SOL_DECNET, 0, sizeof(int), &newfd);
-      if (retval < 0) {
-         goto endProcessingKFreeReleaseSock;
-      }
+		if (((struct sock *)newsk->sk_user_data) != sk) {
+			/*
+			 * One way of going into this situation would be for
+			 * userland to dup the file descriptor just received,
+			 * close the original number, and open a new mk socket
+			 * in the very same spot. The userland code have
+			 * a lot of way of interacting with the kernel without
+			 * this code to be notified.
+			 */
 
-      release_sock(sk);
+			retval = -EINVAL;
+			release_sock(newsk);
+			goto endProcessingReleaseSock;
+		}
 
-      mpdi2 = (MksckPageDescInfo *)newsk->sk_protinfo;
-      while (mpdi2->next) {
-         mpdi2 = mpdi2->next;
-      }
-      pmpdi = &(mpdi2->next);
+		mpdi = kmalloc(sizeof(struct MksckPageDescInfo) +
+			       pages*sizeof(Mksck_PageDesc), GFP_KERNEL);
+		if (!mpdi) {
+			retval = -ENOMEM;
+			release_sock(newsk);
+			goto endProcessingReleaseSock;
+		}
 
-   } else {
-      /* Create a new socket, new context and a new file descriptor. */
-      retval = sock_create(sk->sk_family, sock->type, 0, &newsock);
-      if (retval < 0) {
-         goto endProcessingReleaseSock;
-      }
+		/*
+		 * There is no mandatory needs for us to notify userland from
+		 * the progress in "appending" to the file descriptor, but it
+		 * would feel strange if the userland would have no mean to
+		 * tell if the received message was just not thrown away. So, in
+		 * order to be consistent one fill the ancillary message while
+		 * "creating" and "appending to" file descriptors.
+		 */
+		retval = put_cmsg(msg, SOL_DECNET, 0, sizeof(int), &newfd);
+		if (retval < 0)
+			goto endProcessingKFreeReleaseSock;
 
-      newsk = newsock->sk;
-      lock_sock(newsk);
-      newsk->sk_destruct = &MksckPageDescSkDestruct;
-      newsk->sk_user_data = sk;
-      sock_hold(sk); // keeps a reference to parent mk socket
-      newsock->ops = &mksckPageDescOps;
+		release_sock(sk);
 
-      mpdi = sock_kmalloc(newsk, sizeof(MksckPageDescInfo) +
-                          pages*sizeof(Mksck_PageDesc), GFP_KERNEL);
-      if (IS_ERR(mpdi)) {
-         retval = PTR_ERR(mpdi);
-         goto endProcessingFreeNewSock;
-      }
+		mpdi2 = (struct MksckPageDescInfo *)newsk->sk_protinfo;
+		while (mpdi2->next)
+			mpdi2 = mpdi2->next;
 
-      sk->sk_user_data = sock_kmalloc(sk, sizeof(int), GFP_KERNEL);
-      if (IS_ERR(sk->sk_user_data)) {
-         retval = PTR_ERR(sk->sk_user_data);
-         sk->sk_user_data = NULL;
-         goto endProcessingKFreeAndNewSock;
-      }
+		pmpdi = &(mpdi2->next);
+	} else {
+		/*
+		 * Create a new socket, new context and a new file descriptor.
+		 */
+		retval = sock_create(sk->sk_family, sock->type, 0, &newsock);
+		if (retval < 0)
+			goto endProcessingReleaseSock;
 
-      /* mapping to a file descriptor may fail if a thread is closing
-         in parallel of sock_map_fd/sock_alloc_fd, or kernel memory is full */
-      newfd = sock_map_fd(newsock, O_CLOEXEC);
-      if (newfd < 0) {
-         retval = newfd;
-         sock_kfree_s(sk, sk->sk_user_data, sizeof(int));
-         sk->sk_user_data = NULL;
-         goto endProcessingKFreeAndNewSock;
-      }
+		newsk = newsock->sk;
+		lock_sock(newsk);
+		newsk->sk_destruct = &MksckPageDescSkDestruct;
+		newsk->sk_user_data = sk;
+		sock_hold(sk); /* Keep a reference to parent mk socket. */
+		newsock->ops = &mksckPageDescOps;
 
-      /* notify userland from a new file descriptor, alike AF_UNIX ancillary */
-      retval = put_cmsg(msg, SOL_DECNET, 0, sizeof(int), &newfd);
-      if (retval < 0) {
-         sock_kfree_s(sk, sk->sk_user_data, sizeof(int));
-         sk->sk_user_data = NULL;
-         sock_kfree_s(newsk, mpdi, sizeof(MksckPageDescInfo) +
-                      mpdi->pages*sizeof(Mksck_PageDesc));
-         release_sock(newsk);
-         sockfd_put(newsock);
-         sock_release(newsock);
-         put_unused_fd(newfd);
-         goto endProcessingReleaseSock;
-      }
+		mpdi = kmalloc(sizeof(struct MksckPageDescInfo) +
+			       pages*sizeof(Mksck_PageDesc), GFP_KERNEL);
+		if (!mpdi) {
+			retval = -ENOMEM;
+			goto endProcessingFreeNewSock;
+		}
 
-      *(int*)sk->sk_user_data = newfd;
-      release_sock(sk);
-      pmpdi = (MksckPageDescInfo **)(&(newsk->sk_protinfo));
-   }
+		sk->sk_user_data = sock_kmalloc(sk, sizeof(int), GFP_KERNEL);
+		if (sk->sk_user_data == NULL) {
+			retval = -ENOMEM;
+			goto endProcessingKFreeAndNewSock;
+		}
 
-   mpdi->next  = NULL;
-   mpdi->flags = 0;
-   mpdi->mapCounts = 0;
-   mpdi->pages = pages;
-   memcpy(mpdi->descs, pd, pages*sizeof(Mksck_PageDesc));
+		/*
+		 * Mapping to a file descriptor may fail if a thread is closing
+		 * in parallel of sock_map_fd/sock_alloc_fd, or kernel memory
+		 * is full.
+		 */
+		newfd = sock_map_fd(newsock, O_CLOEXEC);
+		if (newfd < 0) {
+			retval = newfd;
+			sock_kfree_s(sk, sk->sk_user_data, sizeof(int));
+			sk->sk_user_data = NULL;
+			goto endProcessingKFreeAndNewSock;
+		}
 
-   *pmpdi = mpdi; // link
-   release_sock(newsk);
+		/*
+		 * Notify userland from a new file descriptor, alike AF_UNIX
+		 * ancillary.
+		 */
+		retval = put_cmsg(msg, SOL_DECNET, 0, sizeof(int), &newfd);
+		if (retval < 0) {
+			sock_kfree_s(sk, sk->sk_user_data, sizeof(int));
+			sk->sk_user_data = NULL;
+			kfree(mpdi);
+			release_sock(newsk);
+			sockfd_put(newsock);
+			sock_release(newsock);
+			put_unused_fd(newfd);
+			goto endProcessingReleaseSock;
+		}
 
-   /* increment all reference counters for the pages */
-   MksckPageDescManage(pd, pages, MANAGE_INCREMENT);
-   return 0;
+		*(int *)sk->sk_user_data = newfd;
+		release_sock(sk);
+		pmpdi = (struct MksckPageDescInfo **)(&(newsk->sk_protinfo));
+	}
+
+	mpdi->next  = NULL;
+	mpdi->flags = 0;
+	mpdi->mapCounts = 0;
+	mpdi->pages = pages;
+	memcpy(mpdi->descs, pd, pages*sizeof(Mksck_PageDesc));
+
+	*pmpdi = mpdi; /* link */
+	release_sock(newsk);
+
+	/*
+	 * Increment all reference counters for the pages.
+	 */
+	MksckPageDescManage(pd, pages, MANAGE_INCREMENT);
+	return 0;
 
 endProcessingKFreeAndNewSock:
-   sock_kfree_s(newsk, mpdi, sizeof(MksckPageDescInfo) +
-                mpdi->pages*sizeof(Mksck_PageDesc));
+	kfree(mpdi);
 endProcessingFreeNewSock:
-   release_sock(newsk);
-   sock_release(newsock);
-   release_sock(sk);
-   return retval;
+	release_sock(newsk);
+	sock_release(newsock);
+	release_sock(sk);
+	return retval;
 
 endProcessingKFreeReleaseSock:
-   sock_kfree_s(newsk, mpdi, sizeof(MksckPageDescInfo) +
-                mpdi->pages*sizeof(Mksck_PageDesc));
-   release_sock(newsk);
+	kfree(mpdi);
+	release_sock(newsk);
 endProcessingReleaseSock:
-   release_sock(sk);
-   return retval;
+	release_sock(sk);
+	return retval;
 }
 
 /**
@@ -1285,32 +1306,34 @@ endProcessingReleaseSock:
 static void
 MksckPageDescSkDestruct(struct sock *sk)
 {
-   struct sock *mkSk = NULL;
-   MksckPageDescInfo *mpdi;
-   lock_sock(sk);
-   mpdi = sk->sk_protinfo;
-   while (mpdi) {
-      MksckPageDescInfo *next = mpdi->next;
-      MksckPageDescManage(mpdi->descs, mpdi->pages,
-                          MANAGE_DECREMENT);
-      sock_kfree_s(sk, mpdi, sizeof(MksckPageDescInfo) +
-                   mpdi->pages*sizeof(Mksck_PageDesc));
-      mpdi = next;
-   }
-   if (sk->sk_user_data) {
-      mkSk = (struct sock *)sk->sk_user_data;
-      sk->sk_user_data = NULL;
-   }
-   sk->sk_protinfo  = NULL;
-   release_sock(sk);
-   /* clean the monki socket that we are holding */
-   if (mkSk) {
-      lock_sock(mkSk);
-      sock_kfree_s(mkSk, mkSk->sk_user_data, sizeof(int));
-      mkSk->sk_user_data = NULL;
-      release_sock(mkSk);
-      sock_put(mkSk); // revert of sock_hold()
-   }
+	struct sock *mkSk = NULL;
+	struct MksckPageDescInfo *mpdi;
+	lock_sock(sk);
+	mpdi = sk->sk_protinfo;
+	while (mpdi) {
+		struct MksckPageDescInfo *next = mpdi->next;
+		MksckPageDescManage(mpdi->descs, mpdi->pages,
+				    MANAGE_DECREMENT);
+		kfree(mpdi);
+		mpdi = next;
+	}
+	if (sk->sk_user_data) {
+		mkSk = (struct sock *)sk->sk_user_data;
+		sk->sk_user_data = NULL;
+	}
+	sk->sk_protinfo  = NULL;
+	release_sock(sk);
+
+	/*
+	 * Clean the mksck socket that we are holding.
+	 */
+	if (mkSk) {
+		lock_sock(mkSk);
+		sock_kfree_s(mkSk, mkSk->sk_user_data, sizeof(int));
+		mkSk->sk_user_data = NULL;
+		release_sock(mkSk);
+		sock_put(mkSk); /* reverse of sock_hold() */
+	}
 }
 
 /**
@@ -1332,54 +1355,56 @@ MksckPageDescSkDestruct(struct sock *sk)
  */
 static int
 MksckPageDescMMap(struct file *file,
-                  struct socket *sock,
-                  struct vm_area_struct *vma)
+		  struct socket *sock,
+		  struct vm_area_struct *vma)
 {
-   struct sock *sk = sock->sk;
-   MksckPageDescInfo *mpdi;
-   struct iovec iov;
-   unsigned long vm_flags;
-   int freed = 0;
+	struct sock *sk = sock->sk;
+	struct MksckPageDescInfo *mpdi;
+	struct iovec iov;
+	unsigned long vm_flags;
+	int freed = 0;
 
-   iov.iov_base = (void*)vma->vm_start;
-   iov.iov_len  = vma->vm_end - vma->vm_start;
+	iov.iov_base = (void *)vma->vm_start;
+	iov.iov_len  = vma->vm_end - vma->vm_start;
 
-   lock_sock(sk);
-   mpdi = sk->sk_protinfo;
+	lock_sock(sk);
+	mpdi = sk->sk_protinfo;
 
-   // vma->vm_pgoff is checked, since offsetting the map is not supported
-   if (!mpdi || sk->sk_user_data || vma->vm_pgoff) {
-      release_sock(sk);
-      printk(KERN_INFO "MMAP failed for virt %lx size %lx\n",
-             vma->vm_start, vma->vm_end - vma->vm_start);
-      return -EINVAL;
-   }
+	/*
+	 * vma->vm_pgoff is checked, since offsetting the map is not supported.
+	 */
+	if (!mpdi || sk->sk_user_data || vma->vm_pgoff) {
+		release_sock(sk);
+		pr_info("MMAP failed for virt %lx size %lx\n",
+			vma->vm_start, vma->vm_end - vma->vm_start);
+		return -EINVAL;
+	}
 
-   vm_flags = mpdi->flags;
-   if ((vma->vm_flags & ~vm_flags) & (VM_READ|VM_WRITE)) {
-      release_sock(sk);
-      return -EACCES;
-   }
+	vm_flags = mpdi->flags;
+	if ((vma->vm_flags & ~vm_flags) & (VM_READ|VM_WRITE)) {
+		release_sock(sk);
+		return -EACCES;
+	}
 
-   while (mpdi) {
-      MksckPageDescInfo *next = mpdi->next;
-      MksckPageDescMap(mpdi->descs, mpdi->pages, &iov, 1, vma);
-      if (mpdi->mapCounts && !--mpdi->mapCounts) {
-         MksckPageDescManage(mpdi->descs, mpdi->pages,
-                             MANAGE_DECREMENT);
-         sock_kfree_s(sk, mpdi, sizeof(MksckPageDescInfo) +
-                      mpdi->pages*sizeof(Mksck_PageDesc));
-         freed = 1;
-      }
-      mpdi = next;
-   }
+	while (mpdi) {
+		struct MksckPageDescInfo *next = mpdi->next;
+		MksckPageDescMap(mpdi->descs, mpdi->pages, &iov, 1, vma);
 
-   if (freed) {
-      sk->sk_protinfo  = NULL;
-   }
-   vma->vm_ops = &mksckVMOps;
-   release_sock(sk);
-   return 0;
+		if (mpdi->mapCounts && !--mpdi->mapCounts) {
+			MksckPageDescManage(mpdi->descs, mpdi->pages,
+					    MANAGE_DECREMENT);
+			kfree(mpdi);
+			freed = 1;
+		}
+		mpdi = next;
+	}
+
+	if (freed)
+		sk->sk_protinfo  = NULL;
+
+	vma->vm_ops = &mksckVMOps;
+	release_sock(sk);
+	return 0;
 }
 
 /**
@@ -1398,73 +1423,89 @@ MksckPageDescMMap(struct file *file,
  */
 static int
 MksckPageDescIoctl(struct socket *sock,
-                   unsigned int  cmd,
-                   unsigned long arg)
+		   unsigned int cmd,
+		   unsigned long arg)
 {
-   struct sock *monkiSk = NULL;
-   struct sock *sk = sock->sk;
-   MksckPageDescInfo *mpdi;
-   int retval = 0;
+	struct sock *mksck = NULL;
+	struct sock *sk = sock->sk;
+	struct MksckPageDescInfo *mpdi;
+	unsigned long ul[2];
+	int retval = 0;
 
-   switch (cmd) {
-      /**
-       * ioctl MKSCK_DETACH (in and out):
-       * Detach, compute size and define allowed protection access rights
-       *
-       * [in]:  unsigned long flags, similar to prot argument of mmap()
-       *        unsigned long number of available further mappings
-       *           with 0 meaning unlimited number of mappings
-       * [out]: unsigned long size of the available mappable area
-       */
-      case MKSCK_DETACH: {
-         unsigned long ul[2];
-         lock_sock(sk);
-         mpdi = sk->sk_protinfo;
-         // read unsigned long argument that contains the mmap alike flags
-         if (copy_from_user(ul, (void *)arg, sizeof ul)) {
-            retval = -EFAULT;
-         // check that the file descriptor has a parent and some context there
-         } else if (!mpdi || !sk->sk_user_data) {
-            retval = -EINVAL;
-         } else {
-            /* compute mapping protection bits from argument and size of the
-             * mapping, that is also given back to userland as unsigned long.
-             */
-            uint32 flags = calc_vm_prot_bits(ul[0]);
-            ul[0] = 0;
-            while (mpdi) {
-               MksckPageDescInfo *next = mpdi->next;
-               ul[0] += MksckPageDescManage(mpdi->descs, mpdi->pages,
-                                            MANAGE_COUNT);
-               mpdi->mapCounts = ul[1];
-               mpdi = next;
-            }
-            if (copy_to_user((void *)arg, ul, sizeof(ul[0]))) {
-               retval = -EFAULT;
-            } else {
-               mpdi = sk->sk_protinfo;
-               mpdi->flags = flags;
-               monkiSk = (struct sock *)sk->sk_user_data;
-               sk->sk_user_data = NULL;
-            }
-         }
-         release_sock(sk);
-         // clean the monki socket that we are holding
-         if ((sk = monkiSk)) {
-            lock_sock(sk);
-            sock_kfree_s(sk, sk->sk_user_data, sizeof(int));
-            sk->sk_user_data = NULL;
-            release_sock(sk);
-            sock_put(sk);
-         }
-         break;
-      }
-      default: {
-         retval = -EINVAL;
-         break;
-      }
-   }
-   return retval;
+	switch (cmd) {
+	/*
+	 * ioctl MKSCK_DETACH (in and out):
+	 * Detach, compute size and define allowed protection access rights
+	 *
+	 * [in]:  unsigned long flags, similar to prot argument of mmap()
+	 *        unsigned long number of available further mappings
+	 *           with 0 meaning unlimited number of mappings
+	 * [out]: unsigned long size of the available mappable area
+	 */
+	case MKSCK_DETACH:
+		lock_sock(sk);
+		mpdi = sk->sk_protinfo;
+
+		/*
+		 * Read unsigned long argument that contains the mmap
+		 * alike flags.
+		 */
+		if (copy_from_user(ul, (void *)arg, sizeof(ul))) {
+			retval = -EFAULT;
+
+			/*
+			 * Check that the file descriptor has a parent
+			 * and some context there.
+			 */
+		} else if (!mpdi || !sk->sk_user_data) {
+			retval = -EINVAL;
+		} else {
+			/*
+			 * Compute mapping protection bits from argument
+			 * and size of the mapping, that is also given
+			 * back to userland as unsigned long.
+			 */
+			uint32 flags = calc_vm_prot_bits(ul[0]);
+
+			ul[0] = 0;
+			while (mpdi) {
+				struct MksckPageDescInfo *next = mpdi->next;
+
+				ul[0] += MksckPageDescManage(mpdi->descs,
+							     mpdi->pages,
+							     MANAGE_COUNT);
+				mpdi->mapCounts = ul[1];
+				mpdi = next;
+			}
+			if (copy_to_user((void *)arg, ul, sizeof(ul[0]))) {
+				retval = -EFAULT;
+			} else {
+				mpdi = sk->sk_protinfo;
+				mpdi->flags = flags;
+				mksck = (struct sock *)sk->sk_user_data;
+				sk->sk_user_data = NULL;
+			}
+		}
+
+		release_sock(sk);
+
+		/*
+		 * Clean the mksck socket that we are holding.
+		 */
+		sk = mksck;
+		if (sk) {
+			lock_sock(sk);
+			sock_kfree_s(sk, sk->sk_user_data, sizeof(int));
+			sk->sk_user_data = NULL;
+			release_sock(sk);
+			sock_put(sk);
+		}
+		break;
+	default:
+		retval = -EINVAL;
+		break;
+	}
+	return retval;
 }
 
 
@@ -1482,182 +1523,185 @@ MksckPageDescIoctl(struct socket *sock,
  */
 static int
 MksckDgramRecvMsg(struct kiocb *kiocb,
-                  struct socket *sock,
-                  struct msghdr *msg,
-                  size_t len,
-                  int flags)
+		  struct socket *sock,
+		  struct msghdr *msg,
+		  size_t len,
+		  int flags)
 {
-   int err = 0;
-   struct sock *sk = sock->sk;
-   Mksck *mksck;
-   Mksck_Datagram *dg;
-   struct sockaddr_mk *fromAddr;
-   uint32 read;
-   struct iovec *iov;
-   size_t payloadLen, untypedLen;
-   uint32 iovCount;
+	int err = 0;
+	struct sock *sk = sock->sk;
+	Mksck *mksck;
+	Mksck_Datagram *dg;
+	struct sockaddr_mk *fromAddr;
+	uint32 read;
+	struct iovec *iov;
+	size_t payloadLen, untypedLen;
+	uint32 iovCount;
 
-   if (flags & MSG_OOB || flags & MSG_ERRQUEUE) {
-      return -EOPNOTSUPP;
-   }
+	if (flags & MSG_OOB || flags & MSG_ERRQUEUE)
+		return -EOPNOTSUPP;
 
-   if ((msg->msg_name != NULL) && (msg->msg_namelen < sizeof *fromAddr)) {
-      return -EINVAL;
-   }
+	if ((msg->msg_name != NULL) && (msg->msg_namelen < sizeof(*fromAddr)))
+		return -EINVAL;
 
-   lock_sock(sk);
-   if ((err = MksckTryBind(sk))) {
-      release_sock(sk);
-      return err;
-   }
-   mksck = sk->sk_protinfo;
+	lock_sock(sk);
+	err = MksckTryBind(sk);
+	if (err) {
+		release_sock(sk);
+		return err;
+	}
+	mksck = sk->sk_protinfo;
 
-   /*
-    * To avoid mksck disappearing right after the release_sock the
-    * refcount needs to be incremented. For more details read the
-    * block comment on locking in MksckCreate.
-    */
-   ATOMIC_ADDV(mksck->refCount, 1);
-   release_sock(sk);
+	/*
+	 * To avoid mksck disappearing right after the release_sock the
+	 * refcount needs to be incremented. For more details read the
+	 * block comment on locking in MksckCreate.
+	 */
+	ATOMIC_ADDV(mksck->refCount, 1);
+	release_sock(sk);
 
-   /*
-    * Get pointer to next packet in ring to be dequeued.
-    */
-   while (1) {
+	/*
+	 * Get pointer to next packet in ring to be dequeued.
+	 */
+	while (1) {
+		/*
+		 * Wait to make sure this is the only thread trying to access
+		 * the socket.
+		 */
+		err = Mutex_Lock(&mksck->mutex, MutexModeEX);
+		if (err < 0)
+			goto decRefc;
 
-      /*
-       * Wait to make sure this is the only thread trying to access socket.
-       */
-      if ((err = Mutex_Lock(&mksck->mutex, MutexModeEX)) < 0) {
-         goto decRefc;
-      }
+		/*
+		 * See if packet in ring.
+		 */
+		read = mksck->read;
+		if (read != mksck->write)
+			break;
 
-      /*
-       * See if packet in ring.
-       */
-      read = mksck->read;
-      if (read != mksck->write) {
-         break;
-      }
+		/*
+		 * Nothing there, if user wants us not to block then just
+		 * return EAGAIN.
+		 */
+		if (flags & MSG_DONTWAIT) {
+			Mutex_Unlock(&mksck->mutex, MutexModeEX);
+			err = -EAGAIN;
+			goto decRefc;
+		}
 
-      /*
-       * Nothing there, if user wants us not to block then just return EAGAIN.
-       */
-      if (flags & MSG_DONTWAIT) {
-         Mutex_Unlock(&mksck->mutex, MutexModeEX);
-         err = -EAGAIN;
-         goto decRefc;
-      }
+		/*
+		 * Nothing there, unlock socket and wait for data.
+		 */
+		mksck->foundEmpty++;
+		err = Mutex_UnlSleep(&mksck->mutex, MutexModeEX,
+				     MKSCK_CVAR_FILL);
+		if (err < 0) {
+			PRINTK("MksckDgramRecvMsg: aborted\n");
+			goto decRefc;
+		}
+	}
 
-      /*
-       * Nothing there, unlock socket and wait for data.
-       */
-      mksck->foundEmpty ++;
-      err = Mutex_UnlSleep(&mksck->mutex, MutexModeEX, MKSCK_CVAR_FILL);
-      if (err < 0) {
-         PRINTK(KERN_INFO "MksckDgramRecvMsg: aborted\n");
-         goto decRefc;
-      }
-   }
+	/*
+	 * Point to packet in ring.
+	 */
+	dg = (void *)&mksck->buff[read];
 
-   /*
-    * Point to packet in ring.
-    */
-   dg = (void *)&mksck->buff[read];
+	/*
+	 * Provide the address of the sender.
+	 */
+	if (msg->msg_name != NULL) {
+		fromAddr            = (void *)msg->msg_name;
+		fromAddr->mk_addr   = dg->fromAddr;
+		fromAddr->mk_family = AF_MKSCK;
+		msg->msg_namelen    = sizeof(*fromAddr);
+	} else {
+		msg->msg_namelen = 0;
+	}
 
-   /*
-    * Provide the address of the sender.
-    */
-   if (msg->msg_name != NULL) {
-      fromAddr            = (void *)msg->msg_name;
-      fromAddr->mk_addr   = dg->fromAddr;
-      fromAddr->mk_family = AF_MKSCK;
-      msg->msg_namelen    = sizeof *fromAddr;
-   } else {
-      msg->msg_namelen = 0;
-   }
+	/*
+	 * Copy data from ring buffer to caller's buffer and remove packet from
+	 * ring buffer.
+	 */
+	iov = msg->msg_iov;
+	iovCount = msg->msg_iovlen;
+	untypedLen = dg->len - dg->pages * sizeof(Mksck_PageDesc) - dg->pad;
+	payloadLen = untypedLen;
 
-   /*
-    * Copy data from ring buffer to caller's buffer and remove packet from
-    * ring buffer.
-    */
-   iov = msg->msg_iov;
-   iovCount = msg->msg_iovlen;
-   payloadLen = untypedLen =
-      dg->len - dg->pages * sizeof(Mksck_PageDesc) - dg->pad;
+	/*
+	 * Handle the untyped portion of the message.
+	 */
+	if (untypedLen <= len) {
+		err = memcpy_toiovec(iov, dg->data, untypedLen);
+		if (err < 0) {
+			pr_warn("MksckDgramRecvMsg: Failed to " \
+				"memcpy_to_iovec untyped message component " \
+				"(buf len %d datagram len %d (untyped %d))\n",
+				len, dg->len, untypedLen);
+		}
+	} else {
+		err = -EINVAL;
+	}
 
-   /*
-    * Handle the untyped portion of the message.
-    */
-   if (untypedLen <= len) {
-      err = memcpy_toiovec(iov,
-                           dg->data,
-                           untypedLen);
-      if (err < 0) {
-         printk("MksckDgramRecvMsg: Failed to memcpy_to_iovec untyped message component "
-                "(buf len %d datagram len %d (untyped %d))\n",
-                len,
-                dg->len,
-                untypedLen);
-      }
-   } else {
-      err = -EINVAL;
-   }
+	/*
+	 * Map in the typed descriptor.
+	 */
+	if (err >= 0 && dg->pages > 0) {
+		Mksck_PageDesc *pd =
+			(Mksck_PageDesc *)(dg->data + untypedLen + dg->pad);
 
-   /*
-    * Map in the typed descriptor.
-    */
-   if (err >= 0 && dg->pages > 0) {
-      Mksck_PageDesc *pd = (Mksck_PageDesc *)(dg->data + untypedLen + dg->pad);
+		/*
+		 * There are 3 ways of receiving typed messages from the monitor
+		 * - The typed message is mapped directly into a VMA.
+		 *   To indicate this the userland sets msg_controllen == 0.
+		 * - The typed message is mapped directly into a VMA and a
+		 *   file descriptor created for further mappings on the host
+		 *   (in same userland address space or an alternate userland
+		 *   address space). In this case msg_controllen should be set
+		 *   to sizeof(fd).
+		 * - The typed message is not mapped directly into a VMA, but
+		 *   a file descriptor is created for later mapping on the
+		 *   host. In this case msg_controllen should be set to
+		 *   sizeof(fd) and the supplied iovec shall not specify a
+		 *   receive window.
+		 */
 
-      /*
-       * There are 3 ways of receiving typed messages from the monitor.
-       * - The typed message is mapped directly into a VMA. To indicate this the
-       *   userland sets msg_controllen == 0.
-       * - The typed message is mapped directly into a VMA and a file descriptor
-       *   created for further mappings on the host (in same userland address
-       *   space or an alternate userland address space). In this case
-       *   msg_controllen should be set to sizeof(fd).
-       * - The typed message is not mapped directly into a VMA, but a file
-       *   descriptor is created for later mapping on the host. In this case
-       *   msg_controllen should be set to sizeof(fd) and the supplied iovec
-       *   shall not specify a receive window.
-       *
-       * The conjuncts below decide on which of these 3 cases we've encountered.
-       */
+		if (msg->msg_controllen > 0)
+			err = MksckPageDescToFd(sock, msg, pd, dg->pages);
 
-      if ((msg->msg_controllen <= 0) ||
-          ((err = MksckPageDescToFd(sock, msg, pd, dg->pages)) != 0) ||
-          (MsgHdrHasAvailableRoom(msg) != 0)) {
+		if ((msg->msg_controllen <= 0) ||
+		    (err != 0) ||
+		    (MsgHdrHasAvailableRoom(msg) != 0)) {
+			/*
+			 * Lock for a change of mapping.
+			 */
+			down_write(&current->mm->mmap_sem);
+			payloadLen += MksckPageDescMap(pd, dg->pages,
+						       iov, iovCount, NULL);
+			up_write(&current->mm->mmap_sem);
+		}
+	}
 
-         down_write(&current->mm->mmap_sem); // lock for a change of mapping
-         payloadLen += MksckPageDescMap(pd, dg->pages, iov, iovCount, NULL);
-         up_write(&current->mm->mmap_sem);
-      }
-   }
+	/*
+	 * Now that packet is removed, it is safe to unlock socket so another
+	 * thread can do a recv(). We also want to wake someone waiting for
+	 * room to insert a new packet.
+	 */
+	if ((err >= 0) && Mksck_IncReadIndex(mksck, read, dg))
+		Mutex_UnlWake(&mksck->mutex, MutexModeEX,
+			      MKSCK_CVAR_ROOM, true);
+	else
+		Mutex_Unlock(&mksck->mutex, MutexModeEX);
 
-   /*
-    * Now that packet is removed, it is safe to unlock socket so another thread
-    * can do a recv().  We also want to wake someone waiting for room to insert
-    * a new packet.
-    */
-   if ((err >= 0) && Mksck_IncReadIndex(mksck, read, dg)) {
-      Mutex_UnlWake(&mksck->mutex, MutexModeEX, MKSCK_CVAR_ROOM, true);
-   } else {
-      Mutex_Unlock(&mksck->mutex, MutexModeEX);
-   }
-
-   /*
-    * If memcpy error, return error status.
-    * Otherwise, return number of bytes copied.
-    */
-   if (err >= 0) {
-      err = payloadLen;
-   }
+	/*
+	 * If memcpy error, return error status.
+	 * Otherwise, return number of bytes copied.
+	 */
+	if (err >= 0)
+		err = payloadLen;
 
 decRefc:
-   Mksck_DecRefc(mksck);
-   return err;
+	Mksck_DecRefc(mksck);
+	return err;
 }
 
 
@@ -1673,199 +1717,202 @@ decRefc:
  */
 static int
 MksckDgramSendMsg(struct kiocb *kiocb,
-                  struct socket *sock,
-                  struct msghdr *msg,
-                  size_t len)
+		  struct socket *sock,
+		  struct msghdr *msg,
+		  size_t len)
 {
-   int             err = 0;
-   struct sock    *sk = sock->sk;
-   Mksck          *peerMksck;
-   Mksck_Datagram *dg;
-   uint32          needed;
-   uint32          write;
-   Mksck_Address   fromAddr;
+	int             err = 0;
+	struct sock    *sk = sock->sk;
+	Mksck          *peerMksck;
+	Mksck_Datagram *dg;
+	uint32          needed;
+	uint32          write;
+	Mksck_Address   fromAddr;
 
-   if (msg->msg_flags & MSG_OOB) {
-      return -EOPNOTSUPP;
-   }
+	if (msg->msg_flags & MSG_OOB)
+		return -EOPNOTSUPP;
 
-   if (len > MKSCK_XFER_MAX) {
-      return -EMSGSIZE;
-   }
+	if (len > MKSCK_XFER_MAX)
+		return -EMSGSIZE;
 
-   /*
-    * In the next locked section peerMksck pointer needs to be set and
-    * its refcount needs to be incremented.
-    */
-   lock_sock(sk);
-   do {
-      Mksck *mksck;
-      Mksck_Address peerAddr =
-         { .addr = (msg->msg_name ?
-                    ((struct sockaddr_mk *)msg->msg_name)->mk_addr.addr :
-                    MKSCK_ADDR_UNDEF) };
+	/*
+	 * In the next locked section peerMksck pointer needs to be set and
+	 * its refcount needs to be incremented.
+	 */
+	lock_sock(sk);
+	do {
+		Mksck *mksck;
+		Mksck_Address peerAddr = {
+		    .addr =
+			(msg->msg_name ?
+			 ((struct sockaddr_mk *)msg->msg_name)->mk_addr.addr :
+			 MKSCK_ADDR_UNDEF)
+		};
 
-      if ((err = MksckTryBind(sk))) {
-         break;
-      }
-      mksck = sk->sk_protinfo;
-      fromAddr = mksck->addr;
+		err = MksckTryBind(sk);
+		if (err)
+			break;
 
-      /*
-       * If the socket is connected, use that address (no sendto for
-       * connected sockets). Otherwise, use the provided address if any.
-       */
-       if ((peerMksck = mksck->peer)) {
-         if (peerAddr.addr != MKSCK_ADDR_UNDEF &&
-             peerAddr.addr != mksck->peerAddr.addr) {
-            err = -EISCONN;
-            break;
-         }
-         /*
-          * To avoid mksckPeer disappearing right after the
-          * release_sock the refcount needs to be incremented. For
-          * more details read the block comment on locking in
-          * MksckCreate.
-          */
-         ATOMIC_ADDV(peerMksck->refCount, 1);
-       } else if (peerAddr.addr == MKSCK_ADDR_UNDEF) {
-          err = -ENOTCONN;
-       } else {
-          /*
-           * LockPeer also increments the refc on the peer.
-           */
-          err = LockPeer(peerAddr, &peerMksck);
-       }
-   } while(0);
-   release_sock(sk);
+		mksck = sk->sk_protinfo;
+		fromAddr = mksck->addr;
 
-   if (err) {
-      return err;
-   }
+		/*
+		 * If the socket is connected, use that address (no sendto for
+		 * connected sockets). Else, use the provided address if any.
+		 */
+		peerMksck = mksck->peer;
+		if (peerMksck) {
+			if (peerAddr.addr != MKSCK_ADDR_UNDEF &&
+			    peerAddr.addr != mksck->peerAddr.addr) {
+				err = -EISCONN;
+				break;
+			}
 
-   /*
-    * Get pointer to sufficient empty space in ring buffer.
-    */
-   needed = MKSCK_DGSIZE(len);
-   while (1) {
-      /*
-       * Wait to make sure this is the only thread trying to write to ring.
-       */
-      if ((err = Mutex_Lock(&peerMksck->mutex, MutexModeEX)) < 0) {
-         goto decRefc;
-      }
+			/*
+			 * To avoid mksckPeer disappearing right after the
+			 * release_sock the refcount needs to be incremented.
+			 * For more details read the block comment on locking
+			 * in MksckCreate.
+			 */
+			ATOMIC_ADDV(peerMksck->refCount, 1);
+		} else if (peerAddr.addr == MKSCK_ADDR_UNDEF) {
+			err = -ENOTCONN;
+		} else {
+			/*
+			 * LockPeer also increments the refc on the peer.
+			 */
+			err = LockPeer(peerAddr, &peerMksck);
+		}
+	} while (0);
+	release_sock(sk);
 
-      /*
-       * Check if socket can receive data.
-       */
-      if (peerMksck->shutDown & MKSCK_SHUT_RD) {
-         err = -ENOTCONN;
-         goto unlockDecRefc;
-      }
+	if (err)
+		return err;
 
-      /*
-       * See if there is room for the packet.
-       */
-      write = Mksck_FindSendRoom(peerMksck, needed);
-      if (write != MKSCK_FINDSENDROOM_FULL) {
-         break;
-      }
+	/*
+	 * Get pointer to sufficient empty space in ring buffer.
+	 */
+	needed = MKSCK_DGSIZE(len);
+	while (1) {
+		/*
+		 * Wait to make sure this is the only thread trying to write
+		 * to ring.
+		 */
+		err = Mutex_Lock(&peerMksck->mutex, MutexModeEX);
+		if (err < 0)
+			goto decRefc;
 
-      /*
-       * No room, unlock socket and maybe wait for room.
-       */
-      if (msg->msg_flags & MSG_DONTWAIT) {
-         err = -EAGAIN;
-         goto unlockDecRefc;
-      }
+		/*
+		 * Check if socket can receive data.
+		 */
+		if (peerMksck->shutDown & MKSCK_SHUT_RD) {
+			err = -ENOTCONN;
+			goto unlockDecRefc;
+		}
 
-      peerMksck->foundFull ++;
-      err = Mutex_UnlSleep(&peerMksck->mutex,
-                           MutexModeEX,
-                           MKSCK_CVAR_ROOM);
-      if (err < 0) {
-         PRINTK(KERN_INFO "MksckDgramSendMsg: aborted\n");
-         goto decRefc;
-      }
-   }
+		/*
+		 * See if there is room for the packet.
+		 */
+		write = Mksck_FindSendRoom(peerMksck, needed);
+		if (write != MKSCK_FINDSENDROOM_FULL)
+			break;
 
-   /*
-    * Point to room in ring and fill in message.
-    */
-   dg = (void *)&peerMksck->buff[write];
+		/*
+		 * No room, unlock socket and maybe wait for room.
+		 */
+		if (msg->msg_flags & MSG_DONTWAIT) {
+			err = -EAGAIN;
+			goto unlockDecRefc;
+		}
 
-   dg->fromAddr = fromAddr;
-   dg->len      = len;
+		peerMksck->foundFull++;
+		err = Mutex_UnlSleep(&peerMksck->mutex, MutexModeEX,
+				     MKSCK_CVAR_ROOM);
+		if (err < 0) {
+			PRINTK("MksckDgramSendMsg: aborted\n");
+			goto decRefc;
+		}
+	}
 
-   if ((err = memcpy_fromiovec(dg->data, msg->msg_iov, len)) != 0) {
-      goto unlockDecRefc;
-   }
+	/*
+	 * Point to room in ring and fill in message.
+	 */
+	dg = (void *)&peerMksck->buff[write];
 
-   /*
-    * Increment past message.
-    */
-   Mksck_IncWriteIndex(peerMksck, write, needed);
+	dg->fromAddr = fromAddr;
+	dg->len      = len;
 
-   /*
-    * Unlock socket and wake someone trying to receive, ie, we filled
-    * in a message.
-    */
-   Mutex_UnlWake(&peerMksck->mutex, MutexModeEX, MKSCK_CVAR_FILL, false);
+	err = memcpy_fromiovec(dg->data, msg->msg_iov, len);
+	if (err != 0)
+		goto unlockDecRefc;
 
-   /*
-    * Maybe guest is in a general 'wait for interrupt' wait or
-    * grinding away executing guest instructions.
-    *
-    * If it has a receive callback armed for the socket and is
-    * waiting a message, just wake it up.  Else send an IPI to the CPU
-    * running the guest so it will interrupt whatever it is doing and
-    * read the message.
-    *
-    * Holding the mksckPage->mutex prevents mksckPage->vmHKVA from
-    * clearing on us.
-    */
-   if (peerMksck->rcvCBEntryMVA != 0) {
-      MksckPage *peerMksckPage = Mksck_ToSharedPage(peerMksck);
+	/*
+	 * Increment past message.
+	 */
+	Mksck_IncWriteIndex(peerMksck, write, needed);
 
-      if ((err = Mutex_Lock(&peerMksckPage->mutex, MutexModeSH)) == 0) {
-         uint32 sockIdx = peerMksck->index;
-         MvpkmVM *vm = (MvpkmVM *) peerMksckPage->vmHKVA;
+	/*
+	 * Unlock socket and wake someone trying to receive, ie, we filled
+	 * in a message.
+	 */
+	Mutex_UnlWake(&peerMksck->mutex, MutexModeEX, MKSCK_CVAR_FILL, false);
 
-         /*
-          * The destruction of vm and wsp is blocked by the
-          * mksckPage->mutex.
-          */
-         if (vm) {
-            WorldSwitchPage *wsp = vm->wsp;
+	/*
+	 * Maybe guest is in a general 'wait for interrupt' wait or
+	 * grinding away executing guest instructions.
+	 *
+	 * If it has a receive callback armed for the socket and is
+	 * waiting a message, just wake it up.  Else send an IPI to the CPU
+	 * running the guest so it will interrupt whatever it is doing and
+	 * read the message.
+	 *
+	 * Holding the mksckPage->mutex prevents mksckPage->vmHKVA from
+	 * clearing on us.
+	 */
+	if (peerMksck->rcvCBEntryMVA != 0) {
+		MksckPage *peerMksckPage = Mksck_ToSharedPage(peerMksck);
 
-            ASSERT(sockIdx < 8 * sizeof peerMksckPage->wakeVMMRecv);
-            ATOMIC_ORV(peerMksckPage->wakeVMMRecv, 1U << sockIdx);
+		err = Mutex_Lock(&peerMksckPage->mutex, MutexModeSH);
+		if (err == 0) {
+			uint32 sockIdx = peerMksck->index;
+			struct MvpkmVM *vm =
+				(struct MvpkmVM *)peerMksckPage->vmHKVA;
 
-            if (wsp) {
-               Mvpkm_WakeGuest(vm, ACTION_MKSCK);
-            }
-         }
-         Mutex_Unlock(&peerMksckPage->mutex, MutexModeSH);
-      }
-   }
+			/*
+			 * The destruction of vm and wsp is blocked by the
+			 * mksckPage->mutex.
+			 */
+			if (vm) {
+				WorldSwitchPage *wsp = vm->wsp;
 
-   /*
-    * If all are happy tell the caller the number of transferred bytes.
-    */
-   if (!err) {
-      err = len;
-   }
+				ASSERT(sockIdx <
+				       8 * sizeof(peerMksckPage->wakeVMMRecv));
+				ATOMIC_ORV(peerMksckPage->wakeVMMRecv,
+					   1U << sockIdx);
 
-   /*
-    * Now that we are done with target socket, allow it to be freed.
-    */
+				if (wsp)
+					Mvpkm_WakeGuest(vm, ACTION_MKSCK);
+			}
+			Mutex_Unlock(&peerMksckPage->mutex, MutexModeSH);
+		}
+	}
+
+	/*
+	 * If all are happy tell the caller the number of transferred bytes.
+	 */
+	if (!err)
+		err = len;
+
+	/*
+	 * Now that we are done with target socket, allow it to be freed.
+	 */
 decRefc:
-   Mksck_DecRefc(peerMksck);
-   return err;
+	Mksck_DecRefc(peerMksck);
+	return err;
 
 unlockDecRefc:
-   Mutex_Unlock(&peerMksck->mutex, MutexModeEX);
-   goto decRefc;
+	Mutex_Unlock(&peerMksck->mutex, MutexModeEX);
+	goto decRefc;
 }
 
 
@@ -1876,9 +1923,10 @@ unlockDecRefc:
  *        we always signal the fault back to the process.
  */
 static int
-MksckFault(struct vm_area_struct *vma, struct vm_fault *vmf)
+MksckFault(struct vm_area_struct *vma,
+	   struct vm_fault *vmf)
 {
-   return VM_FAULT_SIGBUS;
+	return VM_FAULT_SIGBUS;
 }
 
 /**
@@ -1892,15 +1940,17 @@ MksckFault(struct vm_area_struct *vma, struct vm_fault *vmf)
  * @return 0 on success, otherwise error code.
  */
 static int
-MksckMMap(struct file *file, struct socket *sock, struct vm_area_struct *vma)
+MksckMMap(struct file *file,
+	  struct socket *sock,
+	  struct vm_area_struct *vma)
 {
-   /*
-    * All the hard work is done in MksckDgramRecvMsg. Here we simply mark the
-    * vma as belonging to Mksck.
-    */
-   vma->vm_ops = &mksckVMOps;
+	/*
+	 * All the hard work is done in MksckDgramRecvMsg. Here we simply mark
+	 * the vma as belonging to Mksck.
+	 */
+	vma->vm_ops = &mksckVMOps;
 
-   return 0;
+	return 0;
 }
 
 /**
@@ -1914,20 +1964,21 @@ MksckMMap(struct file *file, struct socket *sock, struct vm_area_struct *vma)
 void
 Mksck_WakeBlockedSockets(MksckPage *mksckPage)
 {
-   Mksck *mksck;
-   uint32 i, wakeHostRecv;
+	Mksck *mksck;
+	uint32 i, wakeHostRecv;
 
-   wakeHostRecv = mksckPage->wakeHostRecv;
-   if (wakeHostRecv != 0) {
-      mksckPage->wakeHostRecv = 0;
-      for (i = 0; wakeHostRecv != 0; i ++) {
-         if (wakeHostRecv & 1) {
-             mksck = &mksckPage->sockets[i];
-             Mutex_CondSig(&mksck->mutex, MKSCK_CVAR_FILL, true);
-         }
-         wakeHostRecv >>= 1;
-      }
-   }
+	wakeHostRecv = mksckPage->wakeHostRecv;
+	if (wakeHostRecv != 0) {
+		mksckPage->wakeHostRecv = 0;
+		for (i = 0; wakeHostRecv != 0; i++) {
+			if (wakeHostRecv & 1) {
+				mksck = &mksckPage->sockets[i];
+				Mutex_CondSig(&mksck->mutex,
+					      MKSCK_CVAR_FILL, true);
+			}
+			wakeHostRecv >>= 1;
+		}
+	}
 }
 
 /**
@@ -1938,30 +1989,29 @@ Mksck_WakeBlockedSockets(MksckPage *mksckPage)
 MksckPage *
 MksckPageAlloc(void)
 {
-   uint32 jj;
-   /*
-    * Ask for pages in the virtual kernel space. There is no
-    * requirement to be physically contiguous.
-    */
-   MksckPage *mksckPage = vmalloc(MKSCKPAGE_SIZE);
+	uint32 jj;
 
-   if (mksckPage) {
+	/*
+	 * Ask for pages in the virtual kernel space. There is no
+	 * requirement to be physically contiguous.
+	 */
+	MksckPage *mksckPage = vmalloc(MKSCKPAGE_SIZE);
 
-      /*
-       * Initialize its contents.  Start refCount at 1 and decrement it
-       * when the worldswitch or VM page gets freed.
-       */
-      memset(mksckPage, 0, MKSCKPAGE_SIZE);
-      ATOMIC_SETV(mksckPage->refCount, 1);
-      mksckPage->portStore = MKSCK_PORT_HIGH;
+	if (mksckPage) {
+		/*
+		 * Initialize its contents.  Start refCount at 1 and decrement
+		 * it when the worldswitch or VM page gets freed.
+		 */
+		memset(mksckPage, 0, MKSCKPAGE_SIZE);
+		ATOMIC_SETV(mksckPage->refCount, 1);
+		mksckPage->portStore = MKSCK_PORT_HIGH;
 
-      Mutex_Init(&mksckPage->mutex);
-      for (jj = 0; jj<MKSCK_SOCKETS_PER_PAGE; jj++) {
-         Mutex_Init(&mksckPage->sockets[jj].mutex);
-      }
-   }
+		Mutex_Init(&mksckPage->mutex);
+		for (jj = 0; jj < MKSCK_SOCKETS_PER_PAGE; jj++)
+			Mutex_Init(&mksckPage->sockets[jj].mutex);
+	}
 
-   return mksckPage;
+	return mksckPage;
 }
 
 /**
@@ -1971,14 +2021,14 @@ MksckPageAlloc(void)
 static void
 MksckPageRelease(MksckPage *mksckPage)
 {
-   int ii;
+	int ii;
 
-   for (ii = 0; ii<MKSCK_SOCKETS_PER_PAGE; ii++) {
-      Mutex_Destroy(&mksckPage->sockets[ii].mutex);
-   }
-   Mutex_Destroy(&mksckPage->mutex);
+	for (ii = 0; ii < MKSCK_SOCKETS_PER_PAGE; ii++)
+		Mutex_Destroy(&mksckPage->sockets[ii].mutex);
 
-   vfree(mksckPage);
+	Mutex_Destroy(&mksckPage->mutex);
+
+	vfree(mksckPage);
 }
 
 /**
@@ -1991,36 +2041,35 @@ MksckPageRelease(MksckPage *mksckPage)
 static inline Mksck_VmId
 GetHostVmId(void)
 {
-   uint32 jj;
-   Mksck_VmId vmId, vmIdFirstVacant = MKSCK_VMID_UNDEF;
-   MksckPage *mksckPage;
-   uint32 tgid = task_tgid_vnr(current);
-   /*
-    * Assign an unique vmId to the shared page. Start the search from
-    * the vmId that is the result of hashing tgid to 15 bits. As a
-    * used page with a given vmId can occupy only a given slot in the
-    * mksckPages array, it is enough to search through the
-    * MKSCK_MAX_SHARES slots for a vacancy.
-    */
-   for (jj = 0, vmId = MKSCK_TGID2VMID(tgid);
-        jj < MKSCK_MAX_SHARES;
-        jj++, vmId++) {
-      if (vmId > MKSCK_VMID_HIGH) {
-         vmId = 0;
-      }
-      mksckPage = mksckPages[MKSCK_VMID2IDX(vmId)];
+	uint32 jj;
+	Mksck_VmId vmId, vmIdFirstVacant = MKSCK_VMID_UNDEF;
+	MksckPage *mksckPage;
+	uint32 tgid = task_tgid_vnr(current);
 
-      if (mksckPage) {
-         if (mksckPage->tgid == tgid &&
-             !mksckPage->isGuest) {
-            return mksckPage->vmId;
-         }
+	/*
+	 * Assign an unique vmId to the shared page. Start the search from
+	 * the vmId that is the result of hashing tgid to 15 bits. As a
+	 * used page with a given vmId can occupy only a given slot in the
+	 * mksckPages array, it is enough to search through the
+	 * MKSCK_MAX_SHARES slots for a vacancy.
+	 */
+	for (jj = 0, vmId = MKSCK_TGID2VMID(tgid);
+	     jj < MKSCK_MAX_SHARES;
+	     jj++, vmId++) {
+		if (vmId > MKSCK_VMID_HIGH)
+			vmId = 0;
 
-      } else if (vmIdFirstVacant == MKSCK_VMID_UNDEF) {
-         vmIdFirstVacant = vmId;
-      }
-   }
-   return vmIdFirstVacant;
+		mksckPage = mksckPages[MKSCK_VMID2IDX(vmId)];
+		if (mksckPage) {
+			if (mksckPage->tgid == tgid &&
+			    !mksckPage->isGuest)
+				return mksckPage->vmId;
+		} else if (vmIdFirstVacant == MKSCK_VMID_UNDEF) {
+			vmIdFirstVacant = vmId;
+		}
+	}
+
+	return vmIdFirstVacant;
 }
 
 
@@ -2033,14 +2082,14 @@ GetHostVmId(void)
 static inline Mksck_VmId
 GetNewGuestVmId(void)
 {
-   Mksck_VmId vmId;
+	Mksck_VmId vmId;
 
-   for (vmId = 0; vmId < MKSCK_MAX_SHARES; vmId++) {
-      if (!mksckPages[MKSCK_VMID2IDX(vmId)]) {
-         return vmId;
-      }
-   }
-   return MKSCK_VMID_UNDEF;
+	for (vmId = 0; vmId < MKSCK_MAX_SHARES; vmId++) {
+		if (!mksckPages[MKSCK_VMID2IDX(vmId)])
+			return vmId;
+	}
+
+	return MKSCK_VMID_UNDEF;
 }
 
 
@@ -2053,11 +2102,11 @@ GetNewGuestVmId(void)
 MksckPage *
 MksckPage_GetFromIdx(uint32 idx)
 {
-   MksckPage *mksckPage = mksckPages[idx];
-   ASSERT(mksckPage);
-   ASSERT(idx<MKSCK_MAX_SHARES);
-   ASSERT(ATOMIC_GETO(mksckPage->refCount));
-   return mksckPage;
+	MksckPage *mksckPage = mksckPages[idx];
+	ASSERT(mksckPage);
+	ASSERT(idx < MKSCK_MAX_SHARES);
+	ASSERT(ATOMIC_GETO(mksckPage->refCount));
+	return mksckPage;
 }
 
 /**
@@ -2069,11 +2118,11 @@ MksckPage_GetFromIdx(uint32 idx)
 MksckPage *
 MksckPage_GetFromVmId(Mksck_VmId vmId)
 {
-   MksckPage *mksckPage = mksckPages[MKSCK_VMID2IDX(vmId)];
-   ASSERT(mksckPage);
-   ASSERT(mksckPage->vmId == vmId);
-   ASSERT(ATOMIC_GETO(mksckPage->refCount));
-   return mksckPage;
+	MksckPage *mksckPage = mksckPages[MKSCK_VMID2IDX(vmId)];
+	ASSERT(mksckPage);
+	ASSERT(mksckPage->vmId == vmId);
+	ASSERT(ATOMIC_GETO(mksckPage->refCount));
+	return mksckPage;
 }
 
 
@@ -2087,20 +2136,20 @@ MksckPage_GetFromVmId(Mksck_VmId vmId)
 MksckPage *
 MksckPage_GetFromVmIdIncRefc(Mksck_VmId vmId)
 {
-   MksckPage *mksckPage;
+	MksckPage *mksckPage;
 
-   spin_lock(&mksckPageListLock);
-   mksckPage = mksckPages[MKSCK_VMID2IDX(vmId)];
+	spin_lock(&mksckPageListLock);
+	mksckPage = mksckPages[MKSCK_VMID2IDX(vmId)];
 
-   if (!mksckPage || (mksckPage->vmId != vmId)) {
-      printk(KERN_INFO "MksckPage_GetFromVmIdIncRefc: vmId %04X not found\n",
-             vmId);
-      mksckPage = NULL;
-   } else {
-      ATOMIC_ADDV(mksckPage->refCount, 1);
-   }
-   spin_unlock(&mksckPageListLock);
-   return mksckPage;
+	if (!mksckPage || (mksckPage->vmId != vmId)) {
+		pr_info("MksckPage_GetFromVmIdIncRefc: vmId %04X not found\n",
+			vmId);
+		mksckPage = NULL;
+	} else {
+		ATOMIC_ADDV(mksckPage->refCount, 1);
+	}
+	spin_unlock(&mksckPageListLock);
+	return mksckPage;
 }
 
 
@@ -2113,68 +2162,69 @@ MksckPage_GetFromVmIdIncRefc(Mksck_VmId vmId)
 MksckPage *
 MksckPage_GetFromTgidIncRefc(void)
 {
-   MksckPage *mksckPage;
-   Mksck_VmId vmId;
+	MksckPage *mksckPage;
+	Mksck_VmId vmId;
 
-   while (1) {
-      spin_lock(&mksckPageListLock);
-      vmId = GetHostVmId();
+	while (1) {
+		spin_lock(&mksckPageListLock);
+		vmId = GetHostVmId();
 
-      if (vmId == MKSCK_VMID_UNDEF) {
-         /*
-          * No vmId has been allocated yet and there is no free slot.
-          */
-         spin_unlock(&mksckPageListLock);
-         return NULL;
-      }
+		if (vmId == MKSCK_VMID_UNDEF) {
+			/*
+			 * No vmId has been allocated yet and there is no
+			 * free slot.
+			 */
+			spin_unlock(&mksckPageListLock);
+			return NULL;
+		}
 
-      mksckPage = mksckPages[MKSCK_VMID2IDX(vmId)];
-      if (mksckPage != NULL) {
-         /*
-          * There is a vmid already allocated, increment the refc on it.
-          */
-         ATOMIC_ADDV(mksckPage->refCount, 1);
-         spin_unlock(&mksckPageListLock);
-         return mksckPage;
-      }
+		mksckPage = mksckPages[MKSCK_VMID2IDX(vmId)];
+		if (mksckPage != NULL) {
+			/*
+			 * There is a vmid already allocated, increment the
+			 * ref count on it.
+			 */
+			ATOMIC_ADDV(mksckPage->refCount, 1);
+			spin_unlock(&mksckPageListLock);
+			return mksckPage;
+		}
 
-      /*
-       * Have to release spinlock to allocate a new page.
-       */
-      spin_unlock(&mksckPageListLock);
-      mksckPage = MksckPageAlloc();
-      if (mksckPage == NULL) {
-         return NULL;
-      }
+		/*
+		 * Have to release spinlock to allocate a new page.
+		 */
+		spin_unlock(&mksckPageListLock);
+		mksckPage = MksckPageAlloc();
+		if (mksckPage == NULL)
+			return NULL;
 
-      /*
-       * Re-lock and make sure no one else allocated while unlocked.
-       * If someone else did allocate, free ours off and use theirs.
-       */
-      spin_lock(&mksckPageListLock);
-      vmId = GetHostVmId();
-      if ((vmId != MKSCK_VMID_UNDEF) &&
-          (mksckPages[MKSCK_VMID2IDX(vmId)] == NULL)) {
-         break;
-      }
-      spin_unlock(&mksckPageListLock);
-      MksckPageRelease(mksckPage);
-   }
+		/*
+		 * Re-lock and make sure no one else allocated while unlocked.
+		 * If someone else did allocate, free ours off and use theirs.
+		 */
+		spin_lock(&mksckPageListLock);
+		vmId = GetHostVmId();
+		if ((vmId != MKSCK_VMID_UNDEF) &&
+		    (mksckPages[MKSCK_VMID2IDX(vmId)] == NULL))
+			break;
 
-   /*
-    * This is a successful new allocation. insert it into the table
-    * and initialize the fields.
-    */
-   mksckPages[MKSCK_VMID2IDX(vmId)] = mksckPage;
-   mksckPage->vmId    = vmId;
-   mksckPage->isGuest = false;
-   mksckPage->vmHKVA  = 0;
-   mksckPage->tgid    = task_tgid_vnr(current);
-   printk(KERN_WARNING "New host mksck page is allocated: idx %x, vmId %x, tgid %d\n",
-          MKSCK_VMID2IDX(vmId), vmId, mksckPage->tgid);
+		spin_unlock(&mksckPageListLock);
+		MksckPageRelease(mksckPage);
+	}
 
-   spin_unlock(&mksckPageListLock);
-   return mksckPage;
+	/*
+	 * This is a successful new allocation. insert it into the table
+	 * and initialize the fields.
+	 */
+	mksckPages[MKSCK_VMID2IDX(vmId)] = mksckPage;
+	mksckPage->vmId    = vmId;
+	mksckPage->isGuest = false;
+	mksckPage->vmHKVA  = 0;
+	mksckPage->tgid    = task_tgid_vnr(current);
+	pr_warn("New host mksck page is allocated: idx %x, vmId %x, tgid %d\n",
+		MKSCK_VMID2IDX(vmId), vmId, mksckPage->tgid);
+
+	spin_unlock(&mksckPageListLock);
+	return mksckPage;
 }
 
 /**
@@ -2183,52 +2233,51 @@ MksckPage_GetFromTgidIncRefc(void)
  * @return 0 if all OK, error value otherwise
  */
 int
-Mksck_WspInitialize(MvpkmVM *vm)
+Mksck_WspInitialize(struct MvpkmVM *vm)
 {
-   WorldSwitchPage *wsp = vm->wsp;
-   int err;
-   Mksck_VmId vmId;
-   MksckPage *mksckPage;
+	WorldSwitchPage *wsp = vm->wsp;
+	int err;
+	Mksck_VmId vmId;
+	MksckPage *mksckPage;
 
-   if (wsp->guestId) {
-      err = -EBUSY;
-   } else if (!(mksckPage = MksckPageAlloc())) {
-      err = -ENOMEM;
-   } else {
-      spin_lock(&mksckPageListLock);
+	if (wsp->guestId)
+		return -EBUSY;
 
-      if ((vmId = GetNewGuestVmId()) == MKSCK_VMID_UNDEF) {
+	mksckPage = MksckPageAlloc();
+	if (!mksckPage)
+		return -ENOMEM;
 
-         err = -EMFILE;
-         MksckPageRelease(mksckPage);
+	spin_lock(&mksckPageListLock);
 
-         printk(KERN_ERR "Mksck_WspInitialize: Cannot allocate vmId\n");
+	vmId = GetNewGuestVmId();
+	if (vmId == MKSCK_VMID_UNDEF) {
+		err = -EMFILE;
+		MksckPageRelease(mksckPage);
+		pr_err("Mksck_WspInitialize: Cannot allocate vmId\n");
+	} else {
+		/*
+		 * Now that the mksckPage is all initialized, let others see it.
+		 */
+		mksckPages[MKSCK_VMID2IDX(vmId)] = mksckPage;
+		mksckPage->vmId    = vmId;
+		mksckPage->isGuest = true;
+		mksckPage->vmHKVA  = (HKVA)vm;
+		/* mksckPage->tgid is undefined when isGuest is true */
 
-      } else {
-         /*
-          * Now that the mksckPage is all initialized, let others see it.
-          */
-         mksckPages[MKSCK_VMID2IDX(vmId)] = mksckPage;
-         mksckPage->vmId    = vmId;
-         mksckPage->isGuest = true;
-         mksckPage->vmHKVA  = (HKVA)vm;
-         /* mksckPage->tgid is undefined when isGuest is true */
+		wsp->guestId = vmId;
 
-         wsp->guestId = vmId;
+		pr_warn("New guest mksck page is allocated: idx %x, vmId %x\n",
+			MKSCK_VMID2IDX(vmId), vmId);
 
-         printk(KERN_WARNING "New guest mksck page is allocated: idx %x, vmId %x\n",
-                MKSCK_VMID2IDX(vmId), vmId);
+		err = 0;
 
-         err = 0;
-      }
+		/*
+		 * All stable, ie, mksckPages[] written, ok to unlock now.
+		 */
+		spin_unlock(&mksckPageListLock);
+	}
 
-      /*
-       * All stable, ie, mksckPages[] written, ok to unlock now.
-       */
-      spin_unlock(&mksckPageListLock);
-   }
-
-   return err;
+	return err;
 }
 
 /**
@@ -2239,84 +2288,92 @@ Mksck_WspInitialize(MvpkmVM *vm)
 void
 Mksck_WspRelease(WorldSwitchPage *wsp)
 {
-   int ii;
-   int err;
-   MksckPage *mksckPage = MksckPage_GetFromVmId(wsp->guestId);
+	int ii;
+	int err;
+	MksckPage *mksckPage = MksckPage_GetFromVmId(wsp->guestId);
 
-   /*
-    * The worldswitch page for a particular VCPU is about to be freed
-    * off, so we know the monitor will never execute again.  But the
-    * monitor most likely left some sockets open. Those may have
-    * outbound connections to host sockets that we must close.
-    *
-    * Loop through all possibly open sockets.
-    */
-   uint32 isOpened = wsp->isOpened;
-   Mksck *mksck = mksckPage->sockets;
-   while (isOpened) {
-      if (isOpened & 1) {
-         ASSERT(ATOMIC_GETO(mksck->refCount) != 0);
-         /*
-          * The socket may be connected to a peer (host) socket, so we
-          * have to decrement that target socket's reference
-          * count. Unfortunately, Mksck_DisconnectPeer(mksck) cannot
-          * be called as mksck->peer is an mva not an hkva. Translate
-          * the address first.
-          */
-         if (mksck->peer) {
-            MksckPage *mksckPagePeer = MksckPage_GetFromVmId(mksck->peerAddr.vmId);
-            ASSERT(mksckPagePeer);
-            mksck->peer = MksckPage_GetFromAddr(mksckPagePeer, mksck->peerAddr);
-            ASSERT(mksck->peer);
-            /* mksck->peer is now a hkva */
-         }
+	/*
+	 * The worldswitch page for a particular VCPU is about to be freed
+	 * off, so we know the monitor will never execute again.  But the
+	 * monitor most likely left some sockets open. Those may have
+	 * outbound connections to host sockets that we must close.
+	 *
+	 * Loop through all possibly open sockets.
+	 */
+	uint32 isOpened = wsp->isOpened;
+	Mksck *mksck = mksckPage->sockets;
 
-         Mksck_CloseCommon(mksck);
-      }
-      isOpened >>= 1;
-      mksck++;
-   }
+	while (isOpened) {
+		if (isOpened & 1) {
+			ASSERT(ATOMIC_GETO(mksck->refCount) != 0);
 
-   /*
-    * A host socket may be in the process of sending to the guest. It
-    * will attempt to wake up the guest using mksckPage->vmHKVA and
-    * mksckPage->vmHKVA->wsp. To assure that the vm and wsp structures
-    * are not disappearing from under the sending thread we lock the
-    * page here.
-    */
-   err = Mutex_Lock(&mksckPage->mutex, MutexModeEX);
-   ASSERT(!err);
-   mksckPage->vmHKVA = 0;
-   Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
-   /*
-    * Decrement refcount set by MksckPageAlloc() call in
-    * Mksck_WspInitialize().
-    */
-   MksckPage_DecRefc(mksckPage);
+			/*
+			 * The socket may be connected to a peer (host) socket,
+			 * so we have to decrement that target socket's
+			 * reference count.
+			 * Unfortunately, Mksck_DisconnectPeer(mksck) cannot
+			 * be called as mksck->peer is an mva not an hkva.
+			 * Translate the address first.
+			 */
+			if (mksck->peer) {
+				MksckPage *mksckPagePeer =
+				    MksckPage_GetFromVmId(mksck->peerAddr.vmId);
 
-   /*
-    * Decrement refcount set by VMM:Mksck_Init() referring to the local
-    * variable guestMksckPage.
-    */
-   if (wsp->guestPageMapped) {
-      wsp->guestPageMapped = false;
-      MksckPage_DecRefc(mksckPage);
-   }
+				ASSERT(mksckPagePeer);
+				mksck->peer =
+				    MksckPage_GetFromAddr(mksckPagePeer,
+							  mksck->peerAddr);
+				ASSERT(mksck->peer);
+				/* mksck->peer is now a hkva */
+			}
 
-   /*
-    * Another task is to decrement the reference count on the mksck
-    * pages the monitor accessed. Those pages are listed in the
-    * wsp->isPageMapped list. They were locked by the monitor
-    * calling WSCALL_GET_PAGE_FROM_VMID
-    */
-   for (ii = 0; ii < MKSCK_MAX_SHARES; ii++) {
-      if (wsp->isPageMapped[ii]) {
-         MksckPage *mksckPageOther = MksckPage_GetFromIdx(ii);
+			Mksck_CloseCommon(mksck);
+		}
+		isOpened >>= 1;
+		mksck++;
+	}
 
-         wsp->isPageMapped[ii] = false;
-         MksckPage_DecRefc(mksckPageOther);
-      }
-   }
+	/*
+	 * A host socket may be in the process of sending to the guest. It
+	 * will attempt to wake up the guest using mksckPage->vmHKVA and
+	 * mksckPage->vmHKVA->wsp. To assure that the vm and wsp structures
+	 * are not disappearing from under the sending thread we lock the
+	 * page here.
+	 */
+	err = Mutex_Lock(&mksckPage->mutex, MutexModeEX);
+	ASSERT(!err);
+	mksckPage->vmHKVA = 0;
+	Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
+
+	/*
+	 * Decrement refcount set by MksckPageAlloc() call in
+	 * Mksck_WspInitialize().
+	 */
+	MksckPage_DecRefc(mksckPage);
+
+	/*
+	 * Decrement refcount set by VMM:Mksck_Init() referring to the local
+	 * variable guestMksckPage.
+	 */
+	if (wsp->guestPageMapped) {
+		wsp->guestPageMapped = false;
+		MksckPage_DecRefc(mksckPage);
+	}
+
+	/*
+	 * Another task is to decrement the reference count on the mksck
+	 * pages the monitor accessed. Those pages are listed in the
+	 * wsp->isPageMapped list. They were locked by the monitor
+	 * calling WSCALL_GET_PAGE_FROM_VMID
+	 */
+	for (ii = 0; ii < MKSCK_MAX_SHARES; ii++) {
+		if (wsp->isPageMapped[ii]) {
+			MksckPage *mksckPageOther = MksckPage_GetFromIdx(ii);
+
+			wsp->isPageMapped[ii] = false;
+			MksckPage_DecRefc(mksckPageOther);
+		}
+	}
 }
 
 /**
@@ -2327,12 +2384,13 @@ Mksck_WspRelease(WorldSwitchPage *wsp)
 void
 Mksck_DisconnectPeer(Mksck *mksck)
 {
-   Mksck *peerMksck = mksck->peer;
-   if (peerMksck != NULL) {
-      mksck->peer = NULL;
-      mksck->peerAddr.addr = MKSCK_ADDR_UNDEF;
-      Mksck_DecRefc(peerMksck);
-   }
+	Mksck *peerMksck = mksck->peer;
+
+	if (peerMksck != NULL) {
+		mksck->peer = NULL;
+		mksck->peerAddr.addr = MKSCK_ADDR_UNDEF;
+		Mksck_DecRefc(peerMksck);
+	}
 }
 
 
@@ -2343,64 +2401,72 @@ Mksck_DisconnectPeer(Mksck *mksck)
  * @param mksckPage shared page
  */
 void
-MksckPage_DecRefc(MksckPage *mksckPage)
+MksckPage_DecRefc(struct MksckPage *mksckPage)
 {
-   uint32 oldRefc;
+	uint32 oldRefc;
 
-   DMB();
-   do {
-      while ((oldRefc = ATOMIC_GETO(mksckPage->refCount)) == 1) {
+	DMB();
+	do {
+		while ((oldRefc = ATOMIC_GETO(mksckPage->refCount)) == 1) {
 
-         /*
-          * Find corresponding entry in list of known shared pages and
-          * clear it so we can't open any new sockets on this shared
-          * page, thus preventing its refCount from being incremented.
-          */
-         spin_lock(&mksckPageListLock);
-         if (ATOMIC_SETIF(mksckPage->refCount, 0, 1)) {
-            uint32 ii = MKSCK_VMID2IDX(mksckPage->vmId);
-            ASSERT(ii < MKSCK_MAX_SHARES);
-            ASSERT(mksckPages[ii] == mksckPage);
-            mksckPages[ii] = NULL;
-            spin_unlock(&mksckPageListLock);
-            printk(KERN_WARNING "%s mksck page is released: idx %x, vmId %x, tgid %d\n",
-                   mksckPage->isGuest?"Guest":"Host",
-                   ii, mksckPage->vmId, mksckPage->tgid);
-            MksckPageRelease(mksckPage);
-            return;
-         }
-         spin_unlock(&mksckPageListLock);
-      }
-      ASSERT(oldRefc != 0);
-   } while (!ATOMIC_SETIF(mksckPage->refCount, oldRefc - 1, oldRefc));
+			/*
+			 * Find corresponding entry in list of known shared
+			 * pages and clear it so we can't open any new sockets
+			 * on this shared page, thus preventing its refCount
+			 * from being incremented.
+			 */
+			spin_lock(&mksckPageListLock);
+			if (ATOMIC_SETIF(mksckPage->refCount, 0, 1)) {
+				uint32 ii = MKSCK_VMID2IDX(mksckPage->vmId);
+
+				ASSERT(ii < MKSCK_MAX_SHARES);
+				ASSERT(mksckPages[ii] == mksckPage);
+				mksckPages[ii] = NULL;
+				spin_unlock(&mksckPageListLock);
+				pr_warn("%s mksck page is released: idx %x, " \
+					"vmId %x, tgid %d\n",
+					mksckPage->isGuest ? "Guest" : "Host",
+					ii, mksckPage->vmId, mksckPage->tgid);
+				MksckPageRelease(mksckPage);
+				return;
+			}
+			spin_unlock(&mksckPageListLock);
+		}
+		ASSERT(oldRefc != 0);
+	} while (!ATOMIC_SETIF(mksckPage->refCount, oldRefc - 1, oldRefc));
 }
 
 /**
- * @brief Lookup if the provided mpn belongs to one of the Mksck pages. Map if found.
+ * @brief Lookup if the provided mpn belongs to one of the Mksck pages.
+ *        Map if found.
  * @return 0 if all OK, error value otherwise
  */
 int
 MksckPage_LookupAndInsertPage(struct vm_area_struct *vma,
-                              unsigned long address,
-                              MPN mpn)
+			      unsigned long address,
+			      MPN mpn)
 {
-   int ii, jj;
-   MksckPage **mksckPagePtr = mksckPages;
+	int ii, jj;
+	struct MksckPage **mksckPagePtr = mksckPages;
 
-   spin_lock(&mksckPageListLock);
-   for (jj = MKSCK_MAX_SHARES; jj--; mksckPagePtr++) {
-      if (*mksckPagePtr) {
-         for (ii = 0; ii < MKSCKPAGE_TOTAL; ii++) {
-            if (vmalloc_to_pfn((void*)(((HKVA)*mksckPagePtr) + ii*PAGE_SIZE)) == mpn &&
-                vm_insert_page(vma, address, pfn_to_page(mpn)) == 0) {
-               spin_unlock(&mksckPageListLock);
-               return 0;
-            }
-         }
-      }
-   }
-   spin_unlock(&mksckPageListLock);
-   return -1;
+	spin_lock(&mksckPageListLock);
+	for (jj = MKSCK_MAX_SHARES; jj--; mksckPagePtr++) {
+		if (*mksckPagePtr) {
+			for (ii = 0; ii < MKSCKPAGE_TOTAL; ii++) {
+				HKVA tmp = ((HKVA)*mksckPagePtr) +
+						ii * PAGE_SIZE;
+
+				if (vmalloc_to_pfn((void *)tmp) == mpn &&
+				    vm_insert_page(vma, address,
+						   pfn_to_page(mpn)) == 0) {
+					spin_unlock(&mksckPageListLock);
+					return 0;
+				}
+			}
+		}
+	}
+	spin_unlock(&mksckPageListLock);
+	return -1;
 }
 
 
@@ -2416,164 +2482,194 @@ MksckPage_LookupAndInsertPage(struct vm_area_struct *vma,
  * inconsistent or garbage data.
  */
 static int
-MksckPageInfoShow(struct seq_file *m, void *private)
+MksckPageInfoShow(struct seq_file *m,
+		  void *private)
 {
-   int ii, jj;
-   uint32 isPageMapped = 0;
-   int err;
-   MvpkmVM *vm;
+	int ii, jj;
+	uint32 isPageMapped = 0;
+	int err;
+	struct MvpkmVM *vm;
 
-   /*
-    * Lock is needed to atomize the test and dereference of
-    * mksckPages[ii]
-    */
-   spin_lock(&mksckPageListLock);
-   for (ii = 0; ii < MKSCK_MAX_SHARES; ii++) {
-      MksckPage *mksckPage  = mksckPages[ii];
-      if (mksckPage != NULL && mksckPage->isGuest) {
-         /*
-          * After the refcount is incremented mksckPage will not be
-          * freed and it can continued to be dereferenced after the
-          * unlock of mksckPageListLock.
-          */
-         ATOMIC_ADDV(mksckPage->refCount, 1);
-         spin_unlock(&mksckPageListLock);
+	/*
+	 * Lock is needed to atomize the test and dereference of mksckPages[ii].
+	 */
+	spin_lock(&mksckPageListLock);
+	for (ii = 0; ii < MKSCK_MAX_SHARES; ii++) {
+		struct MksckPage *mksckPage  = mksckPages[ii];
 
-         /*
-          * To dereference mksckPage->vmHKVA, we need to have the page
-          * lock.
-          */
-         err = Mutex_Lock(&mksckPage->mutex, MutexModeEX);
-         vm = (MvpkmVM *) mksckPage->vmHKVA;
+		if (mksckPage != NULL && mksckPage->isGuest) {
+			/*
+			 * After the refcount is incremented mksckPage will
+			 * not be freed and it can continued to be dereferenced
+			 * after the unlock of mksckPageListLock.
+			 */
+			ATOMIC_ADDV(mksckPage->refCount, 1);
+			spin_unlock(&mksckPageListLock);
 
-         if (err == 0 && vm && vm->wsp) {
-            for (jj = 0; jj < MKSCK_MAX_SHARES; jj++) {
-               if (vm->wsp->isPageMapped[jj]) isPageMapped |= 1<<jj;
-            }
-         }
-         Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
-         /*
-          * Decrement the page refcount and relock the
-          * mksckPageListLock for the next for loop.
-          */
-         MksckPage_DecRefc(mksckPage);
-         spin_lock(&mksckPageListLock);
-         break;
-      }
-   }
+			/*
+			 * Need the page lock to dereference mksckPage->vmHKVA.
+			 */
+			err = Mutex_Lock(&mksckPage->mutex, MutexModeEX);
+			vm = (struct MvpkmVM *)mksckPage->vmHKVA;
 
-   /* mksckPageListLock is still locked,  mksckPages[ii] can be dereferenced */
-   for (ii = 0; ii < MKSCK_MAX_SHARES; ii++) {
-      MksckPage *mksckPage  = mksckPages[ii];
-      if (mksckPage != NULL) {
-         uint32 lState = ATOMIC_GETO(mksckPage->mutex.state);
-         uint32 isOpened = 0; /* guest has an implicit ref */
+			if (err == 0 && vm && vm->wsp) {
+				for (jj = 0; jj < MKSCK_MAX_SHARES; jj++) {
+					if (vm->wsp->isPageMapped[jj])
+						isPageMapped |= 1<<jj;
+				}
+			}
+			Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
 
-         seq_printf(m, "MksckPage[%02d]: { vmId = %4x(%c), refC = %2d%s",
-                    ii, mksckPage->vmId,
-                    mksckPage->isGuest?'G':'H',
-                    ATOMIC_GETO(mksckPage->refCount),
-                    (isPageMapped&(1<<ii) ? "*" : ""));
+			/*
+			 * Decrement the page refcount and relock the
+			 * mksckPageListLock for the next for loop.
+			 */
+			MksckPage_DecRefc(mksckPage);
+			spin_lock(&mksckPageListLock);
+			break;
+		}
+	}
 
-         if (lState) {
-            seq_printf(m, ", lock=%x locked by line %d, unlocked by %d",
-                       lState, mksckPage->mutex.line, mksckPage->mutex.lineUnl);
-         }
+	/*
+	 * mksckPageListLock is still locked,  mksckPages[ii] can be
+	 * dereferenced
+	 */
+	for (ii = 0; ii < MKSCK_MAX_SHARES; ii++) {
+		struct MksckPage *mksckPage  = mksckPages[ii];
 
+		if (mksckPage != NULL) {
+			uint32 lState = ATOMIC_GETO(mksckPage->mutex.state);
+			uint32 isOpened = 0; /* Guest has an implicit ref. */
 
-         if (!mksckPage->isGuest) {
-            struct task_struct *target;
-            seq_printf(m, ", tgid = %d", mksckPage->tgid);
+			seq_printf(m, "MksckPage[%02d]: { vmId = %4x(%c), " \
+				   "refC = %2d%s", ii, mksckPage->vmId,
+				   mksckPage->isGuest ? 'G' : 'H',
+				   ATOMIC_GETO(mksckPage->refCount),
+				   (isPageMapped&(1<<ii) ? "*" : ""));
 
-            rcu_read_lock();
+			if (lState)
+				seq_printf(m, ", lock=%x locked by line %d, " \
+					   "unlocked by %d",
+					   lState, mksckPage->mutex.line,
+					   mksckPage->mutex.lineUnl);
 
-            target = pid_task(find_vpid(mksckPage->tgid), PIDTYPE_PID);
-            seq_printf(m, "(%s)", target ? target->comm : "no such process");
+			if (!mksckPage->isGuest) {
+				struct task_struct *target;
 
-            rcu_read_unlock();
-         } else {
-            ATOMIC_ADDV(mksckPage->refCount, 1);
-            spin_unlock(&mksckPageListLock);
+				seq_printf(m, ", tgid = %d", mksckPage->tgid);
 
-            err = Mutex_Lock(&mksckPage->mutex, MutexModeEX);
-            vm = (MvpkmVM *) mksckPage->vmHKVA;
+				rcu_read_lock();
 
-            if (err == 0 && vm && vm->wsp) {
-               isOpened = vm->wsp->isOpened;
-            }
-            Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
-            MksckPage_DecRefc(mksckPage);
-            spin_lock(&mksckPageListLock);
-            /*
-             * As the mksckPageListLock was unlocked, nothing
-             * prevented the MksckPage_DecRefc from actually freeing
-             * the page. Lets verify that the page is still there.
-             */
-            if (mksckPage != mksckPages[ii]) {
-               seq_printf(m, " released }\n");
-               continue;
-            }
-         }
-         seq_printf(m, ", sockets[] = {");
+				target = pid_task(find_vpid(mksckPage->tgid),
+						  PIDTYPE_PID);
+				seq_printf(m, "(%s)",
+					   (target ? target->comm :
+						     "no such process"));
 
-         for (jj = 0; jj < mksckPage->numAllocSocks; jj++, isOpened >>= 1) {
-            Mksck *mksck = mksckPage->sockets + jj;
+				rcu_read_unlock();
+			} else {
+				ATOMIC_ADDV(mksckPage->refCount, 1);
+				spin_unlock(&mksckPageListLock);
 
-            if (ATOMIC_GETO(mksck->refCount)) {
-               uint32 blocked;
-               lState = ATOMIC_GETO(mksck->mutex.state);
-               seq_printf(m, "\n             { addr = %8x, refC = %2d%s%s%s",
-                          mksck->addr.addr,
-                          ATOMIC_GETO(mksck->refCount),
-                          (isOpened & 1 ? "*" : ""),
-                          (mksck->shutDown & MKSCK_SHUT_RD ? " SHUTD_RD":""),
-                          (mksck->shutDown & MKSCK_SHUT_WR ? " SHUTD_WR":""));
+				err = Mutex_Lock(&mksckPage->mutex,
+						 MutexModeEX);
+				vm = (struct MvpkmVM *)mksckPage->vmHKVA;
 
-               if (mksck->peer) {
-                  seq_printf(m, ", peerAddr = %8x",
-                             mksck->peerAddr.addr);
-               }
+				if (err == 0 && vm && vm->wsp)
+					isOpened = vm->wsp->isOpened;
 
-               if (lState) {
-                  seq_printf(m, ", lock=%x locked by line %d, unlocked by %d",
-                             lState, mksck->mutex.line, mksck->mutex.lineUnl);
-               }
+				Mutex_Unlock(&mksckPage->mutex, MutexModeEX);
+				MksckPage_DecRefc(mksckPage);
+				spin_lock(&mksckPageListLock);
 
-               if ((blocked = ATOMIC_GETO(mksck->mutex.blocked))) {
-                  seq_printf(m, ", blocked=%d", blocked);
-               }
+				/*
+				 * As the mksckPageListLock was unlocked,
+				 * nothing prevented the MksckPage_DecRefc from
+				 * actually freeing the page. Lets verify that
+				 * the page is still there.
+				 */
+				if (mksckPage != mksckPages[ii]) {
+					seq_puts(m, " released }\n");
+					continue;
+				}
+			}
+			seq_puts(m, ", sockets[] = {");
 
-               seq_printf(m, " }");
-            }
-         }
-         seq_printf(m, " } }\n");
-      }
-   }
-   spin_unlock(&mksckPageListLock);
+			for (jj = 0;
+			     jj < mksckPage->numAllocSocks;
+			     jj++, isOpened >>= 1) {
+				Mksck *mksck = mksckPage->sockets + jj;
 
-   return 0;
+				if (ATOMIC_GETO(mksck->refCount)) {
+					uint32 blocked;
+					char *shutdRO =
+					    (mksck->shutDown & MKSCK_SHUT_RD ?
+						" SHUTD_RD" : "");
+					char *shutdRW =
+					    (mksck->shutDown & MKSCK_SHUT_WR ?
+						" SHUTD_WR" : "");
+
+					lState =
+						ATOMIC_GETO(mksck->mutex.state);
+
+					seq_printf(m, "\n             " \
+						   "{ addr = %8x, " \
+						   "refC = %2d%s%s%s",
+						   mksck->addr.addr,
+						   ATOMIC_GETO(mksck->refCount),
+						   (isOpened & 1 ? "*" : ""),
+						   shutdRO,
+						   shutdRW);
+
+					if (mksck->peer)
+						seq_printf(m,
+							   ", peerAddr = %8x",
+							  mksck->peerAddr.addr);
+
+					if (lState)
+						seq_printf(m,
+							   ", lock=%x locked " \
+							   "by line %d, " \
+							   "unlocked by %d",
+							   lState,
+							   mksck->mutex.line,
+							  mksck->mutex.lineUnl);
+
+					blocked =
+					    ATOMIC_GETO(mksck->mutex.blocked);
+					if (blocked)
+						seq_printf(m, ", blocked=%d",
+							   blocked);
+
+					seq_puts(m, " }");
+				}
+			}
+			seq_puts(m, " } }\n");
+		}
+	}
+	spin_unlock(&mksckPageListLock);
+
+	return 0;
 }
 
 
 static int
-MksckPageInfoOpen(struct inode *inode, struct file *file)
+MksckPageInfoOpen(struct inode *inode,
+		  struct file *file)
 {
-   return single_open(file, MksckPageInfoShow, inode->i_private);
+	return single_open(file, MksckPageInfoShow, inode->i_private);
 }
 
 static const struct file_operations mksckPageInfoFops = {
-   .open = MksckPageInfoOpen,
-   .read = seq_read,
-   .llseek = seq_lseek,
-   .release = single_release,
+	.open = MksckPageInfoOpen,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
 };
 
 void
 MksckPageInfo_Init(struct dentry *parent)
 {
-   debugfs_create_file("mksckPage",
-                       S_IROTH,
-                       parent,
-                       NULL,
-                       &mksckPageInfoFops);
+	debugfs_create_file("mksckPage", S_IROTH, parent,
+			    NULL, &mksckPageInfoFops);
 }

@@ -2,7 +2,7 @@
 #
 # Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
 #
-# Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+# Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as published by
@@ -66,6 +66,8 @@ fddbb73a58e82ba1966fd862a561c2bd)
 59f3bb678a855acfea2365b7a904bc5b|\
 c88eb5649a468e3f991972661ca7f906|\
 b211b3542c24205b203cf6c103951733|\
+4798a9bc2c04e225cbec2d2107e92f48|\
+c1f73bb2771660d6e7e85f774d030a00|\
 df96cbb1784869ac7d017dd343e4e8f2)
    # other_file = global_page_state(NR_FILE_PAGES) - global_page_state(NR_SHMEM);
    V=3
@@ -78,8 +80,9 @@ ed03b69361c2881ed1a031c9b9a24d8a|\
    V=4
 ;;
 00865dfbbc8d308d05ed017c9892b538|\
-4feb84fa5b0c33d423e98817ec5ea4f8|\
-c1f73bb2771660d6e7e85f774d030a00)
+3e766830a787148a5540772630a5335f|\
+85354de74c4a30ffe07d60b324be893b|\
+97b9a5d6ac4bea28fea79f2723a78764)
    # other_file = global_page_state(NR_FILE_PAGES) - global_page_state(NR_SHMEM);
    # other_free and other_file are modified depending on zone index or/and
    # memory offlining and compared to "lowmem_minfree[i] - zone_adj".

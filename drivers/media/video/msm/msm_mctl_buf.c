@@ -1021,13 +1021,14 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 static int __msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
 	struct ion_client *client, int domain_num)
 {
-	int i = 0, rc = 0;
+	int i = 0;
 
 	for (i = 0; i < meta_frame->frame.num_planes; i++) {
 		D("%s Plane %d handle %p", __func__, i,
 			meta_frame->map[i].handle);
 		put_pmem_file(meta_frame->map[i].file);
 	}
+	return 0;
 }
 
 /* Map using PMEM APIs */
@@ -1038,7 +1039,7 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 	unsigned long paddr = 0;
 	struct file *file = NULL;
 	unsigned long len;
-	int i = 0, j = 0;
+	int i = 0, j = 0, rc=0;
 
 	for (i = 0; i < meta_frame->frame.num_planes; i++) {
 		rc = get_pmem_file(meta_frame->frame.mp[i].fd,
@@ -1051,7 +1052,7 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 				if (meta_frame->map[j].file)
 					put_pmem_file(meta_frame->map[j].file);
 
-			return -EACCES;
+			return rc;
 		}
 		D("%s Got pmem file for fd %d plane %d as %p", __func__,
 			meta_frame->frame.mp[i].fd, i, file);

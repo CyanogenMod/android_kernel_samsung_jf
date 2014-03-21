@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Guest Communications
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -35,8 +35,7 @@ typedef struct workqueue_struct CommOSWorkQueue;
 
 /* Static data */
 
-static volatile int running;
-static int numCpus;
+static int running;
 static CommOSWorkQueue *dispatchWQ;
 static CommOSDispatchFunc dispatch;
 static CommOSWork dispatchWorksNow[NR_CPUS];
@@ -55,7 +54,7 @@ static CommOSWorkQueue *aioWQ;
 static inline CommOSWorkQueue *
 CreateWorkqueue(const char *name)
 {
-   return create_workqueue(name);
+	return alloc_workqueue(name, WQ_MEM_RECLAIM, 0);
 }
 
 
@@ -68,7 +67,7 @@ CreateWorkqueue(const char *name)
 static inline void
 DestroyWorkqueue(CommOSWorkQueue *wq)
 {
-   destroy_workqueue(wq);
+	destroy_workqueue(wq);
 }
 
 
@@ -80,31 +79,28 @@ DestroyWorkqueue(CommOSWorkQueue *wq)
 static inline void
 FlushDelayedWork(CommOSWork *work)
 {
-   flush_delayed_work(work);
+	flush_delayed_work(work);
 }
 
 
 /**
  *  @brief Enqueue a work item to a workqueue for execution on a given cpu
  *      and after the specified interval.
- *  @param cpu cpu number. If negative, work item is enqueued on current cpu.
+ *  @param cpu cpu number.
  *  @param[in,out] wq target work queue.
  *  @param[in,out] work work item to enqueue.
  *  @param jif delay interval.
  *  @return zero if successful, non-zero otherwise.
+ *  @note Linux requires that "the caller must ensure it can't go away."
  */
 
 static inline int
 QueueDelayedWorkOn(int cpu,
-                   CommOSWorkQueue *wq,
-                   CommOSWork *work,
-                   unsigned long jif)
+		   CommOSWorkQueue *wq,
+		   CommOSWork *work,
+		   unsigned long jif)
 {
-   if (cpu < 0) {
-      return !queue_delayed_work(wq, work, jif) ? -1 : 0;
-   } else {
-      return !queue_delayed_work_on(cpu, wq, work, jif) ? -1 : 0;
-   }
+	return !queue_delayed_work_on(cpu, wq, work, jif) ? -1 : 0;
 }
 
 
@@ -115,14 +111,15 @@ QueueDelayedWorkOn(int cpu,
  *  @param[in,out] work work item to enqueue.
  *  @param jif delay interval.
  *  @return zero if successful, non-zero otherwise.
+ *  @note Linux says that "if the CPU dies it can be processed by another CPU."
  */
 
 static inline int
 QueueDelayedWork(CommOSWorkQueue *wq,
-                 CommOSWork *work,
-                 unsigned long jif)
+		 CommOSWork *work,
+		 unsigned long jif)
 {
-   return QueueDelayedWorkOn(-1, wq, work, jif);
+	return !queue_delayed_work(wq, work, jif) ? -1 : 0;
 }
 
 
@@ -135,7 +132,7 @@ QueueDelayedWork(CommOSWorkQueue *wq,
 static inline void
 WaitForDelayedWork(CommOSWork *work)
 {
-   cancel_delayed_work_sync(work);
+	cancel_delayed_work_sync(work);
 }
 
 
@@ -147,7 +144,7 @@ WaitForDelayedWork(CommOSWork *work)
 static inline void
 FlushWorkqueue(CommOSWorkQueue *wq)
 {
-   flush_workqueue(wq);
+	flush_workqueue(wq);
 }
 
 
@@ -158,12 +155,10 @@ FlushWorkqueue(CommOSWorkQueue *wq)
 void
 CommOS_ScheduleDisp(void)
 {
-   CommOSWork *work = &dispatchWorksNow[get_cpu()];
+	CommOSWork *work = &dispatchWorksNow[raw_smp_processor_id()];
 
-   put_cpu();
-   if (running) {
-      QueueDelayedWork(dispatchWQ, work, 0);
-   }
+	if (running)
+		QueueDelayedWork(dispatchWQ, work, 0);
 }
 
 
@@ -176,34 +171,87 @@ CommOS_ScheduleDisp(void)
 static void
 DispatchWrapper(CommOSWork *work)
 {
-   unsigned int misses;
+	unsigned int misses;
 
-   for (misses = 0; running && (misses < dispatchMaxCycles); ) {
-      /* We run for at most dispatchMaxCycles worth of channel no-ops. */
+	for (misses = 0; running && (misses < dispatchMaxCycles); ) {
+		/* We run for at most dispatchMaxCycles of channel no-ops. */
 
-      if (!dispatch()) {
-         /* No useful work was done, on any of the channels. */
+		if (!dispatch()) {
+			/* No useful work was done, on any of the channels. */
 
-         misses++;
-         if ((misses % 32) == 0) {
-            CommOS_Yield();
-         }
-      } else {
-         misses = 0;
-      }
-   }
+			misses++;
+			if ((misses % 32) == 0)
+				CommOS_Yield();
+		} else {
+			misses = 0;
+		}
+	}
 
-   if (running &&
-       (work >= &dispatchWorks[0]) &&
-       (work <= &dispatchWorks[NR_CPUS - 1])) {
-      /*
-       * If still running _and_ this was a regular, time-based run, then
-       * re-arm the timer.
-       */
+	if (running &&
+	    (work >= &dispatchWorks[0]) &&
+	    (work <= &dispatchWorks[NR_CPUS - 1])) {
+		/*
+		 * If still running _and_ this was a regular, time-based run,
+		 * then re-arm the timer.
+		 */
 
-      QueueDelayedWork(dispatchWQ, work, dispatchInterval);
-   }
+		QueueDelayedWork(dispatchWQ, work, dispatchInterval);
+	}
 }
+
+#ifdef CONFIG_HOTPLUG_CPU
+
+/**
+ * @brief CPU hotplug notification handling
+ * @param nfb Notification block
+ * @param action Hotplug action
+ * @param hcpu CPU number
+ * @return NOTIFY_OK
+ */
+
+static int __cpuinit
+CpuCallback(struct notifier_block *nfb,
+	    unsigned long action,
+	    void *hcpu)
+{
+	unsigned int cpu = (unsigned long)hcpu;
+
+	switch (action) {
+	case CPU_ONLINE:
+	case CPU_ONLINE_FROZEN:
+		if (running)
+			QueueDelayedWorkOn(cpu, dispatchWQ,
+					   &dispatchWorks[cpu],
+					   dispatchInterval);
+
+		break;
+	case CPU_DOWN_PREPARE:
+	case CPU_DOWN_PREPARE_FROZEN:
+		WaitForDelayedWork(&dispatchWorksNow[cpu]);
+		WaitForDelayedWork(&dispatchWorks[cpu]);
+		break;
+	case CPU_DOWN_FAILED:
+	case CPU_DOWN_FAILED_FROZEN:
+		if (running)
+			QueueDelayedWorkOn(cpu, dispatchWQ,
+					   &dispatchWorks[cpu],
+					   dispatchInterval);
+
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+/**
+ * @brief Hotplug notification block
+ */
+
+static struct notifier_block __refdata CpuNotifier = {
+	.notifier_call = CpuCallback,
+};
+
+#endif
 
 
 /**
@@ -214,9 +262,9 @@ DispatchWrapper(CommOSWork *work)
 
 void
 CommOS_InitWork(CommOSWork *work,
-                CommOSWorkFunc func)
+		CommOSWorkFunc func)
 {
-   INIT_DELAYED_WORK(work, (work_func_t)func);
+	INIT_DELAYED_WORK(work, (work_func_t)func);
 }
 
 
@@ -227,9 +275,8 @@ CommOS_InitWork(CommOSWork *work,
 void
 CommOS_FlushAIOWork(CommOSWork *work)
 {
-   if (aioWQ && work) {
-      FlushDelayedWork(work);
-   }
+	if (aioWQ && work)
+		FlushDelayedWork(work);
 }
 
 
@@ -242,10 +289,10 @@ CommOS_FlushAIOWork(CommOSWork *work)
 int
 CommOS_ScheduleAIOWork(CommOSWork *work)
 {
-   if (running && aioWQ && work) {
-      return QueueDelayedWork(aioWQ, work, 0);
-   }
-   return -1;
+	if (running && aioWQ && work)
+		return QueueDelayedWork(aioWQ, work, 0);
+
+	return -1;
 }
 
 
@@ -263,82 +310,86 @@ CommOS_ScheduleAIOWork(CommOSWork *work)
  */
 
 int
-CommOS_StartIO(const char *dispatchTaskName,    // IN
-               CommOSDispatchFunc dispatchFunc, // IN
-               unsigned int intervalMillis,     // IN
-               unsigned int maxCycles,          // IN
-               const char *aioTaskName)         // IN
+CommOS_StartIO(const char *dispatchTaskName,    /* IN */
+	       CommOSDispatchFunc dispatchFunc, /* IN */
+	       unsigned int intervalMillis,     /* IN */
+	       unsigned int maxCycles,          /* IN */
+	       const char *aioTaskName)         /* IN */
 {
-   int rc;
-   int cpu;
+	int cpu;
 
-   if (running) {
-      CommOS_Debug(("%s: I/O tasks already running.\n", __FUNCTION__));
-      return 0;
-   }
+	if (running) {
+		CommOS_Debug(("%s: I/O tasks already running.\n", __func__));
+		return 0;
+	}
 
-   /*
-    * OK, let's test the handler against NULL. Though, the whole concept
-    * of checking for NULL pointers, outside cases where NULL is meaningful
-    * to the implementation, is relatively useless: garbage, random pointers
-    * rarely happen to be all-zeros.
-    */
+	/*
+	 * OK, let's test the handler against NULL. Though, the whole concept
+	 * of checking for NULL pointers, outside cases where NULL is meaningful
+	 * to the implementation, is relatively useless: garbage, random
+	 * pointers rarely happen to be all-zeros.
+	 */
 
-   if (!dispatchFunc) {
-      CommOS_Log(("%s: a NULL Dispatch handler was passed.\n", __FUNCTION__));
-      return -1;
-   }
-   dispatch = dispatchFunc;
+	if (!dispatchFunc) {
+		CommOS_Log(("%s: a NULL Dispatch handler was passed.\n",
+			    __func__));
+		return -1;
+	}
+	dispatch = dispatchFunc;
 
-   if (intervalMillis == 0) {
-      intervalMillis = 4;
-   }
-   if ((dispatchInterval = msecs_to_jiffies(intervalMillis)) < 1) {
-      dispatchInterval = 1;
-   }
-   if (maxCycles > DISPATCH_MAX_CYCLES) {
-      dispatchMaxCycles = DISPATCH_MAX_CYCLES;
-   } else if (maxCycles > 0) {
-      dispatchMaxCycles = maxCycles;
-   }
-   CommOS_Debug(("%s: Interval millis %u (jif:%u).\n", __FUNCTION__,
-                 intervalMillis, dispatchInterval));
-   CommOS_Debug(("%s: Max cycles %u.\n", __FUNCTION__, dispatchMaxCycles));
+	if (intervalMillis == 0)
+		intervalMillis = 4;
 
-   numCpus = num_present_cpus();
-   dispatchWQ = CreateWorkqueue(dispatchTaskName);
-   if (!dispatchWQ) {
-      CommOS_Log(("%s: Couldn't create %s task(s).\n", __FUNCTION__,
-                  dispatchTaskName));
-      return -1;
-   }
+	dispatchInterval = msecs_to_jiffies(intervalMillis);
+	if (dispatchInterval < 1)
+		dispatchInterval = 1;
 
-   if (aioTaskName) {
-      aioWQ = CreateWorkqueue(aioTaskName);
-      if (!aioWQ) {
-         CommOS_Log(("%s: Couldn't create %s task(s).\n", __FUNCTION__,
-                     aioTaskName));
-         DestroyWorkqueue(dispatchWQ);
-         return -1;
-      }
-   } else {
-      aioWQ = NULL;
-   }
+	if (maxCycles > DISPATCH_MAX_CYCLES)
+		dispatchMaxCycles = DISPATCH_MAX_CYCLES;
+	else if (maxCycles > 0)
+		dispatchMaxCycles = maxCycles;
 
-   running = 1;
-   for (cpu = 0; cpu < numCpus; cpu++) {
-      CommOS_InitWork(&dispatchWorksNow[cpu], DispatchWrapper);
-      CommOS_InitWork(&dispatchWorks[cpu], DispatchWrapper);
-      rc = QueueDelayedWorkOn(cpu, dispatchWQ,
-                              &dispatchWorks[cpu],
-                              dispatchInterval);
-      if (rc != 0) {
-         CommOS_StopIO();
-         return -1;
-      }
-   }
-   CommOS_Log(("%s: Created I/O task(s) successfully.\n", __FUNCTION__));
-   return 0;
+	CommOS_Debug(("%s: Interval millis %u (jif:%u).\n", __func__,
+		      intervalMillis, dispatchInterval));
+	CommOS_Debug(("%s: Max cycles %u.\n", __func__, dispatchMaxCycles));
+
+	dispatchWQ = CreateWorkqueue(dispatchTaskName);
+	if (!dispatchWQ) {
+		CommOS_Log(("%s: Couldn't create %s task(s).\n", __func__,
+			    dispatchTaskName));
+		return -1;
+	}
+
+	if (aioTaskName) {
+		aioWQ = CreateWorkqueue(aioTaskName);
+		if (!aioWQ) {
+			CommOS_Log(("%s: Couldn't create %s task(s).\n",
+				    __func__, aioTaskName));
+			DestroyWorkqueue(dispatchWQ);
+			return -1;
+		}
+	} else {
+		aioWQ = NULL;
+	}
+
+	running = 1;
+	for_each_possible_cpu(cpu) {
+		CommOS_InitWork(&dispatchWorksNow[cpu], DispatchWrapper);
+		CommOS_InitWork(&dispatchWorks[cpu], DispatchWrapper);
+	}
+
+#ifdef CONFIG_HOTPLUG_CPU
+	register_hotcpu_notifier(&CpuNotifier);
+#endif
+
+	get_online_cpus();
+	for_each_online_cpu(cpu)
+		QueueDelayedWorkOn(cpu, dispatchWQ,
+				   &dispatchWorks[cpu],
+				   dispatchInterval);
+	put_online_cpus();
+	CommOS_Log(("%s: Created I/O task(s) successfully.\n", __func__));
+	return 0;
 }
 
 
@@ -350,23 +401,26 @@ CommOS_StartIO(const char *dispatchTaskName,    // IN
 void
 CommOS_StopIO(void)
 {
-   int cpu;
+	int cpu;
 
-   if (running) {
-      running = 0;
-      if (aioWQ) {
-         FlushWorkqueue(aioWQ);
-         DestroyWorkqueue(aioWQ);
-         aioWQ = NULL;
-      }
-      FlushWorkqueue(dispatchWQ);
-      for (cpu = 0; cpu < numCpus; cpu++) {
-         WaitForDelayedWork(&dispatchWorksNow[cpu]);
-         WaitForDelayedWork(&dispatchWorks[cpu]);
-      }
-      DestroyWorkqueue(dispatchWQ);
-      dispatchWQ = NULL;
-      CommOS_Log(("%s: I/O tasks stopped.\n", __FUNCTION__));
-   }
+	if (running) {
+		running = 0;
+		if (aioWQ) {
+			FlushWorkqueue(aioWQ);
+			DestroyWorkqueue(aioWQ);
+			aioWQ = NULL;
+		}
+		FlushWorkqueue(dispatchWQ);
+#ifdef CONFIG_HOTPLUG_CPU
+		unregister_hotcpu_notifier(&CpuNotifier);
+#endif
+		for_each_possible_cpu(cpu) {
+			WaitForDelayedWork(&dispatchWorksNow[cpu]);
+			WaitForDelayedWork(&dispatchWorks[cpu]);
+		}
+		DestroyWorkqueue(dispatchWQ);
+		dispatchWQ = NULL;
+		CommOS_Log(("%s: I/O tasks stopped.\n", __func__));
+	}
 }
 

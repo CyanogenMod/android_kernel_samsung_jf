@@ -26,6 +26,8 @@
 #define K330_REV	11
 #elif defined(CONFIG_MACH_JACTIVE_EUR)
 #define K330_REV	12
+#elif defined(CONFIG_MACH_JFVE_EUR)
+#define K330_REV	0
 #endif
 
 /*************************************************************************/

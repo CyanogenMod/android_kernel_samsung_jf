@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP PVTCP Server
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -63,7 +63,7 @@ enum PvtcpOffPvskFlags {
  */
 
 typedef struct PvtcpOffBuf {
-   CommOSList link;    // Link in socket queue.
+   CommOSList link;    /* Link in socket queue. */
    unsigned short len;
    unsigned short off;
    char data[1];
@@ -216,5 +216,5 @@ PvskSetFlag(struct PvtcpSock *pvsk,
 
 int PvtcpOffSockInit(PvtcpSock *pvsk, CommChannel channel);
 
-#endif // _PVTCP_OFF_H_
+#endif /* _PVTCP_OFF_H_ */
 

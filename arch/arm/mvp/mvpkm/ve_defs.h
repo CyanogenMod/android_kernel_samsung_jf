@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -69,4 +69,4 @@
 #define ARM_VE_HSR_FS_PERM_L2         0xe
 #define ARM_VE_HSR_FS_PERM_L3         0xf
 
-#endif /// ifndef _VE_DEFS_H_
+#endif /* ifndef _VE_DEFS_H_ */

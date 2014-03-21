@@ -43,7 +43,7 @@
 #include <asm/localtimer.h>
 #include <asm/smp_plat.h>
 
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 #include <mach/sec_debug.h>
 #endif
 /*
@@ -507,7 +507,7 @@ static void ipi_cpu_stop(unsigned int cpu)
 		raw_spin_lock(&stop_lock);
 		printk(KERN_CRIT "CPU%u: stopping\n", cpu);
 		dump_stack();
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 		sec_debug_dump_stack();
 #endif
 		raw_spin_unlock(&stop_lock);

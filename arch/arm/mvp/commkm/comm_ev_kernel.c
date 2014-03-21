@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Guest Communications
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -44,44 +44,39 @@ static struct socket *sock;
  * @param eventType event type to raise.
  * @return 0 if successful, -1 otherwise.
  */
-
 int
-CommTranspEvent_Raise(unsigned int targetEvID, // unused
-                      CommTranspID *transpID,
-                      CommTranspIOEvent eventType)
+CommTranspEvent_Raise(unsigned int targetEvID,
+		      CommTranspID *transpID,
+		      CommTranspIOEvent eventType)
 {
-   struct sockaddr_mk guestAddr;
-   struct msghdr msg;
-   struct kvec vec[1];
-   int rc;
-   CommEvent event;
+	struct sockaddr_mk guestAddr;
+	struct msghdr msg;
+	struct kvec vec[1];
+	int rc;
+	CommEvent event;
 
-   if (!transpID) {
-      return -1;
-   }
+	if (!sock || !transpID)
+		return -1;
 
-   guestAddr.mk_family = AF_MKSCK;
-   guestAddr.mk_addr.addr = Mksck_AddrInit(transpID->d32[0], MKSCK_PORT_COMM_EV);
+	(void)targetEvID; /* Currently unused. */
+	guestAddr.mk_family = AF_MKSCK;
+	guestAddr.mk_addr.addr = Mksck_AddrInit(transpID->d32[0],
+						MKSCK_PORT_COMM_EV);
 
-   memset(&msg, 0, sizeof (struct msghdr));
-   msg.msg_name    = &guestAddr;
-   msg.msg_namelen = sizeof (guestAddr);
+	memset(&msg, 0, sizeof (msg));
+	msg.msg_name = &guestAddr;
+	msg.msg_namelen = sizeof (guestAddr);
 
-   event.id = *transpID;
-   event.event = eventType;
+	event.id = *transpID;
+	event.event = eventType;
 
-   vec[0].iov_base = &event;
-   vec[0].iov_len  = sizeof (CommEvent);
+	vec[0].iov_base = &event;
+	vec[0].iov_len  = sizeof (event);
 
-   rc = kernel_sendmsg(sock,
-                       &msg,
-                       vec,
-                       1,
-                       sizeof (CommEvent));
-   rc = (rc < 0) ? -1 : 0;
-   return rc;
+	rc = kernel_sendmsg(sock, &msg, vec, 1, sizeof (event));
+	rc = (rc < 0) ? -1 : 0;
+	return rc;
 }
-
 
 /**
  * @brief Performs one-time, global initialization of event provider.
@@ -90,49 +85,40 @@ CommTranspEvent_Raise(unsigned int targetEvID, // unused
 int
 CommTranspEvent_Init(void)
 {
-   struct sockaddr_mk addr = { AF_MKSCK, { .addr = MKSCK_ADDR_UNDEF } };
-   int rc;
+	struct sockaddr_mk addr = { AF_MKSCK, { .addr = MKSCK_ADDR_UNDEF } };
+	int rc;
 
-   rc = sock_create_kern(AF_MKSCK, SOCK_DGRAM, 0, &sock);
-   if (rc < 0) {
-      goto out;
-   }
+	rc = sock_create_kern(AF_MKSCK, SOCK_DGRAM, 0, &sock);
+	if (rc < 0)
+		goto out;
 
-   rc = kernel_bind(sock, (struct sockaddr *) &addr, sizeof addr);
-   if (rc < 0) {
-      sock_release(sock);
-      sock = NULL;
-      goto out;
-   }
+	rc = kernel_bind(sock, (struct sockaddr *)&addr, sizeof (addr));
+	if (rc < 0) {
+		sock_release(sock);
+		sock = NULL;
+		goto out;
+	}
 
-   Mvpkm_CommEvRegisterProcessCB(CommTranspEvent_Process);
+	Mvpkm_CommEvRegisterProcessCB(CommTranspEvent_Process);
 
 out:
-   if (rc) {
-      CommOS_Log(("%s: Failed to initialize transport event signaling\n",
-                  __FUNCTION__));
-   } else {
-      CommOS_Log(("%s: Transport event signaling initialization successful\n",
-                  __FUNCTION__));
-   }
-   return rc;
+	CommOS_Log(("%s: Event signaling initialization %s\n",
+		    __func__, (rc == 0 ? "succeeded" : "failed")));
+	return rc;
 }
-
 
 /**
  * @brief Performs global clean-up of event provider.
  */
-
 void
 CommTranspEvent_Exit(void)
 {
-   Mvpkm_CommEvUnregisterProcessCB();
-   if (sock) {
-      sock_release(sock);
-      sock = NULL;
-   }
+	Mvpkm_CommEvUnregisterProcessCB();
+	if (sock) {
+		sock_release(sock);
+		sock = NULL;
+	}
 
-   CommOS_Debug(("%s: done.\n", __FUNCTION__));
+	CommOS_Debug(("%s: Exit\n", __func__));
 }
-
 

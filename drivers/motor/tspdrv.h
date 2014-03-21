@@ -42,6 +42,8 @@ extern struct vibrator_platform_data vibrator_drvdata;
 #define MODULE_NAME                         "tspdrv"
 #define TSPDRV                              "/dev/"MODULE_NAME
 #define TSPDRV_MAGIC_NUMBER                 0x494D4D52
+#define TSPDRV_IOCTL_GROUP                  0x52
+#define TSPDRV_SET_MAGIC_NUMBER             _IO(TSPDRV_IOCTL_GROUP, 2)
 #define TSPDRV_STOP_KERNEL_TIMER            _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 1)
 /*
 ** Obsolete IOCTL command

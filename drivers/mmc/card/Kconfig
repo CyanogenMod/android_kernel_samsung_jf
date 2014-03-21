@@ -82,6 +82,22 @@ config MMC_SUPPORT_BKOPS_MODE
 	help
 	  Say Y here to enable the bkops mode
 
+config MMC_BKOPS_NODE_UID
+	int "User ID of BKOPS sysfs node"
+	depends on MMC_SUPPORT_BKOPS_MODE
+	default 0
+	help
+	  Owner user ID of BKOPS sysfs node.
+	  Default is 0. Do not touch the value if unsure.
+
+config MMC_BKOPS_NODE_GID
+	int "Group ID of BKOPS sysfs node"
+	depends on MMC_SUPPORT_BKOPS_MODE
+	default 0
+	help
+	  Owner group ID of BKOPS sysfs node.
+	  Default is 0. Do not touch the value if unsure.
+
 config MMC_BLOCK_TEST
 	tristate "MMC block test"
 	depends on MMC_BLOCK && IOSCHED_TEST

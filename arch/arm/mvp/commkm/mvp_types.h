@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Guest Communications
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -49,16 +49,16 @@ typedef short               int16;
 typedef int                 int32;
 typedef long long           int64;
 
-typedef uint32 CVA;      // whatever we are compiling the code as
-typedef uint32 GVA;      // guest virtual addresses
-typedef uint32 MVA;      // monitor virtual addresses
-typedef uint32 HKVA;     // host kernel virtual addresses
-typedef uint32 HUVA;     // host user virtual addresses
-typedef uint64 PA;       // (guest) physical addresses (40-bit)
-typedef uint32 MA;       // (host) machine addresses
+typedef uint32 CVA;      /* whatever we are compiling the code as */
+typedef uint32 GVA;      /* guest virtual addresses */
+typedef uint32 MVA;      /* monitor virtual addresses */
+typedef uint32 HKVA;     /* host kernel virtual addresses */
+typedef uint32 HUVA;     /* host user virtual addresses */
+typedef uint64 PA;       /* (guest) physical addresses (40-bit) */
+typedef uint32 MA;       /* (host) machine addresses */
 
-typedef uint32 PPN;       // PA/PAGE_SIZE
-typedef uint32 MPN;       // MA/PAGE_SIZE
+typedef uint32 PPN;       /* PA/PAGE_SIZE */
+typedef uint32 MPN;       /* MA/PAGE_SIZE */
 
 typedef uint64 cycle_t;
 
@@ -68,8 +68,8 @@ typedef uint64 cycle_t;
  * Specifies a segment within a single page.
  */
 typedef struct {
-   uint16 off;
-   uint16 len;
+	uint16 off;
+	uint16 len;
 } PageSeg;
 
 /*
@@ -80,13 +80,15 @@ typedef struct {
  */
 
 #if defined(__GNUC__)
-# define PRINTF_DECL(fmtPos, varPos) __attribute__((__format__(__printf__, fmtPos, varPos)))
+# define PRINTF_DECL(fmtPos, varPos) \
+	__attribute__((__format__(__printf__, fmtPos, varPos)))
 #else
 # define PRINTF_DECL(fmtPos, varPos)
 #endif
 
 #if defined(__GNUC__)
-# define SCANF_DECL(fmtPos, varPos) __attribute__((__format__(__scanf__, fmtPos, varPos)))
+# define SCANF_DECL(fmtPos, varPos) \
+	__attribute__((__format__(__scanf__, fmtPos, varPos)))
 #else
 # define SCANF_DECL(fmtPos, varPos)
 #endif

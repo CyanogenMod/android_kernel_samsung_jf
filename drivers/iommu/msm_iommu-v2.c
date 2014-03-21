@@ -673,8 +673,14 @@ irqreturn_t msm_iommu_fault_handler_v2(int irq, void *dev_id)
 							ctx_drvdata->num);
 			pr_err("Interesting registers:\n");
 			print_ctx_regs(drvdata->base, ctx_drvdata->num, fsr);
+#if 1
+			{
+				void xlog_dump(void);
+				xlog_dump();
+				panic("mdp4-debug");
+			}
+#endif
 		}
-
 		SET_FSR(drvdata->base, ctx_drvdata->num, fsr);
 		ret = IRQ_HANDLED;
 	} else

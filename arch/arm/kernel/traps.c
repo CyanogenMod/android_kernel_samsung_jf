@@ -308,7 +308,9 @@ void die(const char *str, struct pt_regs *regs, int err)
 	oops_enter();
 
 	raw_spin_lock_irq(&die_lock);
+#ifdef CONFIG_SEC_DEBUG_SCHED_LOG
 	secdbg_sched_msg("!!die!!");
+#endif
 	console_verbose();
 	bust_spinlocks(1);
 	if (!user_mode(regs))
@@ -319,6 +321,7 @@ void die(const char *str, struct pt_regs *regs, int err)
 #ifdef CONFIG_SEC_DEBUG_SUBSYS
 	sec_debug_save_die_info(str, regs);
 #endif
+
 	if (regs && kexec_should_crash(thread->task))
 		crash_kexec(regs);
 

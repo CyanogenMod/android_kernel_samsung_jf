@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -43,11 +43,11 @@ MksckPage *MksckPage_GetFromTgidIncRefc(void);
 MksckPage *MksckPage_GetFromVmIdIncRefc(Mksck_VmId vmId);
 MksckPage *MksckPage_GetFromIdx(uint32 idx);
 void       MksckPageInfo_Init(struct dentry *parent);
-int        Mksck_WspInitialize(MvpkmVM *vm);
+int        Mksck_WspInitialize(struct MvpkmVM *vm);
 void       Mksck_WspRelease(WorldSwitchPage *wsp);
 int        MksckPage_LookupAndInsertPage(struct vm_area_struct *vma,
-                                         unsigned long address,
-                                         MPN mpn);
+					 unsigned long address,
+					 MPN mpn);
 
 /*
  * Mksck open request must come from this uid.
@@ -56,10 +56,11 @@ extern uid_t Mvpkm_vmwareUid;
 
 #define MKSCK_DEVEL 0
 
+
 #if MKSCK_DEVEL
-#define PRINTK printk
+#define PRINTK(...) pr_info(__VA_ARGS__)
 #else
-#define PRINTK if (0) printk
+#define PRINTK(...)
 #endif
 
 #define HOST_CPUID_UNDEF (~0)

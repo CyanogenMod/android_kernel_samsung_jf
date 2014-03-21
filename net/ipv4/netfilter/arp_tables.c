@@ -269,6 +269,7 @@ unsigned int arpt_do_table(struct sk_buff *skb,
 	outdev = out ? out->name : nulldevname;
 
 	local_bh_disable();
+	get_reader(&(table->private_lock));
 	addend = xt_write_recseq_begin();
 	private = table->private;
 	table_base = private->entries[smp_processor_id()];
@@ -341,6 +342,7 @@ unsigned int arpt_do_table(struct sk_buff *skb,
 			break;
 	} while (!acpar.hotdrop);
 	xt_write_recseq_end(addend);
+	put_reader(&(table->private_lock));
 	local_bh_enable();
 
 	if (acpar.hotdrop)

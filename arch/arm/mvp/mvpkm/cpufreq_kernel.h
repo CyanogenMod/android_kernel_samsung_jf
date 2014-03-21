@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -33,8 +33,8 @@
 
 /* Scaling factors to convert CPU clock cycles to Rate64 value */
 struct TscToRate64Cb {
-   uint32 mult;
-   uint32 shift;
+	uint32 mult;
+	uint32 shift;
 };
 
 void CpuFreq_Init(void);

@@ -1,0 +1,19 @@
+
+menuconfig INPUT_YAS_SENSORS
+	bool "Sensors Support"
+	help
+	  Say Y to enable Sensors support.  This allows control of supported
+	  Sensors.
+
+if INPUT_YAS_SENSORS
+source "drivers/sensors/geomagnetic/Kconfig"
+source "drivers/sensors/optical/Kconfig"
+endif # INPUT_YAS_SENSORS
+
+config SENSORS_CORE
+         bool "sensors_core"
+         depends on I2C
+
+config SENSOR_USE_SYMLINK
+         bool "sensors_symlink"
+         depends on I2C

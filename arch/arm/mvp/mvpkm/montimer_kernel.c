@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -24,10 +24,10 @@
  *  @brief MVP host kernel implementation of monitor timers
  *
  * The monitor sends requests that are simply a 64-bit absolute time that it
- * wants a reply.  If it changes its mind, it simply sends a different 64-bit
- * absolute time.  It is tolerant of us replying too soon, so if we miss the
+ * wants a reply. If it changes its mind, it simply sends a different 64-bit
+ * absolute time. It is tolerant of us replying too soon, so if we miss the
  * update to a later time, it doesn't matter, the monitor will re-send the
- * request for the later time.  The only time we should miss an update to a
+ * request for the later time.  The only time we could miss an update to a
  * sooner time is when we are about to send the reply to the old time anyway,
  * in which case the monitor sees a reply as quickly as we can generate them,
  * so no harm there either.
@@ -49,9 +49,11 @@
 static enum hrtimer_restart
 MonitorTimerCB(struct hrtimer *timer)
 {
-   MvpkmVM *vm = container_of(timer, MvpkmVM, monTimer.timer);
-   Mvpkm_WakeGuest(vm, ACTION_TIMER);
-   return HRTIMER_NORESTART;
+	struct MvpkmVM *vm = container_of(timer, struct MvpkmVM,
+					  monTimer.timer);
+
+	Mvpkm_WakeGuest(vm, ACTION_TIMER);
+	return HRTIMER_NORESTART;
 }
 
 /**
@@ -59,13 +61,13 @@ MonitorTimerCB(struct hrtimer *timer)
  * @param vm  which virtual machine we're running
  */
 void
-MonitorTimer_Setup(MvpkmVM *vm)
+MonitorTimer_Setup(struct MvpkmVM *vm)
 {
-   MonTimer *monTimer = &vm->monTimer;
-   monTimer->vm = vm;
+	struct MonTimer *monTimer = &vm->monTimer;
 
-   hrtimer_init(&monTimer->timer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
-   monTimer->timer.function = MonitorTimerCB;
+	monTimer->vm = vm;
+	hrtimer_init(&monTimer->timer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
+	monTimer->timer.function = MonitorTimerCB;
 }
 
 /**
@@ -74,30 +76,32 @@ MonitorTimer_Setup(MvpkmVM *vm)
  * @param when64 Timer target value
  */
 void
-MonitorTimer_Request(MonTimer *monTimer, uint64 when64)
+MonitorTimer_Request(struct MonTimer *monTimer,
+		     uint64 when64)
 {
-   if (when64) {
-      ktime_t kt;
+	if (when64) {
+		ktime_t kt;
 
-      /*
-       * Simple conversion, assuming RATE64 is 1e+9
-       */
-      kt = ns_to_ktime(when64);
-      ASSERT_ON_COMPILE(MVP_TIMER_RATE64 == 1000000000);
+		/*
+		 * Simple conversion, assuming RATE64 is 1e+9
+		 */
+		kt = ns_to_ktime(when64);
+		ASSERT_ON_COMPILE(MVP_TIMER_RATE64 == 1000000000);
 
-      /*
-       * Start the timer.  If it was already active, it will remove
-       * the previous expiration time.  Linux handles correctly timer
-       * with deadline in the past, and forces a safety minimal delta
-       * for closer timer deadlines.
-       */
-      hrtimer_start(&monTimer->timer, kt, HRTIMER_MODE_ABS);
-   } else {
-      /*
-       * Cancel a pending request.  If there is none, this will do nothing.
-       * If it's too late, monitor tolerance will forgive us.
-       */
-      hrtimer_cancel(&monTimer->timer);
-   }
+		/*
+		 * Start the timer.  If it was already active, it will remove
+		 * the previous expiration time.  Linux handles correctly timer
+		 * with deadline in the past, and forces a safety minimal delta
+		 * for closer timer deadlines.
+		 */
+		hrtimer_start(&monTimer->timer, kt, HRTIMER_MODE_ABS);
+	} else {
+		/*
+		 * Cancel a pending request. If there is none, this will do
+		 * nothing.  If it's too late, monitor tolerance will forgive
+		 * us.
+		 */
+		hrtimer_cancel(&monTimer->timer);
+	}
 }
 

@@ -212,6 +212,8 @@ void SCLKHigh(void)
 		gpio_direction_output(GPIO_TOUCHKEY_SCL, 1);
 	else
 		gpio_direction_output(GPIO_TOUCHKEY_SCL_2, 1);
+#elif defined(CONFIG_MACH_JFVE_EUR)
+	gpio_direction_output(GPIO_TOUCHKEY_SCL_2, 1);
 #else
 	if (system_rev < 10)
 		gpio_direction_output(GPIO_TOUCHKEY_SCL, 1);
@@ -239,6 +241,8 @@ void SCLKLow(void)
 		gpio_direction_output(GPIO_TOUCHKEY_SCL, 0);
 	else
 		gpio_direction_output(GPIO_TOUCHKEY_SCL_2, 0);
+#elif defined(CONFIG_MACH_JFVE_EUR)
+	gpio_direction_output(GPIO_TOUCHKEY_SCL_2, 0);
 #else
 	if (system_rev < 10)
 		gpio_direction_output(GPIO_TOUCHKEY_SCL, 0);
@@ -267,6 +271,8 @@ void SetSCLKHiZ(void)
 		gpio_direction_input(GPIO_TOUCHKEY_SCL);
 	else
 		gpio_direction_input(GPIO_TOUCHKEY_SCL_2);
+#elif defined(CONFIG_MACH_JFVE_EUR)
+	gpio_direction_input(GPIO_TOUCHKEY_SCL_2);
 #else
 	if (system_rev < 10)
 		gpio_direction_input(GPIO_TOUCHKEY_SCL);
@@ -296,6 +302,8 @@ void SetSCLKStrong(void)
 		gpio_direction_output(GPIO_TOUCHKEY_SCL, 0);
 	else
 		gpio_direction_output(GPIO_TOUCHKEY_SCL_2, 0);
+#elif defined(CONFIG_MACH_JFVE_EUR)
+	gpio_direction_output(GPIO_TOUCHKEY_SCL_2, 0);
 #else
 	if (system_rev < 10)
 		gpio_direction_output(GPIO_TOUCHKEY_SCL, 0);

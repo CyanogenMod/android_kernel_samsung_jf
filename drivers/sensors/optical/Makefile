@@ -1,0 +1,1 @@
+obj-$(CONFIG_OPTICAL_TAOS_TMD3782)		+= taos_tmd3782.o

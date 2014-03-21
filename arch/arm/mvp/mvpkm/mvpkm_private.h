@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -46,12 +46,12 @@
  * may conflict.
  */
 #define MVP_IOCTL_LETTER '9'
-#define MVPKM_DISABLE_FAULT  _IO( MVP_IOCTL_LETTER, 0xa0)
+#define MVPKM_DISABLE_FAULT  _IO(MVP_IOCTL_LETTER, 0xa0)
 #define MVPKM_LOCK_MPN       _IOW(MVP_IOCTL_LETTER, 0xa1, MvpkmLockMPN)
 #define MVPKM_UNLOCK_MPN     _IOW(MVP_IOCTL_LETTER, 0xa2, MvpkmLockMPN)
-#define MVPKM_RUN_MONITOR    _IO( MVP_IOCTL_LETTER, 0xa3)
+#define MVPKM_RUN_MONITOR    _IO(MVP_IOCTL_LETTER, 0xa3)
 #define MVPKM_CPU_INFO       _IOR(MVP_IOCTL_LETTER, 0xa4, MvpkmCpuInfo)
-#define MVPKM_ABORT_MONITOR  _IO( MVP_IOCTL_LETTER, 0xa5)
+#define MVPKM_ABORT_MONITOR  _IO(MVP_IOCTL_LETTER, 0xa5)
 #define MVPKM_MAP_WSPHKVA    _IOW(MVP_IOCTL_LETTER, 0xa7, MvpkmMapHKVA)
 
 #include "mksck.h"
@@ -62,18 +62,18 @@
  * @brief Operand for the MVPKM_LOCK_MPN call
  */
 typedef struct MvpkmLockMPN {
-   uint32  order;  /* IN  */
-   PhysMem_RegionType forRegion;  /* IN */
-   uint32  mpn;    /* OUT */
+	uint32  order;  /* IN  */
+	PhysMem_RegionType forRegion;  /* IN */
+	uint32  mpn;    /* OUT */
 } MvpkmLockMPN;
 
 /**
  * @brief Operand for the MVPKM_MAP_HKVA call
  */
 typedef struct MvpkmMapHKVA {
-   HkvaMapInfo *mapInfo;  /* IN */
-   PhysMem_RegionType forRegion;  /* IN */
-   HKVA hkva;    /* OUT */
+	HkvaMapInfo *mapInfo;  /* IN */
+	PhysMem_RegionType forRegion;  /* IN */
+	HKVA hkva;    /* OUT */
 } MvpkmMapHKVA;
 
 #define WSP_PAGE_COUNT            2
@@ -82,9 +82,9 @@ typedef struct MvpkmMapHKVA {
  * @brief Operand for the MVPKM_CPU_INFO call
  */
 typedef struct MvpkmCpuInfo {
-   ARM_L2D attribL2D;           /* OUT */
-   ARM_MemAttrNormal attribMAN; /* OUT */
-   _Bool mpExt;                 /* OUT */
+	ARM_L2D attribL2D;           /* OUT */
+	ARM_MemAttrNormal attribMAN; /* OUT */
+	_Bool mpExt;                 /* OUT */
 } MvpkmCpuInfo;
 
 /**

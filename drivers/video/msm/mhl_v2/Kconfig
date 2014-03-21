@@ -1,5 +1,7 @@
 # mhl drivers configuration
-#
+# driver/video/msm/mhl_v2/Kconfig
+# Copyright (c) 2011 Samsung Electronics Co., Ltd.
+#	 http://www.samsung.com
 
 menu "Mhl(sii8240) device support"
 
@@ -8,7 +10,7 @@ config VIDEO_MHL_V2
 	depends on MSM_VIDC && ARCH_MSM
 	default n
 	---help---
-	Support for MHL version2 chipset driver. This is a new version of
+	Support for MHL version2 driver. This is a new version of
 	mhl which has the required functionality to support mhl 2.0 spec
 	required.
 	Say Y here if this support mhl_version2
@@ -54,7 +56,12 @@ config MHL_VERSION
 	---help---
 	MHL Version
 	For example, those device compliant
-	with MHL Specification version 2.0 
+	with MHL Specification version 2.0
 	shell set this MHL_VERSION to 0x20
 
+config MHL_D3_SUPPORT
+	bool "Support D3 mode in mhl"
+	default n
+	---help---
+	Power saving mode of MHL chip
 endmenu

@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -30,19 +30,19 @@
 
 /*
  * Minimum kernel version
- * - network namespace support is only really functional starting in 2.6.29
- * - Android Gingerbread requires 2.6.35
  */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
-#error "MVP requires a host kernel newer than 2.6.35"
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 0, 0)
+#error "MVP requires a host kernel newer than 3.0.0"
 #endif
 
 /* module loading ability */
 #ifndef CONFIG_MODULES
-#error "MVP requires kernel loadable module support be enabled (CONFIG_MODULES)"
+#error "MVP requires kernel loadable module support be enabled " \
+	"(CONFIG_MODULES)"
 #endif
 #ifndef CONFIG_MODULE_UNLOAD
-#error "MVP requires kernel module unload support be enabled (CONFIG_MODULE_UNLOAD)"
+#error "MVP requires kernel module unload support be enabled " \
+	"(CONFIG_MODULE_UNLOAD)"
 #endif
 
 /* sysfs */
@@ -52,18 +52,18 @@
 
 /* network traffic isolation */
 #ifndef CONFIG_NAMESPACES
-#error "MVP networking support requires namespace support (CONFIG_NAMESPACES)"
+#error "MVP requires namespace support (CONFIG_NAMESPACES)"
 #endif
 #ifndef CONFIG_NET_NS
-#error "MVP networking support requires Network Namespace support to be enabled (CONFIG_NET_NS)"
+#error "MVP requires network namespace support (CONFIG_NET_NS)"
 #endif
 
 /* TCP/IP networking */
 #ifndef CONFIG_INET
-#error "MVP networking requires IPv4 support (CONFIG_INET)"
+#error "MVP requires IPv4 support (CONFIG_INET)"
 #endif
 #ifndef CONFIG_IPV6
-#error "MVP networking requires IPv6 support (CONFIG_IPV6)"
+#error "MVP requires IPv6 support (CONFIG_IPV6)"
 #endif
 
 /* VPN support */
@@ -72,20 +72,22 @@
 #endif
 
 #if !defined(CONFIG_NETFILTER) && !defined(PVTCP_DISABLE_NETFILTER)
-#error "MVP networking support requires netfilter support (CONFIG_NETFILTER)"
+#error "MVP requires netfilter support (CONFIG_NETFILTER)"
 #endif
 
 /* Force /proc/config.gz support for eng/userdebug builds */
 #ifdef MVP_DEBUG
 #if !defined(CONFIG_IKCONFIG) || !defined(CONFIG_IKCONFIG_PROC)
-#error "MVP kernel /proc/config.gz support required for debuggability (CONFIG_IKCONFIG_PROC)"
+#error "MVP_DEBUG requires /proc/config.gz support (CONFIG_IKCONFIG_PROC)"
 #endif
 #endif
 
 /* Sanity check we're only dealing with the memory hotplug + migrate and/or
  * compaction combo */
 #ifdef CONFIG_MIGRATION
-#if defined(CONFIG_NUMA) || defined(CONFIG_CPUSETS) || defined(CONFIG_MEMORY_FAILURE)
-#error "MVP not tested with migration features other than CONFIG_MEMORY_HOTPLUG and CONFIG_COMPACTION"
+#if defined(CONFIG_NUMA) || defined(CONFIG_CPUSETS) || \
+	defined(CONFIG_MEMORY_FAILURE)
+#error "MVP not tested with migration features other than " \
+	"CONFIG_MEMORY_HOTPLUG and CONFIG_COMPACTION"
 #endif
 #endif

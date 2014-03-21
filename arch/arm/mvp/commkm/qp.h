@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Guest Communications
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -101,59 +101,60 @@
 #define INCLUDE_ALLOW_GPL
 #include "include_check.h"
 
-//#define QP_DEBUG 1
+/*#define QP_DEBUG 1 */
 
 typedef enum QPState {
-   QP_STATE_FREE = 0x1,          ///< No peers, not memory-backed
-   QP_STATE_CONNECTED,           ///< Both peers attached , memory backed
-   QP_STATE_GUEST_ATTACHED,      ///< Guest allocated memory, host not yet attached
-   QP_STATE_MAX                  // leave this at the end!
+	QP_STATE_FREE = 0x1,	/**< No peers, not memory-backed */
+	QP_STATE_CONNECTED,	/**< Both peers attached , memory backed */
+	/**< Guest allocated memory, host not yet attached */
+	QP_STATE_GUEST_ATTACHED,
+	QP_STATE_MAX		/* leave this at the end! */
 } QPState;
 
 typedef struct QPId {
-   uint32 context;
-   uint32 resource;
+	uint32 context;
+	uint32 resource;
 } QPId;
 
 /*
  * Initialization arguments for each queue pair
  */
 typedef struct QPInitArgs {
-   QPId id;                  ///< Shared memory region ID
-   uint32 capacity;          ///< Total size of shared region in bytes
-   uint32 type;              ///< Type of queue pair (PVTCP, other)...
+	QPId id;                  /**< Shared memory region ID */
+	uint32 capacity;          /**< Total size of shared region in bytes */
+	uint32 type;              /**< Type of queue pair (PVTCP, other)... */
 } QPInitArgs;
 
 /*
  * Placed on the shared region, two per region
  */
 typedef struct QHandle {
-   volatile uint32 head;                    ///< queue head offset
-   volatile uint32 tail;                    ///< queue tail offset
-   volatile uint32 phantom_head;            ///< queue shadow head offset
-   volatile uint32 phantom_tail;            ///< queue shadow tail offset
-   uint8 data[0];                           ///< start of data, runs off
-                                            //        the struct
+	volatile uint32 head;		/**< queue head offset */
+	volatile uint32 tail;		/**< queue tail offset */
+	volatile uint32 phantom_head;	/**< queue shadow head offset */
+	volatile uint32 phantom_tail;	/**< queue shadow tail offset */
+	uint8 data[0];			/**< start of data, runs off */
+					/*        the struct */
 } QHandle;
 
 /*
  * Local to each peer
  */
 typedef struct QPHandle {
-   QPId          id;                        ///< shared memory region ID
-   uint32        capacity;                  ///< size of region in bytes
-   QHandle      *produceQ;                  ///< producer queue
-   QHandle      *consumeQ;                  ///< consumer queue
-   uint32        queueSize;                 ///< size of each queue in bytes
-   uint32        type;                      ///< type of queue pair
+	QPId id;			/**< shared memory region ID */
+	uint32 capacity;		/**< size of region in bytes */
+	QHandle *produceQ;		/**< producer queue */
+	QHandle *consumeQ;		/**< consumer queue */
+	uint32 queueSize;		/**< size of each queue in bytes */
+	uint32 type;			/**< type of queue pair */
 
-   /*
-    * Following fields unused by guest
-    */
-   QPState       state;
-   void        (*peerDetachCB)(void* data); ///< detach notification callback
-   void         *detachData;                ///< data for the detach cb
-   struct page  **pages;                    ///< page pointers for shared region
+	/*
+	 * Following fields unused by guest
+	 */
+	QPState state;
+	void (*peerDetachCB)(void *data);/**< detach notification callback */
+	void *detachData;		/**< data for the detach cb */
+	struct page **pages;		/**< page pointers for shared region */
 } QPHandle;
 
 /*
@@ -169,11 +170,11 @@ typedef struct QPHandle {
  * Hard-coded limits
  */
 #define QP_MIN_CAPACITY            (PAGE_SIZE * 2)
-#define QP_MAX_CAPACITY            (1024*1024)                 // 1M
+#define QP_MAX_CAPACITY            (1024*1024)                 /* 1M */
 #define QP_MAX_QUEUE_PAIRS         32
 #define QP_MAX_ID                  QP_MAX_QUEUE_PAIRS
 #define QP_MAX_LISTENERS           QP_MAX_QUEUE_PAIRS
-#define QP_MAX_PAGES               (QP_MAX_CAPACITY/PAGE_SIZE) // 256 pages
+#define QP_MAX_PAGES               (QP_MAX_CAPACITY/PAGE_SIZE) /* 256 pages */
 
 #define QP_INVALID_ID              0xFFFFFFFF
 #define QP_INVALID_SIZE            0xFFFFFFFF
@@ -189,16 +190,16 @@ typedef struct QPHandle {
 static inline
 _Bool QP_CheckArgs(QPInitArgs *args)
 {
-   if (!args                                                                  ||
-       !is_power_of_2(args->capacity)                                         ||
-        (args->capacity < QP_MIN_CAPACITY)                                    ||
-        (args->capacity > QP_MAX_CAPACITY)                                    ||
-       !(args->id.resource < QP_MAX_ID || args->id.resource == QP_INVALID_ID) ||
-        (args->type == QP_INVALID_TYPE)) {
-      return false;
-   } else {
-      return true;
-   }
+	if (!args ||
+	    !is_power_of_2(args->capacity) ||
+	    (args->capacity < QP_MIN_CAPACITY) ||
+	    (args->capacity > QP_MAX_CAPACITY) ||
+	    !(args->id.resource < QP_MAX_ID ||
+	      args->id.resource == QP_INVALID_ID) ||
+	    (args->type == QP_INVALID_TYPE))
+		return false;
+	else
+		return true;
 }
 #endif
 
@@ -212,17 +213,16 @@ static inline
 _Bool QP_CheckHandle(QPHandle *qp)
 {
 #ifdef MVP_DEBUG
-   if (!(qp)                                            ||
-       !(qp->produceQ)                                  ||
-       !(qp->consumeQ)                                  ||
-        (qp->state >= (uint32)QP_STATE_MAX)             ||
-       !(qp->queueSize < (QP_MAX_CAPACITY/2))) {
-      return false;
-   } else {
-      return true;
-   }
+	if (!(qp)                                            ||
+	    !(qp->produceQ)                                  ||
+	    !(qp->consumeQ)                                  ||
+	    (qp->state >= (uint32)QP_STATE_MAX)             ||
+	    !(qp->queueSize < (QP_MAX_CAPACITY/2)))
+		return false;
+	else
+		return true;
 #else
-   return true;
+	return true;
 #endif
 }
 
@@ -234,36 +234,35 @@ _Bool QP_CheckHandle(QPHandle *qp)
 static inline void
 QP_MakeInvalidQPHandle(QPHandle *qp)
 {
-   if (!qp) {
-      return;
-   }
+	if (!qp)
+		return;
 
-   qp->id.context       = QP_INVALID_ID;
-   qp->id.resource      = QP_INVALID_ID;
-   qp->capacity         = QP_INVALID_SIZE;
-   qp->produceQ         = NULL;
-   qp->consumeQ         = NULL;
-   qp->queueSize        = QP_INVALID_SIZE;
-   qp->type             = QP_INVALID_TYPE;
-   qp->state            = QP_STATE_FREE;
-   qp->peerDetachCB     = NULL;
-   qp->detachData       = NULL;
+	qp->id.context       = QP_INVALID_ID;
+	qp->id.resource      = QP_INVALID_ID;
+	qp->capacity         = QP_INVALID_SIZE;
+	qp->produceQ         = NULL;
+	qp->consumeQ         = NULL;
+	qp->queueSize        = QP_INVALID_SIZE;
+	qp->type             = QP_INVALID_TYPE;
+	qp->state            = QP_STATE_FREE;
+	qp->peerDetachCB     = NULL;
+	qp->detachData       = NULL;
 }
 
 /*
  * Host only
  */
-typedef int32 (*QPListener)(const QPInitArgs*);
+typedef int32 (*QPListener)(const QPInitArgs *);
 int32 QP_RegisterListener(const QPListener);
 int32 QP_UnregisterListener(const QPListener);
-int32 QP_RegisterDetachCB(QPHandle *qp, void (*callback)(void*), void *data);
+int32 QP_RegisterDetachCB(QPHandle *qp, void (*callback)(void *), void *data);
 
 
 /*
  * Host and guest specific implementations, see qp_host.c and qp_guest.c
  */
-int32 QP_Attach(QPInitArgs *args, QPHandle** qp);
-int32 QP_Detach(QPHandle* qp);
+int32 QP_Attach(QPInitArgs *args, QPHandle **qp);
+int32 QP_Detach(QPHandle *qp);
 int32 QP_Notify(QPInitArgs *args);
 
 /*
@@ -282,11 +281,15 @@ int32 QP_DequeueCommit(QPHandle *qp);
 /*
  * HVC methods and signatures
  */
-#define MVP_QP_SIGNATURE       0x53525051                   ///< 'QPRS'
-#define MVP_QP_ATTACH          (MVP_OBJECT_CUSTOM_BASE + 0) ///< attach to a queue pair
-#define MVP_QP_DETACH          (MVP_OBJECT_CUSTOM_BASE + 1) ///< detach from a queue pair
-#define MVP_QP_NOTIFY          (MVP_OBJECT_CUSTOM_BASE + 2) ///< notify host of attach
-#define MVP_QP_LAST            (MVP_OBJECT_CUSTOM_BASE + 3) ///< Number of methods
+#define MVP_QP_SIGNATURE 0x53525051                   /**< 'QPRS' */
+#define MVP_QP_ATTACH \
+	(MVP_OBJECT_CUSTOM_BASE + 0) /**< attach to a queue pair */
+#define MVP_QP_DETACH \
+	(MVP_OBJECT_CUSTOM_BASE + 1) /**< detach from a queue pair */
+#define MVP_QP_NOTIFY \
+	(MVP_OBJECT_CUSTOM_BASE + 2) /**< notify host of attach */
+#define MVP_QP_LAST \
+	(MVP_OBJECT_CUSTOM_BASE + 3) /**< Number of methods */
 
 /*
  * Debug macros
@@ -295,7 +298,7 @@ int32 QP_DequeueCommit(QPHandle *qp);
    #ifdef IN_MONITOR
       #define QP_DBG(...) Log(__VA_ARGS__)
    #else
-      #define QP_DBG(...) printk(KERN_INFO __VA_ARGS__)
+      #define QP_DBG(...) pr_info(__VA_ARGS__)
    #endif
 #else
    #define QP_DBG(...)

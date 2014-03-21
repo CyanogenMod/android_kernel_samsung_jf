@@ -65,7 +65,7 @@ tima_uevent_read(struct file *filp, char __user *buff,
     char tima_uevent[80] = "TIMA uevent read";
     char *data;
     int size = strlen(tima_uevent);
-    int retval;
+    int retval = 0;
 
     if ( !tima_uevent_validate() ) { 
         printk(KERN_ERR
@@ -92,14 +92,18 @@ tima_uevent_read(struct file *filp, char __user *buff,
 out:
     spin_unlock(&tima_uevent_list_lock);
     kfree(data);
-    return size;
+    	if (retval) {
+		return retval;
+	} else {
+		return size;
+	}
 }
 
 static ssize_t
 tima_uevent_write(struct file *filp, const char __user *buff,
         size_t len, loff_t * off)
 {
-    int retval;
+    int retval = 0;
     char *req;
 
     if ( !tima_uevent_validate() ) { 
@@ -152,7 +156,7 @@ struct miscdevice tima_uevent_mdev = {
 
 static int __init tima_uevent_init(void)
 {
-    int retval;
+    int retval = 0;
 
     retval = misc_register(&tima_uevent_mdev);
     if (retval)
@@ -165,13 +169,6 @@ static int __init tima_uevent_init(void)
         goto error;
     }
 
-    /* register this tima device with the driver core */
-    tima_uevent_dev = kzalloc(sizeof(struct device), GFP_KERNEL);
-    if (unlikely(!tima_uevent_dev)) {
-        retval = -ENOMEM;
-        goto error;
-    }
-
     tima_uevent_dev = device_create(tima_uevent_class,
             NULL /* parent */, 0 /* dev_t */, NULL /* drvdata */,
             TIMA_UEVENT_DEV);
@@ -179,7 +176,7 @@ static int __init tima_uevent_init(void)
         retval = PTR_ERR(tima_uevent_dev);
         goto error_destroy;
     }
-
+    /* register this tima device with the driver core */
     retval = device_create_file(tima_uevent_dev, &dev_attr_name);
     if (retval)
         goto error_destroy;

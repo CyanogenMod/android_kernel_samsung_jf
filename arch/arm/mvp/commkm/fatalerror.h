@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Guest Communications
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -46,13 +46,13 @@ extern "C" {
 #endif
 
 enum FECode {
-   FECodeMisc,    ///< generic FATAL() call of sorts
-   FECodeOOM,     ///< FATAL_OOM() call of sorts
-   FECodeAssert,  ///< ASSERT() call of sorts
-   FECodeNR,      ///< NOT_REACHED() call of sorts
-   FECodeNI,      ///< NOT_IMPLEMENTED() call of sorts
-   FECodeNT,      ///< NOT_TESTED() call of sorts
-   FECodeCF       ///< COMPILE_FAIL() call of sorts
+	FECodeMisc,    /**< generic FATAL() call of sorts */
+	FECodeOOM,     /**< FATAL_OOM() call of sorts */
+	FECodeAssert,  /**< ASSERT() call of sorts */
+	FECodeNR,      /**< NOT_REACHED() call of sorts */
+	FECodeNI,      /**< NOT_IMPLEMENTED() call of sorts */
+	FECodeNT,      /**< NOT_TESTED() call of sorts */
+	FECodeCF       /**< COMPILE_FAIL() call of sorts */
 };
 typedef enum FECode FECode;
 
@@ -63,59 +63,65 @@ typedef enum FECode FECode;
 
 extern _Bool FatalError_hit;
 
-void NORETURN FatalError(char const *file,
-                         int line,
-                         FECode feCode,
-                         int bugno,
-                         char const *fmt,
-                         ...) FORMAT(printf,5,6);
+void NORETURN
+FatalError(char const *file,
+	   int line,
+	   FECode feCode,
+	   int bugno,
+	   char const *fmt,
+	   ...) FORMAT(printf, 5, 6);
 
-#define FATALERROR_COMMON(printFunc,                            \
-                          printFuncV,                           \
-                          file,                                 \
-                          line,                                 \
-                          feCode,                               \
-                          bugno,                                \
-                          fmt) {                                \
-      va_list ap;                                               \
-                                                                \
-      printFunc("FatalError: %s:%d, code %d, bugno %d\n",       \
-                file, line, feCode, bugno);                     \
-      if (fmt != NULL) {                                        \
-         va_start(ap, fmt);                                     \
-         printFuncV(fmt, ap);                                   \
-         va_end(ap);                                            \
-      }                                                         \
-   }
+#define FATALERROR_COMMON(printFunc,				\
+			  printFuncV,				\
+			  file,					\
+			  line,					\
+			  feCode,				\
+			  bugno,				\
+			  fmt)					\
+{								\
+	va_list ap;						\
+								\
+	printFunc("FatalError: %s:%d, code %d, bugno %d\n",	\
+		  file, line, feCode, bugno);			\
+	if (fmt != NULL) {					\
+		va_start(ap, fmt);				\
+		printFuncV(fmt, ap);				\
+		va_end(ap);					\
+	}							\
+}
 
 #if defined IN_HOSTUSER || defined IN_GUESTUSER || defined IN_WORKSTATION
 
-#define FATALERROR_POSIX_USER \
-void \
-FatalError_VErrPrintf(const char *fmt, va_list ap) \
-{ \
-   vfprintf(stderr, fmt, ap); \
-} \
-\
-void \
-FatalError_ErrPrintf(const char *fmt, ...) \
-{ \
-   va_list ap; \
-   va_start(ap, fmt); \
-   FatalError_VErrPrintf(fmt, ap); \
-   va_end(ap); \
-} \
-\
-void NORETURN \
-FatalError(char const *file, \
-           int line, \
-           FECode feCode, \
-           int bugno, \
-           const char *fmt, \
-           ...) \
-{ \
-   FATALERROR_COMMON(FatalError_ErrPrintf, FatalError_VErrPrintf, file, line, feCode, bugno, fmt); \
-   exit(EXIT_FAILURE); \
+#define FATALERROR_POSIX_USER			\
+void						\
+FatalError_VErrPrintf(const char *fmt,		\
+		      va_list ap)		\
+{						\
+	vfprintf(stderr, fmt, ap);		\
+}						\
+						\
+void						\
+FatalError_ErrPrintf(const char *fmt, ...)	\
+{						\
+	va_list ap;				\
+	va_start(ap, fmt);			\
+	FatalError_VErrPrintf(fmt, ap);		\
+	va_end(ap);				\
+}						\
+						\
+void NORETURN					\
+FatalError(char const *file,			\
+	   int line,				\
+	   FECode feCode,			\
+	   int bugno,				\
+	   const char *fmt,			\
+	   ...)					\
+{						\
+	FATALERROR_COMMON(FatalError_ErrPrintf,	\
+			  FatalError_VErrPrintf,\
+			  file, line, feCode,	\
+			  bugno, fmt);		\
+	exit(EXIT_FAILURE);			\
 }
 #endif
 

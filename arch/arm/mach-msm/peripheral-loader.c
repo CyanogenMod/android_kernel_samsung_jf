@@ -263,6 +263,7 @@ static int load_image(struct pil_device *pil)
 	if (ret) {
 		dev_err(&pil->dev, "%s: Failed to locate %s\n",
 				pil->desc->name, fw_name);
+
 		goto out;
 	}
 

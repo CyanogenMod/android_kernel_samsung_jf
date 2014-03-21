@@ -149,6 +149,7 @@ struct machine_desc *machine_desc __initdata;
 #ifdef CONFIG_SEC_DEBUG_SUBSYS
 const char *unit_name;
 EXPORT_SYMBOL(unit_name);
+
 #endif
 
 static char default_command_line[COMMAND_LINE_SIZE] __initdata = CONFIG_CMDLINE;

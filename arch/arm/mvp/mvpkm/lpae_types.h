@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP Hypervisor Support
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -43,82 +43,82 @@
  * @{
  */
 
-#define LOWER_PAGE_ATTRIBUTES_STAGE1 \
-   uint64 attrIndx : 3; \
-   uint64 ns       : 1; \
-   uint64 ap       : 2; \
-   uint64 sh       : 2; \
-   uint64 af       : 1; \
-   uint64 ng       : 1;
+#define LOWER_PAGE_ATTRIBUTES_STAGE1	\
+	uint64 attrIndx:3;		\
+	uint64 ns:1;			\
+	uint64 ap:2;			\
+	uint64 sh:2;			\
+	uint64 af:1;			\
+	uint64 ng:1;
 
-#define LOWER_PAGE_ATTRIBUTES_STAGE2 \
-   uint64 memAttr  : 4; \
-   uint64 hap      : 2; \
-   uint64 sh       : 2; \
-   uint64 af       : 1; \
-   uint64 sbzL     : 1;
+#define LOWER_PAGE_ATTRIBUTES_STAGE2	\
+	uint64 memAttr:4;		\
+	uint64 hap:2;			\
+	uint64 sh:2;			\
+	uint64 af:1;			\
+	uint64 sbzL:1;
 
-#define UPPER_PAGE_ATTRIBUTES_STAGE1 \
-   uint64 contig : 1; \
-   uint64 pxn    : 1; \
-   uint64 xn     : 1; \
-   uint64 sw     : 4; \
-   uint64 ignU   : 5;
+#define UPPER_PAGE_ATTRIBUTES_STAGE1	\
+	uint64 contig:1;		\
+	uint64 pxn:1;			\
+	uint64 xn:1;			\
+	uint64 sw:4;			\
+	uint64 ignU:5;
 
-#define UPPER_PAGE_ATTRIBUTES_STAGE2 \
-   uint64 contig : 1; \
-   uint64 sbzU   : 1; \
-   uint64 xn     : 1; \
-   uint64 sw     : 4; \
-   uint64 ignU   : 5;
-
-
-#define ARM_LPAE_DESC_TYPE(lvl,blen,sbzpad) \
-   typedef union { \
-      uint64 u; \
- \
-      struct { \
-         uint64 type  : 2;\
-         uint64 ign   : 62; \
-      } x; \
- \
-      struct { \
-         uint64 type  : 2;\
-         LOWER_PAGE_ATTRIBUTES_STAGE1 \
-         sbzpad \
-         uint64 base  : blen; \
-         uint64 sbz   : 12; \
-         UPPER_PAGE_ATTRIBUTES_STAGE1 \
-      } blockS1; \
- \
-      struct { \
-         uint64 type  : 2;\
-         LOWER_PAGE_ATTRIBUTES_STAGE2 \
-         sbzpad \
-         uint64 base  : blen; \
-         uint64 sbz   : 12; \
-         UPPER_PAGE_ATTRIBUTES_STAGE2 \
-      } blockS2; \
- \
-      struct { \
-         uint64 type : 2;\
-         uint64 ign0 : 10; \
-         uint64 base : 28; \
-         uint64 sbz  : 12; \
-         uint64 ign1 : 7; \
-         uint64 pxn  : 1; \
-         uint64 xn   : 1; \
-         uint64 ap   : 2; \
-         uint64 ns   : 1; \
-      } table; \
- \
-   } ARM_LPAE_L##lvl##D;
+#define UPPER_PAGE_ATTRIBUTES_STAGE2	\
+	uint64 contig:1;		\
+	uint64 sbzU:1;			\
+	uint64 xn:1;			\
+	uint64 sw:4;			\
+	uint64 ignU:5;
 
 
-ARM_LPAE_DESC_TYPE(1, ARM_LPAE_L1D_BLOCK_BITS, uint64 sbzP : 18;)
-ARM_LPAE_DESC_TYPE(2, ARM_LPAE_L2D_BLOCK_BITS, uint64 sbzP : 9;)
-ARM_LPAE_DESC_TYPE(3, ARM_LPAE_L3D_BLOCK_BITS, )
+#define ARM_LPAE_DESC_TYPE(lvl, blen, sbzpad)		\
+	typedef union {					\
+		uint64 u;				\
+							\
+		struct {				\
+			uint64 type:2;		\
+			uint64 ign:62;		\
+		} x;					\
+							\
+		struct {				\
+			uint64 type:2;		\
+			LOWER_PAGE_ATTRIBUTES_STAGE1	\
+			sbzpad				\
+			uint64 base:blen;		\
+			uint64 sbz:12;		\
+			UPPER_PAGE_ATTRIBUTES_STAGE1	\
+		} blockS1;				\
+							\
+		struct {				\
+			uint64 type:2;		\
+			LOWER_PAGE_ATTRIBUTES_STAGE2	\
+			sbzpad				\
+			uint64 base:blen;		\
+			uint64 sbz:12;		\
+			UPPER_PAGE_ATTRIBUTES_STAGE2	\
+		} blockS2;				\
+							\
+		struct {				\
+			uint64 type:2;		\
+			uint64 ign0:10;		\
+			uint64 base:28;		\
+			uint64 sbz:12;		\
+			uint64 ign1:7;		\
+			uint64 pxn:1;			\
+			uint64 xn:1;			\
+			uint64 ap:2;			\
+			uint64 ns:1;			\
+		} table;				\
+							\
+	} ARM_LPAE_L##lvl##D;
+
+
+ARM_LPAE_DESC_TYPE(1, ARM_LPAE_L1D_BLOCK_BITS, uint64 sbzP:18;)
+ARM_LPAE_DESC_TYPE(2, ARM_LPAE_L2D_BLOCK_BITS, uint64 sbzP:9;)
+ARM_LPAE_DESC_TYPE(3, ARM_LPAE_L3D_BLOCK_BITS, ;)
 
 /*@}*/
 
-#endif /// ifndef _LPAE_TYPES_H_
+#endif /* ifndef _LPAE_TYPES_H_ */

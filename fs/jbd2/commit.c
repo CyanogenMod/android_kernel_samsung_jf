@@ -1083,8 +1083,16 @@ restart_loop:
 	}
 	spin_unlock(&journal->j_list_lock);
 
-	if (journal->j_commit_callback)
+	if (journal->j_commit_callback) {
 		journal->j_commit_callback(journal, commit_transaction);
+		spin_lock(&journal->j_list_lock);
+		if (commit_transaction->t_dropped) {
+			to_free = 1;
+		} else {
+			commit_transaction->t_callbacked = 1;
+		}
+		spin_unlock(&journal->j_list_lock);
+	}
 
 	trace_jbd2_end_commit(journal, commit_transaction);
 	jbd_debug(1, "JBD2: commit %d complete, head %d\n",

@@ -34,7 +34,7 @@
 #elif defined(CONFIG_CHARGER_BQ24190) || \
 		defined(CONFIG_CHARGER_BQ24191)
 #include <linux/battery/charger/bq24190_charger.h>
-#elif defined(CONFIG_CHARGER_MAX77693)
+#elif defined(CONFIG_CHARGER_MAX77693) || defined(CONFIG_MACH_MELIUS)
 #include <linux/battery/charger/max77693_charger.h>
 #endif
 

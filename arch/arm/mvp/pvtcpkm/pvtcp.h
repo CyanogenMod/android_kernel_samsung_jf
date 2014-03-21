@@ -1,7 +1,7 @@
 /*
  * Linux 2.6.32 and later Kernel module for VMware MVP PVTCP Server
  *
- * Copyright (C) 2010-2012 VMware, Inc. All rights reserved.
+ * Copyright (C) 2010-2013 VMware, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -124,7 +124,7 @@ typedef struct PvtcpDgramPseudoHeader {
 
 #define PVTCP_SOCK_RCVSIZE    \
    (PVTCP_SOCK_SAFE_RCVSIZE + \
-    PVTCP_SOCK_BUF_SIZE + sizeof (PvtcpDgramPseudoHeader))
+    PVTCP_SOCK_BUF_SIZE + sizeof(PvtcpDgramPseudoHeader))
 
 
 /*
@@ -200,30 +200,34 @@ extern const unsigned int pvtcpVersionsSize;
  */
 
 typedef struct PvtcpIfConf {
-   int family;                      // Values:
-                                    //    unbound  (PVTCP_PF_UNBOUND)
-                                    //    deathRow (PVTCP_PF_DEATH_ROW)
-                                    //    loopback (PVTCP_PF_LOOPBACK_INET4)
-                                    //    inet4    (PF_INET)
-                                    //    inet6    (PF_INET6)
+   /*
+    * Values:
+    *    unbound  (PVTCP_PF_UNBOUND)
+    *    deathRow (PVTCP_PF_DEATH_ROW)
+    *    loopback (PVTCP_PF_LOOPBACK_INET4)
+    *    inet4    (PF_INET)
+    *    inet6    (PF_INET6)
+    */
+   int family;
+
    union {
       struct in_addr in;
       struct in6_addr in6;
-   } addr;                          // inet4 or inet6 address.
+   } addr;                          /* inet4 or inet6 address. */
    union {
       struct in_addr in;
       struct in6_addr in6;
-   } mask;                          // inet4 or inet6 netmask.
+   } mask;                          /* inet4 or inet6 netmask. */
 } PvtcpIfConf;
 
 
 struct PvtcpState;
 
 typedef struct PvtcpIf {
-   CommOSList sockList;       // List of sockets.
-   CommOSList stateLink;      // Link in PvtcpState.ifList.
-   struct PvtcpState *state;  // Back reference to state.
-   PvtcpIfConf conf;          // Interface configuration.
+   CommOSList sockList;       /* List of sockets. */
+   CommOSList stateLink;      /* Link in PvtcpState.ifList. */
+   struct PvtcpState *state;  /* Back reference to state. */
+   PvtcpIfConf conf;          /* Interface configuration. */
 } PvtcpIf;
 
 
@@ -232,15 +236,15 @@ typedef struct PvtcpIf {
  */
 
 typedef struct PvtcpState {
-   unsigned long long id;     // Randomly generated state ID.
-   CommOSList ifList;         // List of active interfaces.
-   CommChannel channel;       // Comm channel back reference.
-   PvtcpIf ifDeathRow;        // Always-present netif.
-   PvtcpIf ifUnbound;         // Ditto.
-   PvtcpIf ifLoopbackInet4;   // Ditto.
-   void *namespace;           // Name space, where supported.
-   void *extra;               // Used by upper layer to extend state as needed.
-   unsigned int mask;         // Mask used to obfuscate socket pointers.
+   unsigned long long id;     /* Randomly generated state ID. */
+   CommOSList ifList;         /* List of active interfaces. */
+   CommChannel channel;       /* Comm channel back reference. */
+   PvtcpIf ifDeathRow;        /* Always-present netif. */
+   PvtcpIf ifUnbound;         /* Ditto. */
+   PvtcpIf ifLoopbackInet4;   /* Ditto. */
+   void *namespace;           /* Name space, where supported. */
+   void *extra;               /* Used by upper layer to extend state as needed. */
+   unsigned int mask;         /* Mask used to obfuscate socket pointers. */
 } PvtcpState;
 
 
@@ -290,18 +294,20 @@ typedef struct PvtcpState {
    CommOS_MutexLockUninterruptible(&(pvsk)->outLock)
 #define SOCK_OUT_UNLOCK(pvsk)   CommOS_MutexUnlock(&(pvsk)->outLock)
 
-#define PVTCP_UNLOCK_DISP_DISCARD_VEC()      \
-   CommSvc_DispatchUnlock(channel);          \
-   while (vecLen) {                          \
-      PvtcpBufFree(vec[--vecLen].iov_base);  \
-   }
+#define PVTCP_UNLOCK_DISP_DISCARD_VEC()         \
+   do {                                         \
+      CommSvc_DispatchUnlock(channel);          \
+      while (vecLen) {                          \
+         PvtcpBufFree(vec[--vecLen].iov_base);  \
+      }                                         \
+   } while (0)
 
 
 #if defined(PVTCP_BUILDING_SERVER)
 #include "pvtcp_off.h"
 #else
 #include "pvtcp_pv.h"
-#endif // defined(PVTCP_BUILDING_SERVER)
+#endif /* defined(PVTCP_BUILDING_SERVER) */
 
 
 /*
@@ -425,7 +431,7 @@ PvtcpI6AddrUnpack(unsigned int addr[4],
       (__pvsk);                                                                \
    })
 
-#else // __LP64__ || __LLP64__
+#else /* __LP64__ || __LLP64__ */
 
 #define PvtcpGetPvskOrReturn(handle, container)                                \
    ({                                                                          \
@@ -441,7 +447,7 @@ PvtcpI6AddrUnpack(unsigned int addr[4],
       (__pvsk);                                                                \
    })
 
-#endif // __LP64__ || __LLP64__
+#endif /* __LP64__ || __LLP64__ */
 
 
 /**
@@ -455,12 +461,12 @@ PvtcpI6AddrUnpack(unsigned int addr[4],
 #define PvtcpGetHandle(pvsk)                                                   \
    ((unsigned long long)(pvsk) ^ (unsigned long long)(pvsk)->state->mask)
 
-#else // __LP64__ || __LLP64__
+#else /* __LP64__ || __LLP64__ */
 
 #define PvtcpGetHandle(pvsk)                                                   \
    ((unsigned int)(pvsk) ^ (pvsk)->state->mask)
 
-#endif // __LP64__ || __LLP64__
+#endif /* __LP64__ || __LLP64__ */
 
-#endif // _PVTCP_H_
+#endif /* _PVTCP_H_ */
 
