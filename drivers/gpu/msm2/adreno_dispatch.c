@@ -40,7 +40,7 @@ static unsigned int _dispatcher_inflight = 15;
 static unsigned int _cmdbatch_timeout = 2000;
 
 /* Interval for reading and comparing fault detection registers */
-static unsigned int _fault_timer_interval = 50;
+static unsigned int _fault_timer_interval = 200;
 
 /* Local array for the current set of fault detect registers */
 static unsigned int fault_detect_regs[FT_DETECT_REGS_COUNT];
