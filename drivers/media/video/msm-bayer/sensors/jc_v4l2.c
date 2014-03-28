@@ -31,7 +31,6 @@
 #include <asm/mach-types.h>
 #include <mach/vreg.h>
 #include <linux/io.h>
-#include <linux/ctype.h>
 
 #include "msm_sensor_common.h"
 #include "msm.h"
@@ -41,15 +40,16 @@
 #include "msm_ispif.h"
 #include "msm_sensor.h"
 
-#define JC_ISP_TIMEOUT		3000
+#define JC_ISP_TIMEOUT		5000
 
 #define JC_LOAD_FW_MAIN	1
-#define JC_DUMP_FW	1
+#define JC_LOAD_FW_MAIN_REQUEST	0
+#define JC_DUMP_FW	0
 #define JC_CHECK_FW	1
 #define JC_MEM_READ	1
 #define ISP_DEBUG_LOG	1
 #define JC_SPI_WRITE
-#define FW_WRITE_SIZE 262144 /*2097152*/
+#define FW_WRITE_SIZE 524288 /*2097152*/
 #define VERIFY_CHIP_ERASED 32
 #define ISP_FROM_ERASED 1
 
@@ -71,8 +71,8 @@
 #define jc_writel2(g, b, v) jc_write(__LINE__, 4, g, b, v, false)
 
 #ifdef JC_SPI_WRITE
-//static char *Fbuf; /*static QCTK*/
-//static char FW_buf[2197152] = {0}; /*static QCTK 2MB*/
+static char *Fbuf; /*static QCTK*/
+static char FW_buf[2197152] = {0}; /*static QCTK 2MB*/
 #endif
 #define CHECK_ERR(x)	if ((x) < 0) { \
 				cam_err("i2c failed, err %d\n", x); \
@@ -88,14 +88,18 @@ static struct msm_sensor_ctrl_t jc_s_ctrl;
 static struct device jc_dev;
 struct class *camera_class;
 #if JC_CHECK_FW
+static u8 sysfs_sensor_fw[10] = {0,};
+static u8 sysfs_phone_fw[10] = {0,};
 static u8 sysfs_sensor_fw_str[12] = {0,};
 static u8 sysfs_isp_fw_str[12] = {0,};
 static u8 sysfs_phone_fw_str[12] = {0,};
 static u8 sysfs_sensor_type[25] = {0,};
 #endif
 #if JC_LOAD_FW_MAIN
+bool firmware_update;
 bool firmware_update_sdcard;
 bool version_checked;
+int isp_version = -1;
 #endif
 
 struct jc_ctrl_t {
@@ -140,15 +144,6 @@ struct jc_ctrl_t {
 	bool movie_mode;
 	int shot_mode;
 	bool anti_stream_off;
-	int sensor_combination;
-	bool need_restart_caf;
-	bool is_isp_null;
-	bool isp_null_read_sensor_fw;
-	bool samsung_app;
-	bool factory_bin;
-	int fw_retry_cnt;
-	int fps_mode;
-	int max_fps;
 };
 
 static struct jc_ctrl_t *jc_ctrl;
@@ -588,7 +583,7 @@ static int jc_dump_fw(void)
 
 	addr = JC_FLASH_READ_BASE_ADDR;
 	unit = 0x80;
-	count = 1024*16;
+	count = 1024*20;
 	for (i = 0; i < count; i++) {
 			err = jc_mem_dump(unit, addr + (i * unit), buf);
 			/*cam_err("dump ~~ count : %d\n", i);*/
@@ -616,10 +611,118 @@ file_out:
 }
 #endif
 
+#ifdef JC_SPI_WRITE
+static int jc_SIO_loader(void)
+{
+	u8 *buf_m9mo = NULL;
+	unsigned int count = 0;
+	/*int offset;*/
+	int err = 0;
+
+	struct file *fp;
+	mm_segment_t old_fs;
+	long fsize, nread;
+
+	CAM_DEBUG("E");
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	fp = filp_open(JC_SIO_LOADER_PATH_M9MO, O_RDONLY, 0);
+	if (IS_ERR(fp)) {
+		cam_err("failed to open %s, err %ld\n",
+			JC_SIO_LOADER_PATH_M9MO, PTR_ERR(fp));
+		goto out;
+	}
+
+	fsize = fp->f_path.dentry->d_inode->i_size;
+	count = fsize / SZ_4K;
+
+	cam_err("start, file path %s, size %ld Bytes, count %d\n",
+		JC_SIO_LOADER_PATH_M9MO, fsize, count);
+
+	buf_m9mo = vmalloc(fsize);
+	if (!buf_m9mo) {
+		cam_err("failed to allocate memory\n");
+		err = -ENOMEM;
+		goto out;
+	}
+
+	nread = vfs_read(fp, (char __user *)buf_m9mo, fsize, &fp->f_pos);
+	if (nread != fsize) {
+		cam_err("failed to read firmware file, %ld Bytes\n", nread);
+		err = -EIO;
+		goto out;
+	}
+
+	err = jc_mem_write(0x08, SZ_64,
+			0x90001200 , buf_port_seting0);
+
+	cam_err("err : %d", err);
+
+	usleep(10*1000);
+
+	err = jc_mem_write(0x08, SZ_64,
+			0x90001000 , buf_port_seting1);
+	usleep(10*1000);
+
+	cam_err("err : %d", err);
+
+	err = jc_mem_write(0x08, SZ_64,
+			0x90001100 , buf_port_seting2);
+	usleep(10*1000);
+
+	cam_err("err : %d", err);
+
+	/* program FLASH ROM */
+	err = jc_mem_write(0x04, SZ_4K,
+			0x01000100 , buf_m9mo);
+
+	cam_err("err : %d", err);
+
+	err = jc_mem_write(0x04, SZ_4K,
+			0x01001100 , buf_m9mo+SZ_4K);
+
+	cam_err("err : %d", err);
+
+	err = jc_mem_write(0x04, SZ_4K,
+			0x01002100 , buf_m9mo+SZ_8K);
+
+	cam_err("err : %d", err);
+
+	err = jc_mem_write(0x04, fsize-(SZ_4K|SZ_8K),
+			0x01003100 , buf_m9mo+(SZ_4K|SZ_8K));
+
+	cam_err("err : %d", err);
+
+	err = jc_writel(JC_CATEGORY_FLASH,
+			0x0C, 0x01000100);
+
+	cam_err("err : %d", err);
+
+	/* Start Programming */
+		err = jc_writeb(JC_CATEGORY_FLASH, 0x12, 0x02);
+
+	cam_err("err : %d", err);
+
+out:
+	if (buf_m9mo)
+		vfree(buf_m9mo);
+
+	if (!IS_ERR(fp))
+		filp_close(fp, current->files);
+
+	set_fs(old_fs);
+
+	return err;
+}
+#endif
+
 #if JC_LOAD_FW_MAIN
 static int jc_load_fw_main(void)
 {
 #ifndef JC_SPI_WRITE
+	const struct firmware *fw = NULL;
 	u8 *buf_m9mo = NULL;
 #else
 	int txSize = 0;
@@ -630,71 +733,84 @@ static int jc_load_fw_main(void)
 	struct file *fp = NULL;
 	mm_segment_t old_fs;
 	long fsize, nread;
-	u8 *buf_m10mo = NULL;
-	int i;
+	int fw_requested = 1;
 
 	CAM_DEBUG("E");
 
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	if (firmware_update_sdcard == true) {
-		fp = filp_open(JC_M10MO_FW_PATH_SD, O_RDONLY, 0);
-		if (IS_ERR(fp)) {
-			cam_err("failed to open %s, err %ld\n",
-				JC_M10MO_FW_PATH_SD, PTR_ERR(fp));
-			goto out;
+	if (isp_version == 0x00) {
+		if (firmware_update_sdcard == true) {
+			fp = filp_open(JC_M9MO_FW_PATH_SD, O_RDONLY, 0);
+			if (IS_ERR(fp)) {
+				cam_err("failed to open %s, err %ld\n",
+					JC_M9MO_FW_PATH_SD, PTR_ERR(fp));
+#if JC_LOAD_FW_MAIN_REQUEST
+				goto request_fw;
+#else
+				goto out;
+#endif
+			}
+		} else {
+			fp = filp_open(JC_M9MO_FW_PATH, O_RDONLY, 0);
+			if (IS_ERR(fp)) {
+				cam_err("failed to open %s, err %ld\n",
+					JC_M9MO_FW_PATH, PTR_ERR(fp));
+#if JC_LOAD_FW_MAIN_REQUEST
+				goto request_fw;
+#else
+				goto out;
+#endif
+			}
 		}
-	} else {
-		if (jc_ctrl->sensor_combination == 0)
-			fp = filp_open(JC_M10MO_FW_PATH_SS, O_RDONLY, 0);
-		else if (jc_ctrl->sensor_combination == 1)
-			fp = filp_open(JC_M10MO_FW_PATH_OS, O_RDONLY, 0);
-		else if (jc_ctrl->sensor_combination == 2)
-			fp = filp_open(JC_M10MO_FW_PATH_SL, O_RDONLY, 0);
-		else if (jc_ctrl->sensor_combination == 3)
-			fp = filp_open(JC_M10MO_FW_PATH_OL, O_RDONLY, 0);
-		else
-			fp = filp_open(JC_M10MO_FW_PATH_SS, O_RDONLY, 0);
-
-		if (IS_ERR(fp)) {
-			if (jc_ctrl->sensor_combination == 0)
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_SS, PTR_ERR(fp));
-			else if (jc_ctrl->sensor_combination == 1)
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_OS, PTR_ERR(fp));
-			else if (jc_ctrl->sensor_combination == 2)
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_SL, PTR_ERR(fp));
-			else if (jc_ctrl->sensor_combination == 3)
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_OL, PTR_ERR(fp));
-			else
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_SS, PTR_ERR(fp));
-
-			goto out;
+	} else if (isp_version == 0x10) {
+		if (firmware_update_sdcard == true) {
+			fp = filp_open(JC_M10MO_FW_PATH_SD, O_RDONLY, 0);
+			if (IS_ERR(fp)) {
+				cam_err("failed to open %s, err %ld\n",
+					JC_M10MO_FW_PATH_SD, PTR_ERR(fp));
+#if JC_LOAD_FW_MAIN_REQUEST
+				goto request_fw;
+#else
+				goto out;
+#endif
+			}
+		} else {
+			fp = filp_open(JC_M10MO_FW_PATH, O_RDONLY, 0);
+			if (IS_ERR(fp)) {
+				cam_err("failed to open %s, err %ld\n",
+					JC_M10MO_FW_PATH, PTR_ERR(fp));
+#if JC_LOAD_FW_MAIN_REQUEST
+				goto request_fw;
+#else
+				goto out;
+#endif
+			}
 		}
 	}
+
+	fw_requested = 0;
 
 	fsize = fp->f_path.dentry->d_inode->i_size;
 	count = fsize / SZ_4K;
 
-	if (firmware_update_sdcard == true) {
-		cam_err("start, file path %s, size %ld Bytes, count %d\n",
-			JC_M10MO_FW_PATH_SD, fsize, count);
-	} else {
-		if (jc_ctrl->sensor_combination == 0)
+	if (isp_version == 0x00) {
+		if (firmware_update_sdcard == true) {
 			cam_err("start, file path %s, size %ld Bytes, count %d\n",
-				JC_M10MO_FW_PATH_SS, fsize, count);
-		else if (jc_ctrl->sensor_combination == 1)
+				JC_M9MO_FW_PATH_SD, fsize, count);
+		} else {
 			cam_err("start, file path %s, size %ld Bytes, count %d\n",
-				JC_M10MO_FW_PATH_OS, fsize, count);
-		else if (jc_ctrl->sensor_combination == 2)
+				JC_M9MO_FW_PATH, fsize, count);
+		}
+	} else if (isp_version == 0x10) {
+		if (firmware_update_sdcard == true) {
 			cam_err("start, file path %s, size %ld Bytes, count %d\n",
-				JC_M10MO_FW_PATH_SL, fsize, count);
-		else if (jc_ctrl->sensor_combination == 3)
+				JC_M10MO_FW_PATH_SD, fsize, count);
+		} else {
 			cam_err("start, file path %s, size %ld Bytes, count %d\n",
-				JC_M10MO_FW_PATH_OL, fsize, count);
-		else
-			cam_err("start, file path %s, size %ld Bytes, count %d\n",
-				JC_M10MO_FW_PATH_SS, fsize, count);
+				JC_M10MO_FW_PATH, fsize, count);
+		}
 	}
 
 #ifndef JC_SPI_WRITE
@@ -713,6 +829,25 @@ static int jc_load_fw_main(void)
 	}
 
 	filp_close(fp, current->files);
+
+#if JC_LOAD_FW_MAIN_REQUEST
+request_fw:
+	if (fw_requested) {
+		set_fs(old_fs);
+		cam_info("Firmware Path = %s\n", JC_FW_REQ_PATH);
+		err = request_firmware(&fw, JC_FW_REQ_PATH, &jc_dev);
+
+
+		if (err != 0) {
+			cam_err("request_firmware failed\n");
+			err = -EINVAL;
+			goto out;
+		}
+		count = fw->size / SZ_4K;
+		cam_err("start, size %d Bytes  count = %d\n", fw->size, count);
+		buf_m9mo = (u8 *)fw->data;
+	}
+#endif
 
 	err = jc_mem_write(0x04, SZ_64,
 			0x90001200 , buf_port_seting0);
@@ -742,39 +877,38 @@ static int jc_load_fw_main(void)
 	jc_ctrl->isp.bad_fw = 0;
 
 out:
-	if (buf_m9mo)
-		vfree(buf_m9mo);
+	if (!fw_requested) {
+		if (buf_m9mo)
+			vfree(buf_m9mo);
 
-	if (!IS_ERR(fp))
-		filp_close(fp, current->files);
+		if (!IS_ERR(fp))
+			filp_close(fp, current->files);
 
-	set_fs(old_fs);
+		set_fs(old_fs);
+	} else {
+		release_firmware(fw);
+	}
 
 	CAM_DEBUG("X");
 #else
+	Fbuf = (char *)roundup((unsigned int)FW_buf, 64); /*ALRAN 64*/
 
-      txSize = FW_WRITE_SIZE;
-      count = fsize / txSize;
-
-	buf_m10mo = vmalloc(txSize);
-
-	if (!buf_m10mo) {
-		cam_err("failed to allocate memory\n");
-		err = -ENOMEM;
+	nread = vfs_read(fp, (char __user *)Fbuf,
+		fsize, &fp->f_pos);
+	if (nread != fsize) {
+		cam_err("failed to read firmware file, %ld Bytes\n", nread);
+		err = -EIO;
 		goto out;
 	}
+	set_fs(old_fs);
+	txSize = FW_WRITE_SIZE; /*QCTK*/
 
-      for (i = 0 ; i < count ; i++) {
-		nread = vfs_read(fp, (char __user *)buf_m10mo, txSize, &fp->f_pos);
-		cam_err("nread : %ld\n", nread);
-		err = spi_xmit(buf_m10mo, txSize);
-      	}
+	err = jc_spi_write(Fbuf, fsize, txSize);
 
-	if (buf_m10mo)
-		vfree(buf_m10mo);
-
-	filp_close(fp, current->files);
-
+	if (err < 0) {
+		cam_err("jc_spi_write falied\n");
+		goto out;
+	}
 out:
 	if (!IS_ERR(fp))
 		filp_close(fp, current->files);
@@ -785,11 +919,242 @@ out:
 }
 #endif
 
+#ifdef JC_SPI_WRITE
+static int jc_init_fw_load(void)
+{
+	u32 val;
+	int i;
+	int err = 0;
+	int erase = 0x01;
+	int retries = 0;
+
+	for (i = 0; i < 512; i++) {
+		/* Set Flash ROM memory address */
+		err = jc_writel(JC_CATEGORY_FLASH,
+			JC_FLASH_ADDR, i * 0x0001000);
+
+		/* Erase FLASH ROM entire memory */
+		err = jc_writeb(JC_CATEGORY_FLASH,
+			JC_FLASH_ERASE, erase);
+
+		/* Response while sector-erase is operating */
+		retries = 0;
+		do {
+			usleep(10*1000);
+			err = jc_readb(JC_CATEGORY_FLASH,
+				JC_FLASH_ERASE, &val);
+		} while (val == erase && retries++ < JC_I2C_VERIFY);
+
+		if (val != 0) {
+			cam_err("failed to erase sector\n");
+			return -EFAULT;
+		}
+	}
+
+	err = jc_writel(JC_CATEGORY_FLASH,
+			0x1C, 0x0247036D);
+
+	err = jc_writeb(JC_CATEGORY_FLASH,
+			0x4A, 0x02);
+
+	usleep(3*1000);
+
+	err = jc_writel(JC_CATEGORY_FLASH,
+			0x14, 0x20000000);
+
+	err = jc_writel(JC_CATEGORY_FLASH,
+			0x18, 0x00200000);
+
+	err = jc_load_fw_main();
+
+	err = jc_writel(JC_CATEGORY_FLASH,
+			0x00, 0x00);
+
+	err = jc_writel(JC_CATEGORY_FLASH,
+			0x18, 0x00200000);
+
+	err = jc_writeb(JC_CATEGORY_FLASH,
+			JC_FLASH_WR, 0x01);
+
+	retries = 0;
+	do {
+		msleep(300);
+		err = jc_readb(JC_CATEGORY_FLASH,
+			JC_FLASH_WR, &val);
+	} while (val == 0x01 && retries++ < JC_I2C_VERIFY);
+
+
+	return 0;
+}
+#endif
+
+#if JC_CHECK_FW
+static int jc_get_sensor_fw_version(void)
+{
+	int err;
+	int fw_ver = 0x00;
+	u8 sensor_type[] = "13M_SONY";/* temporarily */
+
+	cam_err("E\n");
+
+	/* read F/W version */
+	err = jc_readw(JC_CATEGORY_SYS,
+		JC_SYS_VER_FW, &fw_ver);
+
+	cam_info("f/w version = %x\n", fw_ver);
+	cam_info("sensor_type = %s\n", sensor_type);
+
+	sprintf(jc_ctrl->sensor_ver, "FU%x", fw_ver);
+	sprintf(jc_ctrl->sensor_type, "%s", sensor_type);
+	memcpy(sysfs_sensor_fw, jc_ctrl->sensor_ver,
+			sizeof(jc_ctrl->sensor_ver));
+	memcpy(sysfs_sensor_type, jc_ctrl->sensor_type,
+			sizeof(jc_ctrl->sensor_type));
+
+	cam_info("sensor fw : %s\n", sysfs_sensor_fw);
+	cam_info("sensor type : %s\n", sysfs_sensor_type);
+	return 0;
+}
+
+static int jc_get_phone_fw_version(void)
+{
+	const struct firmware *fw;
+	int err = 0;
+
+	struct file *fp = NULL;
+	mm_segment_t old_fs;
+	long nread;
+	int fw_requested = 1;
+	int ver_tmp;
+
+	cam_info("E\n");
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	if (isp_version == 0x00) {
+		fp = filp_open(JC_M9MO_FW_PATH_SD, O_RDONLY, 0);
+		if (IS_ERR(fp)) {
+			cam_err("failed to open %s, err %ld\n",
+				JC_M9MO_FW_PATH_SD, PTR_ERR(fp));
+			firmware_update_sdcard = false;
+
+			fp = filp_open(JC_M9MO_FW_PATH, O_RDONLY, 0);
+			if (IS_ERR(fp)) {
+				cam_err("failed to open %s, err %ld\n",
+					JC_M9MO_FW_PATH, PTR_ERR(fp));
+				goto request_fw;
+			} else {
+				cam_info("FW File(phone) opened.\n");
+			}
+		} else {
+			cam_info("FW File(SD card) opened.\n");
+			firmware_update_sdcard = true;
+		}
+	} else if (isp_version == 0x10) {
+		fp = filp_open(JC_M10MO_FW_PATH_SD, O_RDONLY, 0);
+		if (IS_ERR(fp)) {
+			cam_err("failed to open %s, err %ld\n",
+				JC_M10MO_FW_PATH_SD, PTR_ERR(fp));
+			firmware_update_sdcard = false;
+
+			fp = filp_open(JC_M10MO_FW_PATH, O_RDONLY, 0);
+			if (IS_ERR(fp)) {
+				cam_err("failed to open %s, err %ld\n",
+					JC_M10MO_FW_PATH, PTR_ERR(fp));
+				goto request_fw;
+			} else {
+				cam_info("FW File(phone) opened.\n");
+			}
+		} else {
+			cam_info("FW File(SD card) opened.\n");
+			firmware_update_sdcard = true;
+		}
+	}
+
+	fw_requested = 0;
+
+	if (!IS_ERR(fp)) {
+		err = vfs_llseek(fp, JC_FW_VER_NUM, SEEK_SET);
+		if (err < 0) {
+			cam_err("failed to fseek, %d\n", err);
+			goto out;
+		}
+
+		nread = vfs_read(fp, (char __user *)jc_ctrl->phone_ver,
+				JC_FW_VER_LEN, &fp->f_pos);
+		cam_err("phone ver : %02x%02x\n",
+			*jc_ctrl->phone_ver, *(jc_ctrl->phone_ver+1));
+
+		if (nread != JC_FW_VER_LEN) {
+			cam_err("failed to read firmware file, %ld Bytes\n", nread);
+			err = -EIO;
+			goto out;
+		}
+	}
+
+request_fw:
+	if (fw_requested) {
+		set_fs(old_fs);
+
+		cam_info("Firmware Path = %s\n", JC_FW_REQ_PATH);
+		err = request_firmware(&fw, JC_FW_REQ_PATH, &jc_dev);
+
+		if (err != 0) {
+			cam_err("request_firmware falied\n");
+			err = -EINVAL;
+			goto out;
+		}
+		cam_info("%s: fw->data[0] = %x, fw->data[1] = %x\n", __func__,
+				(int)fw->data[JC_FW_VER_NUM],
+				(int)fw->data[JC_FW_VER_NUM + 1]);
+		ver_tmp = (int)fw->data[JC_FW_VER_NUM] * 16 * 16;
+		ver_tmp += (int)fw->data[JC_FW_VER_NUM + 1];
+		cam_info("ver_tmp = %x\n", ver_tmp);
+		sprintf(jc_ctrl->phone_ver, "FU%x", ver_tmp);
+		memcpy(sysfs_phone_fw, jc_ctrl->phone_ver,
+				sizeof(jc_ctrl->phone_ver));
+
+	}
+out:
+	if (err != 0)
+		sprintf(sysfs_phone_fw, "FU%02x%02x",
+		*jc_ctrl->phone_ver, *(jc_ctrl->phone_ver+1));
+
+	if (!fw_requested) {
+		if (!IS_ERR(fp))
+			filp_close(fp, current->files);
+		set_fs(old_fs);
+	} else {
+		release_firmware(fw);
+	}
+
+	cam_err("phone ver : %s\n", sysfs_phone_fw);
+	return 0;
+}
+
+static int jc_check_fw(void)
+{
+	CAM_DEBUG("E\n");
+
+	/* F/W version */
+	/* temporarily changed func call order - orig : phone -> sensor */
+	jc_get_sensor_fw_version();
+	jc_get_phone_fw_version();
+
+	cam_info("phone ver = %s, sensor_ver = %s\n",
+			sysfs_phone_fw, sysfs_sensor_fw);
+
+	CAM_DEBUG("X\n");
+	return strcmp(sysfs_sensor_fw, sysfs_phone_fw);
+}
+#endif
+
 static int jc_check_sum(void)
 {
 	int err;
 	int retries;
-	int isp_val, factarea_val;
+	int val;
 	u8 flash_controller[] = {0x7f};
 
 	err = jc_mem_write(0x04, 1,
@@ -805,44 +1170,18 @@ static int jc_check_sum(void)
 	do {
 		msleep(300);
 		err = jc_readb(JC_CATEGORY_FLASH,
-			0x09, &isp_val);
+			0x09, &val);
 
-		if (isp_val == 0)
+		if (val == 0)
 			break;
-	} while (isp_val == 0x04 && retries++ < JC_I2C_VERIFY);
+	} while (val == 0x04 && retries++ < JC_I2C_VERIFY);
 
 	/* Get Checksum of ISP */
-	err = jc_readw(JC_CATEGORY_FLASH, 0x0A, &isp_val);
-	cam_err("ISP Checksum : %x", isp_val);
+	err = jc_readw(JC_CATEGORY_FLASH, 0x0A, &val);
+	cam_err("err : %d", err);
+	cam_err("Checksum : %x", val);
 
-	if (jc_ctrl->isp_null_read_sensor_fw == true) {
-		err = jc_writel(JC_CATEGORY_FLASH,
-				0x0, 0x001E7000);
-		err = jc_writel(JC_CATEGORY_FLASH,
-				0x5C, 0x00018000);
-
-		/* Checksum */
-		err = jc_writeb(JC_CATEGORY_FLASH, 0x09, 0x02);
-
-		retries = 0;
-		do {
-			msleep(300);
-			err = jc_readb(JC_CATEGORY_FLASH,
-				0x09, &factarea_val);
-
-			if (factarea_val == 0)
-				break;
-		} while (factarea_val == 0x02 && retries++ < JC_I2C_VERIFY);
-
-		/* Get Checksum of FactArea */
-		err = jc_readw(JC_CATEGORY_FLASH, 0x0A, &factarea_val);
-		cam_err("FactArea Checksum : %x", factarea_val);
-		cam_err("ISP - FactArea Checksum : %x", isp_val-factarea_val);
-
-		return isp_val-factarea_val;
-	}
-
-	return isp_val;
+	return 0;
 }
 
 static int jc_phone_fw_to_isp(void)
@@ -852,7 +1191,6 @@ static int jc_phone_fw_to_isp(void)
 	int val;
 	int chip_erase;
 
-retry:
 	/* Set SIO receive mode : 0x4C, rising edge*/
 	err = jc_writeb(JC_CATEGORY_FLASH, 0x4B, 0x4C);
 	cam_err("err : %d", err);
@@ -901,13 +1239,7 @@ retry:
 			0x07, &val);
 	} while (val == 0x01 && retries++ < JC_I2C_VERIFY);
 
-	err = jc_check_sum();
-
-	if (err != 0 && jc_ctrl->fw_retry_cnt < 2) {
-		cam_err("checksum error!! retry fw write!!: %d", jc_ctrl->fw_retry_cnt);
-		jc_ctrl->fw_retry_cnt++;
-		goto retry;
-	}
+	jc_check_sum();
 
 	return 0;
 }
@@ -919,7 +1251,6 @@ static int jc_read_from_sensor_fw(void)
 	int val = 0;
 	int chip_erase;
 
-retry:
 	/* Read Sensor Flash */
 	err = jc_writeb(JC_CATEGORY_FLASH, 0x63, 0x01);
 	retries = 0;
@@ -952,13 +1283,7 @@ retry:
 			0x07, &val);
 	} while (val == 0x01 && retries++ < JC_I2C_VERIFY);
 
-	err = jc_check_sum();
-
-	if (err != 0 && jc_ctrl->fw_retry_cnt < 2) {
-		cam_err("checksum error!! retry fw write!!: %d", jc_ctrl->fw_retry_cnt);
-		jc_ctrl->fw_retry_cnt++;
-		goto retry;
-	}
+	jc_check_sum();
 
 	return 0;
 }
@@ -1077,17 +1402,10 @@ static int jc_get_sensor_version(void)
 
 	cam_err("Read Sensor Ver String : 11 byte");
 
-      if (jc_ctrl->is_isp_null == true) {
-		for (i = 0 ; i < 11 ; i++) {
-			err = jc_readb(JC_CATEGORY_FLASH,
-				0x2C + i, &sensor_ver[i]);
-		}
-      	} else {
-		for (i = 0 ; i < 11 ; i++) {
-			err = jc_readb(0x00,
-				0x32 + i, &sensor_ver[i]);
-		}
-      	}
+	for (i = 0 ; i < 11 ; i++) {
+		err = jc_readb(0x00,
+			0x32 + i, &sensor_ver[i]);
+	}
 
 	sprintf(sysfs_sensor_fw_str, "%c%c%c%c%c%c%c%c%c%c%c",
 		sensor_ver[0], sensor_ver[1], sensor_ver[2], sensor_ver[3],
@@ -1110,7 +1428,7 @@ static int jc_check_sensor_phone(void)
 	    && (strncmp(sysfs_sensor_fw_str, "O13F0", 5) != 0)) {
 		cam_err("sensor version is wrong, skip!");
 		return -1;
-	} else if (strncmp(sysfs_sensor_fw_str, sysfs_phone_fw_str, 6) != 0) {
+	} else if (strncmp(sysfs_sensor_fw_str, sysfs_phone_fw_str, 1) != 0) {
 		cam_err("Another sensor module is detected.");
 		return 1;
 	} else
@@ -1129,7 +1447,7 @@ static int jc_check_sensor_isp(void)
 	    && (strncmp(sysfs_sensor_fw_str, "O13F0", 5) != 0)) {
 		cam_err("sensor version is wrong, skip!");
 		return -1;
-	} else if (strncmp(sysfs_sensor_fw_str, sysfs_isp_fw_str, 6) != 0) {
+	} else if (strncmp(sysfs_sensor_fw_str, sysfs_isp_fw_str, 1) != 0) {
 		cam_err("Another sensor module is detected.");
 		return 1;
 	} else
@@ -1144,7 +1462,7 @@ static int jc_check_isp_phone(void)
 	    && (strncmp(sysfs_isp_fw_str, "O13F0", 5) != 0)) {
 		cam_err("isp version is wrong, skip!");
 		return -1;
-	} else if (strncmp(sysfs_isp_fw_str, sysfs_phone_fw_str, 6) != 0) {
+	} else if (strncmp(sysfs_isp_fw_str, sysfs_phone_fw_str, 1) != 0) {
 		cam_err("Another sensor module is detected.");
 		return -1;
 	} else
@@ -1243,7 +1561,6 @@ static int jc_get_isp_version(void)
 	if ((strncmp(sysfs_isp_fw_str, "S13F0", 5) != 0)
 	    && (strncmp(sysfs_isp_fw_str, "O13F0", 5) != 0))  {
 		cam_err("isp version is wrong, skip!");
-		jc_ctrl->is_isp_null = true;
 		return -1;
 	} else {
 
@@ -1254,60 +1571,61 @@ static int jc_get_isp_version(void)
 
 static int jc_get_phone_version(void)
 {
+	const struct firmware *fw;
 	int err = 0;
 
 	struct file *fp = NULL;
 	mm_segment_t old_fs;
 	long nread;
+	int fw_requested = 1;
+	int ver_tmp;
 
 	cam_info("E\n");
 
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	fp = filp_open(JC_M10MO_FW_PATH_SD, O_RDONLY, 0);
-	if (IS_ERR(fp)) {
-		cam_err("failed to open %s, err %ld\n",
-			JC_M10MO_FW_PATH_SD, PTR_ERR(fp));
-		firmware_update_sdcard = false;
-
-		if (strncmp(sysfs_sensor_fw_str, "S13F0S", 6) == 0) {
-			jc_ctrl->sensor_combination = 0;
-			fp = filp_open(JC_M10MO_FW_PATH_SS, O_RDONLY, 0);
-		} else if (strncmp(sysfs_sensor_fw_str, "O13F0S", 6) == 0) {
-			jc_ctrl->sensor_combination = 1;
-			fp = filp_open(JC_M10MO_FW_PATH_OS, O_RDONLY, 0);
-		} else if (strncmp(sysfs_sensor_fw_str, "S13F0L", 6) == 0) {
-			jc_ctrl->sensor_combination = 2;
-			fp = filp_open(JC_M10MO_FW_PATH_SL, O_RDONLY, 0);
-		} else if (strncmp(sysfs_sensor_fw_str, "O13F0L", 6) == 0) {
-			jc_ctrl->sensor_combination = 3;
-			fp = filp_open(JC_M10MO_FW_PATH_OL, O_RDONLY, 0);
-		} else {
-			jc_ctrl->sensor_combination = 0;
-			fp = filp_open(JC_M10MO_FW_PATH_SS, O_RDONLY, 0);
-		}
-
+	if (isp_version == 0x00) {
+		fp = filp_open(JC_M9MO_FW_PATH_SD, O_RDONLY, 0);
 		if (IS_ERR(fp)) {
-			if (jc_ctrl->sensor_combination == 0)
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_SS, PTR_ERR(fp));
-			else if (jc_ctrl->sensor_combination == 1)
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_OS, PTR_ERR(fp));
-			else if (jc_ctrl->sensor_combination == 2)
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_SL, PTR_ERR(fp));
-			else if (jc_ctrl->sensor_combination == 3)
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_OL, PTR_ERR(fp));
-			else
-				cam_err("failed to open %s, err %ld\n", JC_M10MO_FW_PATH_SS, PTR_ERR(fp));
+			cam_err("failed to open %s, err %ld\n",
+				JC_M9MO_FW_PATH_SD, PTR_ERR(fp));
+			firmware_update_sdcard = false;
 
-			goto out;
+			fp = filp_open(JC_M9MO_FW_PATH, O_RDONLY, 0);
+			if (IS_ERR(fp)) {
+				cam_err("failed to open %s, err %ld\n",
+					JC_M9MO_FW_PATH, PTR_ERR(fp));
+				goto request_fw;
+			} else {
+				cam_info("FW File(phone) opened.\n");
+			}
 		} else {
-			cam_info("FW File(phone) opened.\n");
+			cam_info("FW File(SD card) opened.\n");
+			firmware_update_sdcard = true;
 		}
-	} else {
-		cam_info("FW File(SD card) opened.\n");
-		firmware_update_sdcard = true;
+	} else if (isp_version == 0x10) {
+		fp = filp_open(JC_M10MO_FW_PATH_SD, O_RDONLY, 0);
+		if (IS_ERR(fp)) {
+			cam_err("failed to open %s, err %ld\n",
+				JC_M10MO_FW_PATH_SD, PTR_ERR(fp));
+			firmware_update_sdcard = false;
+
+			fp = filp_open(JC_M10MO_FW_PATH, O_RDONLY, 0);
+			if (IS_ERR(fp)) {
+				cam_err("failed to open %s, err %ld\n",
+					JC_M10MO_FW_PATH, PTR_ERR(fp));
+				goto request_fw;
+			} else {
+				cam_info("FW File(phone) opened.\n");
+			}
+		} else {
+			cam_info("FW File(SD card) opened.\n");
+			firmware_update_sdcard = true;
+		}
 	}
+
+	fw_requested = 0;
 
 	/* Read Version String addr */
 	err = vfs_llseek(fp, JC_FW_VER_STR, SEEK_SET);
@@ -1325,62 +1643,29 @@ static int jc_get_phone_version(void)
 		goto out;
 	}
 
-	sprintf(sysfs_phone_fw_str, "%c%c%c%c%c%c%c%c%c%c%c",
-		*jc_ctrl->phone_ver_str, *(jc_ctrl->phone_ver_str+1),
-		*(jc_ctrl->phone_ver_str+2), *(jc_ctrl->phone_ver_str+3),
-		*(jc_ctrl->phone_ver_str+4), *(jc_ctrl->phone_ver_str+5),
-		*(jc_ctrl->phone_ver_str+6), *(jc_ctrl->phone_ver_str+7),
-		*(jc_ctrl->phone_ver_str+8), *(jc_ctrl->phone_ver_str+9),
-		*(jc_ctrl->phone_ver_str+10));
+request_fw:
+	if (fw_requested) {
+		cam_info("Firmware Path = %s\n", JC_FW_REQ_PATH);
+		err = request_firmware(&fw, JC_FW_REQ_PATH, &jc_dev);
 
-	cam_err("Phone version : %s\n", sysfs_phone_fw_str);
+		if (err != 0) {
+			cam_err("request_firmware falied\n");
+			err = -EINVAL;
+			goto out;
+		}
+		cam_info("%s: fw->data[0] = %x, fw->data[1] = %x\n", __func__,
+				(int)fw->data[JC_FW_VER_NUM],
+				(int)fw->data[JC_FW_VER_NUM + 1]);
+		ver_tmp = (int)fw->data[JC_FW_VER_NUM] * 16 * 16;
+		ver_tmp += (int)fw->data[JC_FW_VER_NUM + 1];
+		cam_info("ver_tmp = %x\n", ver_tmp);
+		sprintf(jc_ctrl->phone_ver, "FU%x", ver_tmp);
+		memcpy(sysfs_phone_fw, jc_ctrl->phone_ver,
+				sizeof(jc_ctrl->phone_ver));
+
+	}
 out:
-	filp_close(fp, current->files);
-	set_fs(old_fs);
-
-	return 0;
-}
-
-#if 0
-static int jc_fw_check_for_force_update(void)
-{
-	int err = 0;
-
-	struct file *fp = NULL;
-	mm_segment_t old_fs;
-	long nread;
-
-	cam_info("E\n");
-
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	fp = filp_open(JC_M10MO_FW_PATH_SD, O_RDONLY, 0);
-	if (IS_ERR(fp)) {
-		cam_err("failed to open %s, err %ld\n",
-			JC_M10MO_FW_PATH_SD, PTR_ERR(fp));
-		cam_info("FW File(phone) opened.\n");
-		firmware_update_sdcard = false;
-	} else {
-		cam_info("FW File(SD card) opened.\n");
-		firmware_update_sdcard = true;
-
-		/* Read Version String addr */
-		err = vfs_llseek(fp, JC_FW_VER_STR, SEEK_SET);
-		if (err < 0) {
-			cam_err("failed to fseek, %d\n", err);
-			goto out;
-		}
-		cam_info("ASWOOGI TEST : %d\n", err);
-		nread = vfs_read(fp, (char __user *)jc_ctrl->phone_ver_str,
-				JC_FW_VER_STR_LEN, &fp->f_pos);
-
-		if (nread != JC_FW_VER_STR_LEN) {
-			cam_err("failed to read firmware file, %ld Bytes\n", nread);
-			err = -EIO;
-			goto out;
-		}
-
+	if (err != 0)
 		sprintf(sysfs_phone_fw_str, "%c%c%c%c%c%c%c%c%c%c%c",
 		*jc_ctrl->phone_ver_str, *(jc_ctrl->phone_ver_str+1),
 		*(jc_ctrl->phone_ver_str+2), *(jc_ctrl->phone_ver_str+3),
@@ -1389,16 +1674,16 @@ static int jc_fw_check_for_force_update(void)
 		*(jc_ctrl->phone_ver_str+8), *(jc_ctrl->phone_ver_str+9),
 		*(jc_ctrl->phone_ver_str+10));
 
-		cam_err("Phone version : %s\n", sysfs_phone_fw_str);
+	if (!fw_requested) {
+		filp_close(fp, current->files);
+	} else {
+		release_firmware(fw);
 	}
-
-out:
-	filp_close(fp, current->files);
 	set_fs(old_fs);
 
+	cam_err("Phone version : %s\n", sysfs_phone_fw_str);
 	return 0;
 }
-#endif
 
 static int jc_isp_boot(void)
 {
@@ -1406,9 +1691,14 @@ static int jc_isp_boot(void)
 	u32 int_factor;
 	u8 flash_controller[] = {0x7f};
 
-	err = jc_mem_write(0x04, 1,
-		0x13000005 , flash_controller);
-	usleep(1*1000);
+	if (isp_version == 0x00) {
+		err = jc_writel(JC_CATEGORY_FLASH,
+			0x0C, 0x27C00020);
+	} else if (isp_version == 0x10) {
+		err = jc_mem_write(0x04, 1,
+			0x13000005 , flash_controller);
+		usleep(1*1000);
+	}
 
 	/* start camera program(parallel FLASH ROM) */
 	cam_info("start camera program\n");
@@ -1676,7 +1966,6 @@ static int jc_set_mode(u32 mode)
 				int_factor);
 			return -ENOSYS;
 		}
-		jc_ctrl->need_restart_caf = true;
 		jc_ctrl->stream_on = false;
 		break;
 
@@ -1690,39 +1979,6 @@ static int jc_set_mode(u32 mode)
 			return -ENOSYS;
 		}
 		jc_ctrl->stream_on = true;
-		if (jc_ctrl->need_restart_caf == true) {
-			jc_ctrl->need_restart_caf = false;
-			if (jc_ctrl->shot_mode == 4 ||jc_ctrl->shot_mode == 15) { //drama, cine photo
-				cam_info("Restart auto focus\n");
-				if (jc_ctrl->af_mode == 3) {
-					cam_info("start CAF\n");
-					jc_writeb(JC_CATEGORY_LENS,
-							0x01, 0x03);
-					jc_writeb(JC_CATEGORY_LENS,
-							0x02, 0x01);
-				} else if (jc_ctrl->af_mode == 4) {
-					cam_info("start macro CAF\n");
-					jc_writeb(JC_CATEGORY_LENS,
-							0x01, 0x07);
-					jc_writeb(JC_CATEGORY_LENS,
-							0x02, 0x01);
-				} else if (jc_ctrl->af_mode == 5) {
-					msleep(50);
-					cam_info("start Movie CAF\n");
-					jc_writeb(JC_CATEGORY_LENS,
-							0x01, 0x04);
-					jc_writeb(JC_CATEGORY_LENS,
-							0x02, 0x01);
-				} else if (jc_ctrl->af_mode == 6) {
-					msleep(50);
-					cam_info("FD CAF\n");
-					jc_writeb(JC_CATEGORY_LENS,
-							0x01, 0x05);
-					jc_writeb(JC_CATEGORY_LENS,
-							0x02, 0x01);
-				}
-			}
-		}
 		break;
 
 	default:
@@ -1806,7 +2062,7 @@ void jc_set_capture(void)
 
 static int jc_set_capture_size(int width, int height)
 {
-	u32 isp_mode;
+	u32 old_mode;
 	int err;
 
 	CAM_DEBUG("Entered, width %d, height %d\n", width, height);
@@ -1838,27 +2094,16 @@ static int jc_set_capture_size(int width, int height)
 	else
 		jc_ctrl->capture_size = 0x2C;
 
-	err = jc_readb(JC_CATEGORY_SYS, JC_SYS_MODE, &isp_mode);
+	err = jc_readb(JC_CATEGORY_SYS, JC_SYS_MODE, &old_mode);
 
 	if (err < 0) {
-		CAM_DEBUG("isp mode check error : %d", err);
 		return err;
 	}
-
-	if( isp_mode == JC_MONITOR_MODE ) {
+	if( old_mode==JC_MONITOR_MODE ) {
 		jc_set_sizes();
-
-		err = jc_readb(JC_CATEGORY_SYS, JC_SYS_MODE, &isp_mode);
-
-		if (err < 0) {
-			CAM_DEBUG("isp mode check error : %d", err);
-			return err;
-		}
-
-		if( isp_mode == JC_PARMSET_MODE ) {
-			jc_set_mode(JC_MONITOR_MODE);
-		}
+		jc_set_mode(JC_MONITOR_MODE);
 	}
+
 	return 0;
 }
 
@@ -1922,48 +2167,50 @@ static int jc_set_sizes(void)
 	jc_readb(JC_CATEGORY_CAPPARM,
 			JC_CAPPARM_MAIN_IMG_SIZE, &prev_capture_size);
 
-	/* set monitor(preview) size */
-	if (jc_ctrl->preview_size != prev_preview_size) {
-		cam_info("### set monitor(preview) size : 0x%x\n",
-				 jc_ctrl->preview_size);
-
+	if ((jc_ctrl->preview_size != prev_preview_size) ||
+		(jc_ctrl->capture_size != prev_capture_size)) {
 		/* change to parameter mode */
 		jc_set_mode(JC_PARMSET_MODE);
 
-		jc_writeb(JC_CATEGORY_PARM,
-				JC_PARM_MON_SIZE,
-				jc_ctrl->preview_size);
-
-		if (jc_ctrl->preview_size == 0x43 ||
-			jc_ctrl->preview_size == 0x44 || jc_ctrl->preview_size == 0x45) {
-			usleep(10*1000);
-			jc_writeb(JC_CATEGORY_CAPCTRL, 0x0, 0x0);
-			usleep(10*1000);
-			jc_writeb(0x1, 0x5, 0x1);
-			usleep(10*1000);
-			jc_writeb(0x1, 0x6, 0x1);
+		/* set monitor(preview) size */
+		if (jc_ctrl->preview_size != prev_preview_size) {
+			cam_info("### set monitor(preview) size : 0x%x\n",
+					 jc_ctrl->preview_size);
+			jc_writeb(JC_CATEGORY_PARM,
+					JC_PARM_MON_SIZE,
+					jc_ctrl->preview_size);
+			if (jc_ctrl->preview_size == 0x43 ||
+				jc_ctrl->preview_size == 0x44 || jc_ctrl->preview_size == 0x45) {
+				usleep(10*1000);
+				jc_writeb(JC_CATEGORY_CAPCTRL, 0x0, 0x0);
+				usleep(10*1000);
+				jc_writeb(0x1, 0x5, 0x1);
+				usleep(10*1000);
+				jc_writeb(0x1, 0x6, 0x1);
+			} else
+				jc_writeb(JC_CATEGORY_CAPCTRL, 0x0, 0x0f);
+			jc_verify_writedata(JC_CATEGORY_PARM,
+					JC_PARM_MON_SIZE,
+					jc_ctrl->preview_size);
 		} else
-			jc_writeb(JC_CATEGORY_CAPCTRL, 0x0, 0x0f);
-		jc_verify_writedata(JC_CATEGORY_PARM,
-				JC_PARM_MON_SIZE,
-				jc_ctrl->preview_size);
-	} else
-		cam_info("### preview size same as previous size : " \
-					"0x%x\n", prev_preview_size);
+			cam_info("### preview size same as previous size : " \
+						"0x%x\n", prev_preview_size);
 
-	/* set capture size */
-	if (jc_ctrl->capture_size != prev_capture_size) {
-		cam_info("### set capture size : 0x%x\n",
-				 jc_ctrl->capture_size);
-		jc_writeb(JC_CATEGORY_CAPPARM,
-				JC_CAPPARM_MAIN_IMG_SIZE,
-				jc_ctrl->capture_size);
-		jc_verify_writedata(JC_CATEGORY_CAPPARM,
-				JC_CAPPARM_MAIN_IMG_SIZE,
-				jc_ctrl->capture_size);
-	} else
-		cam_info("### capture size same as previous size : " \
-					"0x%x\n", prev_capture_size);
+		/* set capture size */
+		if (jc_ctrl->capture_size != prev_capture_size) {
+			cam_info("### set capture size : 0x%x\n",
+					 jc_ctrl->capture_size);
+			jc_writeb(JC_CATEGORY_CAPPARM,
+					JC_CAPPARM_MAIN_IMG_SIZE,
+					jc_ctrl->capture_size);
+			jc_verify_writedata(JC_CATEGORY_CAPPARM,
+					JC_CAPPARM_MAIN_IMG_SIZE,
+					jc_ctrl->capture_size);
+		} else
+			cam_info("### capture size same as previous size : " \
+						"0x%x\n", prev_capture_size);
+	}
+
 	return 0;
 }
 
@@ -1971,7 +2218,6 @@ static int jc_set_snapshot_mode(int mode)
 {
 	int32_t rc = 0;
 	int val = -1;
-	int retries = 0;
 
 	cam_info("Entered, shot mode %d\n", mode);
 
@@ -1987,7 +2233,7 @@ static int jc_set_snapshot_mode(int mode)
 			jc_readb(JC_CATEGORY_CAPCTRL,
 				        0x1F, &val);
 			cam_info("capture status : %d", val);
-		} while (val != 0 && retries++ < JC_I2C_VERIFY);
+		} while (val != 0);
 		if ((jc_ctrl->shot_mode == 0 ||jc_ctrl->shot_mode == 1)
 			&& (jc_ctrl->movie_mode == false)){
 			cam_info("1Sec Burst");
@@ -2047,7 +2293,7 @@ static int jc_set_af_mode(int status)
 
 	cam_info("Entered, af mode %d\n", status);
 
-	if (status < 1 || status > 7) {
+	if (status < 1 || status > 6) {
 		cam_err("invalid value, %d\n", status);
 		return rc;
 	}
@@ -2106,10 +2352,6 @@ static int jc_set_af_mode(int status)
 			jc_writeb(JC_CATEGORY_LENS,
 					0x02, 0x01);
 		}
-	} else if (status == 7) {
-		cam_info("Infinity\n");
-		jc_writeb(JC_CATEGORY_LENS,
-				0x02, 0x02);
 	}
 
 	return rc;
@@ -2122,9 +2364,8 @@ static int jc_set_touch_af_pos(int x, int y)
 
 	cam_info("Entered, touch af pos (%x, %x)\n", x, y);
 
-	if ((jc_ctrl->af_mode >= 3
-		&& jc_ctrl->af_mode <=6)
-		&& jc_ctrl->touch_af_mode == true) {
+	if (jc_ctrl->af_mode >=	3
+		&& jc_ctrl->af_mode <=6) {
 		cam_info("Now CAF mode. Return touch position setting!\n");
 		return rc;
 	}
@@ -2393,6 +2634,7 @@ static int jc_set_ev(int mode)
 static int jc_set_hjr(int mode)
 {
 	int32_t rc = 0;
+	u32 isp_mode;
 
 	cam_info("Entered, hjr %d\n", mode);
 
@@ -2401,16 +2643,37 @@ static int jc_set_hjr(int mode)
 		return rc;
 	}
 
-	if (mode == 0) {
-		cam_info("HJR Off\n");
-		jc_writeb(JC_CATEGORY_CAPCTRL,
-				0x0B, 0x00);
-	} else if (mode == 1) {
-		cam_info("HJR On\n");
-		jc_writeb(JC_CATEGORY_CAPCTRL,
-				0x0B, 0x01);
-	}
+	jc_readb(JC_CATEGORY_SYS, JC_SYS_MODE, &isp_mode);
 
+	if (isp_mode == JC_MONITOR_MODE) {
+		cam_info("monitor mode\n");
+
+		jc_set_mode(JC_PARMSET_MODE);
+
+		if (mode == 0) {
+			cam_info("HJR Off\n");
+			jc_writeb(JC_CATEGORY_CAPCTRL,
+					0x0B, 0x00);
+		} else if (mode == 1) {
+			cam_info("HJR On\n");
+			jc_writeb(JC_CATEGORY_CAPCTRL,
+					0x0B, 0x01);
+		}
+
+		jc_set_mode(JC_MONITOR_MODE);
+	} else {
+		cam_info("parameter mode\n");
+
+		if (mode == 0) {
+			cam_info("HJR Off\n");
+			jc_writeb(JC_CATEGORY_CAPCTRL,
+					0x0B, 0x00);
+		} else if (mode == 1) {
+			cam_info("HJR On\n");
+			jc_writeb(JC_CATEGORY_CAPCTRL,
+					0x0B, 0x01);
+		}
+	}
 	return rc;
 }
 
@@ -2450,15 +2713,11 @@ static int jc_set_movie_mode(int mode)
 		jc_ctrl->movie_mode = false;
 		jc_writeb(JC_CATEGORY_PARM,
 				JC_PARM_MON_MOVIE_SELECT, 0x00);
-		cam_info("Zsl mode\n");
-		jc_writeb(0x02, 0xCF, 0x01);	/*zsl mode*/
 	} else if (mode == 1) {
 		cam_info("Movie mode\n");
 		jc_ctrl->movie_mode = true;
 		jc_writeb(JC_CATEGORY_PARM,
 				JC_PARM_MON_MOVIE_SELECT, 0x01);
-		cam_info("Non zsl mode\n");
-		jc_writeb(0x02, 0xCF, 0x00);	/*non-zsl mode*/
 	}
 	return rc;
 }
@@ -2532,15 +2791,48 @@ static int jc_set_shot_mode(int mode)
 	return rc;
 }
 
+static int jc_set_ocr_focus_mode(int mode)
+{
+	int32_t rc = 0;
+
+	cam_info("Entered, ocr focus mode %d\n", mode);
+
+	jc_writeb(JC_CATEGORY_LENS, 0x18, mode);
+
+	return rc;
+}
+
+static int jc_set_softlanding(void)
+{
+	int32_t rc = 0;
+	int check_softlanding = 0;
+	int retry = 0;
+
+	cam_info("Entered, softlanding\n");
+
+	jc_writeb(JC_CATEGORY_LENS, 0x16, 0x01);
+
+	for (retry = 2; retry > 0; retry--) {
+		jc_readb(JC_CATEGORY_LENS,
+					0x17, &check_softlanding);
+		if (check_softlanding == 0x30) {
+			cam_info("Finish softlanding");
+			break;
+		} else {
+			cam_info("softlanding status : 0x%x", check_softlanding);
+			msleep(33);
+		}
+	}
+
+	return rc;
+}
+
 static int jc_set_fps(int mode, int min, int max)
 {
 	int32_t rc = 0;
 
 	cam_info("Entered, fps mode : %d, min : %d, max : %d\n",
 		mode, min, max);
-
-	jc_ctrl->fps_mode = mode;
-	jc_ctrl->max_fps = max;
 
 	if (mode == 0) {
 		cam_info("Auto fps mode\n");
@@ -2593,175 +2885,6 @@ static int jc_set_fps(int mode, int min, int max)
 		jc_writeb(JC_CATEGORY_AE,
 				JC_AE_EP_MODE_CAP, 0x16);
 	}
-	return rc;
-}
-
-static int jc_set_scene_mode(int mode)
-{
-	int32_t rc = 0;
-	u32 isp_mode;
-
-	jc_readb(JC_CATEGORY_SYS, JC_SYS_MODE, &isp_mode);
-
-	cam_info("Entered, scene mode %d / %d\n", mode, isp_mode);
-	cam_info("fps info %d / %d\n", jc_ctrl->fps_mode, jc_ctrl->max_fps);
-
-	if (isp_mode == JC_MONITOR_MODE) {
-		cam_info("monitor mode\n");
-
-		jc_set_mode(JC_PARMSET_MODE);
-
-		if (mode == 0) {
-			cam_info("auto scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x01);
-			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
-		} else if (mode == 5) {
-			cam_info("party scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x15);
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x20);
-		} else if (mode == 7) {
-			cam_info("sunset scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x16);
-			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
-		} else if (mode == 10) {
-			cam_info("night scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x17);
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x21);
-		} else if (mode == 20) {
-			cam_info("action scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x11);
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x11);
-		} else {
-			cam_info("etc scene\n");
-			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
-		}
-
-		jc_set_mode(JC_MONITOR_MODE);
-
-		cam_info("Restart auto focus\n");
-		if (jc_ctrl->af_mode == 3) {
-			cam_info("start CAF\n");
-			jc_writeb(JC_CATEGORY_LENS,
-					0x01, 0x03);
-			jc_writeb(JC_CATEGORY_LENS,
-					0x02, 0x01);
-		} else if (jc_ctrl->af_mode == 4) {
-			cam_info("start macro CAF\n");
-			jc_writeb(JC_CATEGORY_LENS,
-					0x01, 0x07);
-			jc_writeb(JC_CATEGORY_LENS,
-					0x02, 0x01);
-		} else if (jc_ctrl->af_mode == 5) {
-			msleep(50);
-			cam_info("start Movie CAF\n");
-			jc_writeb(JC_CATEGORY_LENS,
-					0x01, 0x04);
-			jc_writeb(JC_CATEGORY_LENS,
-					0x02, 0x01);
-		} else if (jc_ctrl->af_mode == 6) {
-			msleep(50);
-			cam_info("FD CAF\n");
-			jc_writeb(JC_CATEGORY_LENS,
-					0x01, 0x05);
-			jc_writeb(JC_CATEGORY_LENS,
-					0x02, 0x01);
-		}
-	} else {
-		cam_info("parameter mode\n");
-
-		if (mode == 0) {
-			cam_info("auto scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x01);
-			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
-		} else if (mode == 5) {
-			cam_info("party scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x15);
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x20);
-		} else if (mode == 7) {
-			cam_info("sunset scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x16);
-			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
-		} else if (mode == 10) {
-			cam_info("night scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x17);
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x21);
-		} else if (mode == 20) {
-			cam_info("action scene\n");
-			jc_writeb(JC_CATEGORY_PARM, 0x0E, 0x11);
-			jc_writeb(JC_CATEGORY_AE,
-					JC_AE_EP_MODE_CAP, 0x11);
-		} else {
-			cam_info("etc scene\n");
-			jc_set_fps(jc_ctrl->fps_mode, 0, jc_ctrl->max_fps);
-		}
-	}
-
-	return rc;
-}
-
-static int jc_set_ocr_focus_mode(int mode)
-{
-	int32_t rc = 0;
-
-	cam_info("Entered, ocr focus mode %d\n", mode);
-
-	jc_writeb(JC_CATEGORY_LENS, 0x18, mode);
-
-	return rc;
-}
-
-static int jc_set_different_ratio_capture(int mode)
-{
-	int32_t rc = 0;
-
-	cam_info("Entered, different ratio capture mode %d\n", mode);
-
-	if (mode == 1)
-		jc_writeb(JC_CATEGORY_CAPPARM, 0x77, 0x1);
-	else
-		jc_writeb(JC_CATEGORY_CAPPARM, 0x77, 0x0);
-
-	return rc;
-}
-
-static int jc_set_af_window(int mode)
-{
-	int32_t rc = 0;
-
-	cam_info("Entered, af window %d\n", mode);
-
-	jc_writeb(JC_CATEGORY_TEST, 0x8D, mode);
-
-	return rc;
-}
-
-static int jc_set_softlanding(void)
-{
-	int32_t rc = 0;
-	int check_softlanding = 0;
-	int retry = 0;
-
-	cam_info("Entered, softlanding\n");
-
-	jc_writeb(JC_CATEGORY_LENS, 0x16, 0x01);
-
-	for (retry = 2; retry > 0; retry--) {
-		jc_readb(JC_CATEGORY_LENS,
-					0x17, &check_softlanding);
-		if (check_softlanding == 0x30) {
-			cam_info("Finish softlanding");
-			break;
-		} else {
-			cam_info("softlanding status : 0x%x", check_softlanding);
-			msleep(33);
-		}
-	}
-
 	return rc;
 }
 
@@ -2917,28 +3040,17 @@ void sensor_native_control(void __user *arg)
 	case EXT_CAM_UPDATE_FW:
 		if (ctrl_info.value_1 == CAM_FW_MODE_DUMP) {
 			jc_sensor_power_reset(&jc_s_ctrl);
-#if JC_DUMP_FW
-			jc_dump_fw();
+#ifdef JC_SPI_WRITE
+			jc_check_sensor_phone();/*temp*/
+#else
+			jc_load_fw_main();
 #endif
 			jc_sensor_power_down(&jc_s_ctrl);
+			jc_s_ctrl.func_tbl->sensor_power_up(&jc_s_ctrl);
 		} else if (ctrl_info.value_1 == CAM_FW_MODE_UPDATE) {
 			jc_sensor_power_reset(&jc_s_ctrl);
-			cam_info("ISP FW Force Write!\n");
-			jc_get_phone_version();
-			jc_load_SIO_fw();
-			jc_phone_fw_to_isp();
-			jc_sensor_power_reset(&jc_s_ctrl);
-			jc_get_isp_version();
-			jc_isp_boot();
-
-			cam_info("nv12 output setting\n");
-			jc_writeb(JC_CATEGORY_CAPCTRL,
-					0x0, 0x0f);
-
-			cam_info("Sensor version : %s\n", sysfs_sensor_fw_str);
-			cam_info("ISP version : %s\n", sysfs_isp_fw_str);
-			cam_info("Phone version : %s\n", sysfs_phone_fw_str);
-			cam_info("ISP FW Force Write Done!\n");
+			jc_load_fw_main();
+			jc_s_ctrl.func_tbl->sensor_power_up(&jc_s_ctrl);
 		}
 		break;
 
@@ -3016,11 +3128,11 @@ void sensor_native_control(void __user *arg)
 		if (ctrl_info.value_1 == 0) {
 			cam_info("FD disable\n");
 			jc_writeb(JC_CATEGORY_FD,
-					0x4A, 0x00);
+					0x00, 0x00);
 		} else if (ctrl_info.value_1 == 1) {
 			cam_info("FD enable\n");
 			jc_writeb(JC_CATEGORY_FD,
-					0x4A, 0x01);
+					0x00, 0x01);
 		}
 		break;
 
@@ -3065,22 +3177,6 @@ void sensor_native_control(void __user *arg)
 
 	case EXT_CAM_SET_OCR_FOCUS_MODE:
 		jc_set_ocr_focus_mode(ctrl_info.value_1);
-		break;
-
-	case EXT_CAM_SET_AF_WINDOW:
-		jc_set_af_window(ctrl_info.value_1);
-		break;
-
-	case EXT_CAM_SET_FACTORY_BIN:
-		cam_info(" factory binary: %d", ctrl_info.value_1);
-		if (ctrl_info.value_1 == 1)
-			jc_ctrl->factory_bin = true;
-		else
-			jc_ctrl->factory_bin = false;
-		break;
-
-	case EXT_CAM_SCENEMODE:
-		jc_set_scene_mode(ctrl_info.value_1);
 		break;
 
 	default:
@@ -3211,25 +3307,20 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	int rc = 0;
 	int err;
 	int result_sensor_phone, result_isp_phone, result_sensor_isp;
+	bool recheck_fw = false;
 	int isp_revision = 0;
 	int isp_ret;
 
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 	CAM_DEBUG("E");
+	firmware_update = false;
 	firmware_update_sdcard = false;
 	jc_ctrl->burst_mode = false;
 	jc_ctrl->stream_on = false;
 	jc_ctrl->torch_mode = false;
 	jc_ctrl->movie_mode = false;
 	jc_ctrl->anti_stream_off = false;
-	jc_ctrl->need_restart_caf = false;
-	jc_ctrl->is_isp_null = false;
-	jc_ctrl->isp_null_read_sensor_fw = false;
-	jc_ctrl->touch_af_mode = false;
-	jc_ctrl->fw_retry_cnt = 0;
-	jc_ctrl->fps_mode = 0;
-	jc_ctrl->max_fps = 0;
-
+retry:
 	rc = msm_camera_request_gpio_table(data, 1);
 	if (rc < 0)
 		pr_err("%s: request gpio failed\n", __func__);
@@ -3265,51 +3356,109 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	} else
 	    jc_ctrl->isp.issued = 0;
 
-#ifndef JC_SPI_WRITE
+#if JC_DUMP_FW
+	jc_dump_fw();
+#endif
+
+	err = jc_readb(JC_CATEGORY_FLASH,
+		0x11, &isp_version);
+	cam_info("isp version : 0x%x\n", isp_version);
+
+#ifdef JC_SPI_WRITE
+	if (firmware_update == true) {
+		firmware_update = false;
+		if (isp_version == 0x00) {
+			jc_sensor_power_reset(s_ctrl);
+			if (jc_SIO_loader())
+				jc_init_fw_load();
+		msleep(100);
+		s_ctrl->func_tbl->sensor_power_down(s_ctrl);
+		goto retry;
+		}
+	}
+#else
 	jc_load_fw_main();
 #endif
 
-	if (version_checked == false && jc_ctrl->fw_update == true) {
-		isp_ret = jc_get_isp_version();
+	if (isp_version == 0x00) {
 		jc_isp_boot();
-		jc_get_sensor_version();
-		jc_get_phone_version();
 
-		if(!jc_check_sensor_validation() /*|| !jc_check_sensor_spi_port()*/) {
-			jc_sensor_power_down(&jc_s_ctrl);
-			return -ENOSYS;
-		}
-
-		cam_info("isp_ret: %d, samsung app: %d, factory bin: %d\n",
-		    isp_ret, jc_ctrl->samsung_app, jc_ctrl->factory_bin);
-
-#if 0 //remove for ged
-		if (isp_ret == 0 && jc_ctrl->samsung_app == false && jc_ctrl->factory_bin == false) {
-		    cam_err("3rd party app. skip ISP FW update\n");
-		    goto start;
-		}
-#endif
-		jc_ctrl->fw_update = false;
-
-		if (firmware_update_sdcard == true) {
-			cam_info("FW in sd card is higher priority than others!\n");
-
-			result_isp_phone = jc_check_isp_phone();
-
-			if (result_isp_phone != 0) {
-				cam_info("ISP FW and SD card FW are different, Force Write!\n");
-				jc_isp_reset(s_ctrl);
-				jc_load_SIO_fw();
-				jc_phone_fw_to_isp();
-				jc_sensor_power_reset(s_ctrl);
-				jc_get_isp_version();
-				jc_isp_boot();
+		/* check up F/W version */
+		err = jc_check_fw();
+		if (err < 0) {
+			cam_info("Need to fw update!\n");
+			firmware_update = true;
+			s_ctrl->func_tbl->sensor_power_down(s_ctrl);
+			goto retry;
+		} else if (err > 0) {
+			if (firmware_update_sdcard == true) {
+				cam_info("Force update via sdcard fw\n");
+				firmware_update = true;
+				s_ctrl->func_tbl->sensor_power_down(s_ctrl);
+				goto retry;
 			} else
-				cam_info("ISP FW and SD card FW are same, Do not anything!\n");
-		} else if (isp_ret < 0) {
-                       cam_info("ISP FW is wrong, need to write from sensor or phone\n");
-			    jc_isp_reset(s_ctrl);
+				cam_info("Sensor FW is latest!\n");
+		} else
+			cam_info("Sensor FW is latest!\n");
+	} else if (isp_version == 0x10) {
+		if (version_checked == false && jc_ctrl->fw_update == true) {
+                   jc_ctrl->fw_update = false;
+                   jc_get_phone_version();
+                   isp_ret = jc_get_isp_version();
+
+                   if (firmware_update_sdcard == true) {
+                       cam_info("FW in sd card is higher priority than others!\n");
+                       jc_isp_boot();
+                       jc_get_sensor_version();
+
+                       if(!jc_check_sensor_validation() /*|| !jc_check_sensor_spi_port()*/) {
+                           jc_sensor_power_down(&jc_s_ctrl);
+                           return -ENOSYS;
+                       }
+                       result_isp_phone = jc_check_isp_phone();
+
+                       if (result_isp_phone != 0) {
+                           cam_info("ISP FW and SD card FW are different, Force Write!\n");
+                           jc_isp_reset(s_ctrl);
+                           jc_load_SIO_fw();
+                           firmware_update = true;
+                           recheck_fw = true;
+                           jc_phone_fw_to_isp();
+                           jc_sensor_power_reset(s_ctrl);
+                           jc_get_isp_version();
+                           jc_isp_boot();
+                       } else
+                           cam_info("ISP FW and SD card FW are same, Do not anything!\n");
+                   } else if (isp_ret < 0) {
+                       cam_info("ISP FW is wrong, write Phone FW to ISP\n");
                        jc_load_SIO_fw();
+                       jc_phone_fw_to_isp();
+                       jc_sensor_power_reset(s_ctrl);
+                       jc_get_isp_version();
+                       jc_isp_boot();
+                       jc_get_sensor_version();
+
+                       if(!jc_check_sensor_validation() /*|| !jc_check_sensor_spi_port()*/) {
+                           jc_sensor_power_down(&jc_s_ctrl);
+                           return -ENOSYS;
+                       }
+                       result_sensor_isp = jc_check_sensor_isp();
+
+                       if (result_sensor_isp > 0) {
+                           cam_info("Sensor > ISP, update from sensor\n");
+                           jc_isp_reset(s_ctrl);
+                           jc_load_SIO_fw();
+                           firmware_update = true;
+                           recheck_fw = true;
+                           jc_read_from_sensor_fw();
+                           jc_sensor_power_reset(s_ctrl);
+                           jc_get_isp_version();
+                           jc_isp_boot();
+                       } else
+                           cam_info("Sensor <= ISP, Do not anything\n");
+                   }else {
+                       cam_info("ISP FW is normal, need to compare with sensor/phone");
+                       jc_isp_boot();
                        jc_get_sensor_version();
 
                        if(!jc_check_sensor_validation() /*|| !jc_check_sensor_spi_port()*/) {
@@ -3319,81 +3468,55 @@ static int jc_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
                        result_sensor_phone = jc_check_sensor_phone();
 
                        if (result_sensor_phone > 0) {
-                           cam_info("Sensor > Phone, update from sensor\n");
-			        jc_ctrl->isp_null_read_sensor_fw = true;
-                           jc_read_from_sensor_fw();
-                           jc_sensor_power_reset(s_ctrl);
-                           jc_get_isp_version();
-                           jc_isp_boot();
+                           cam_info("Sensor > Phone, compare with ISP\n");
+                           result_sensor_isp = jc_check_sensor_isp();
 
+                           if (result_sensor_isp > 0) {
+                               cam_info("Sensor > ISP, update from sensor\n");
+                               jc_isp_reset(s_ctrl);
+                               jc_load_SIO_fw();
+                               firmware_update = true;
+                               recheck_fw = true;
+                               jc_read_from_sensor_fw();
+                               jc_sensor_power_reset(s_ctrl);
+                               jc_get_isp_version();
+                               jc_isp_boot();
+                           } else
+                               cam_info("Sensor <= ISP, Do not anything\n");
                        } else {
-                           cam_info("Sensor < Phone, update from Phone\n");
-                           jc_phone_fw_to_isp();
-                           jc_sensor_power_reset(s_ctrl);
-                           jc_get_isp_version();
-                           jc_isp_boot();
+                           cam_info("Sensor < Phone, compare with ISP\n");
+                           result_isp_phone = jc_check_isp_phone();
+
+                           if (result_isp_phone < 0) {
+                               cam_info("Phone > ISP, update from Phone\n");
+                               jc_isp_reset(s_ctrl);
+                               jc_load_SIO_fw();
+                               firmware_update = true;
+                               recheck_fw = true;
+                               jc_phone_fw_to_isp();
+                               jc_sensor_power_reset(s_ctrl);
+                               jc_get_isp_version();
+                               jc_isp_boot();
+                           } else
+                           cam_info("Phone <= ISP, Do not anything\n");
                        }
-                   }else {
-			cam_info("ISP FW is normal, need to compare with sensor/phone");
-			result_sensor_phone = jc_check_sensor_phone();
+                   }
+               }else {
+               jc_isp_boot();
 
-			if (result_sensor_phone > 0) {
-				cam_info("Sensor > Phone, compare with ISP\n");
-				result_sensor_isp = jc_check_sensor_isp();
-
-				if (result_sensor_isp > 0) {
-					cam_info("Sensor > ISP, update from sensor\n");
-					jc_isp_reset(s_ctrl);
-					jc_load_SIO_fw();
-					jc_read_from_sensor_fw();
-					jc_sensor_power_reset(s_ctrl);
-					jc_get_isp_version();
-					jc_isp_boot();
-				} else
-					cam_info("Sensor <= ISP, Do not anything\n");
-			} else {
-				cam_info("Sensor < Phone, compare with ISP\n");
-
-			result_isp_phone = jc_check_isp_phone();
-
-			if (result_isp_phone < 0) {
-				cam_info("Phone > ISP, update from Phone\n");
-				jc_isp_reset(s_ctrl);
-				jc_load_SIO_fw();
-				jc_phone_fw_to_isp();
-				jc_sensor_power_reset(s_ctrl);
-				jc_get_isp_version();
-				jc_isp_boot();
-			} else
-				cam_info("Phone <= ISP, Do not anything\n");
-			}
+               if(!jc_check_sensor_validation() /*|| !jc_check_sensor_spi_port()*/) {
+                    jc_sensor_power_down(&jc_s_ctrl);
+                   return -ENOSYS;
+               }
 		}
-	}else {
-		jc_isp_boot();
-
-		if(!jc_check_sensor_validation() /*|| !jc_check_sensor_spi_port()*/) {
-			jc_sensor_power_down(&jc_s_ctrl);
-			return -ENOSYS;
-		}
-	}
-#if 0 //remove for ged
-start:
-#endif
-	cam_info("nv12 output setting\n");
-	err = jc_writeb(JC_CATEGORY_CAPCTRL,
-			0x0, 0x0f);
-
-	cam_info("GED camera setting\n");
-	err = jc_writeb(JC_CATEGORY_PARM,
-			0xf, 0x01);
-
-	if (jc_ctrl->samsung_app != 1) {
-		cam_info("Set different ratio capture mode\n");
-		jc_set_different_ratio_capture(1);
 	}
 
 	err = jc_readb(0x01, 0x3F, &isp_revision);
 	cam_info("isp revision : 0x%x\n", isp_revision);
+
+	cam_info("nv12 output setting\n");
+	err = jc_writeb(JC_CATEGORY_CAPCTRL,
+			0x0, 0x0f);
 
 	cam_info("Sensor version : %s\n", sysfs_sensor_fw_str);
 	cam_info("ISP version : %s\n", sysfs_isp_fw_str);
@@ -3433,9 +3556,6 @@ static int jc_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/* Power off */
 	data->sensor_platform_info->sensor_power_off();
-
-	data->sensor_platform_info->
-		sensor_pmic_gpio_ctrl(data->sensor_platform_info->irq_gpio, 3);
 
 	msm_camera_request_gpio_table(data, 0);
 
@@ -3543,51 +3663,6 @@ void jc_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 	CAM_DEBUG("X");
 }
 
-static int jc_sensor_start_stream_internal(struct msm_sensor_ctrl_t *s_ctrl)
-{
-	int rc = 0;
-
-	CAM_DEBUG("E");
-	if (jc_ctrl->anti_stream_off == true) {
-		jc_ctrl->anti_stream_off = false;
-	} else {
-		/* change to monitor mode */
-		cam_info("change to monitor mode\n");
-		rc = jc_set_mode(JC_MONITOR_MODE);
-		jc_ctrl->stream_on = true;
-		if (jc_ctrl->af_mode == 3) {
-			cam_info("start CAF\n");
-			jc_writeb(JC_CATEGORY_LENS,
-					0x01, 0x03);
-			jc_writeb(JC_CATEGORY_LENS,
-					0x02, 0x01);
-		} else if (jc_ctrl->af_mode == 4) {
-			cam_info("start macro CAF\n");
-			jc_writeb(JC_CATEGORY_LENS,
-					0x01, 0x07);
-			jc_writeb(JC_CATEGORY_LENS,
-					0x02, 0x01);
-		} else if (jc_ctrl->af_mode == 5) {
-			msleep(50);
-			cam_info("start Movie CAF\n");
-			jc_writeb(JC_CATEGORY_LENS,
-					0x01, 0x04);
-			jc_writeb(JC_CATEGORY_LENS,
-					0x02, 0x01);
-		} else if (jc_ctrl->af_mode == 6) {
-			msleep(50);
-			cam_info("FD CAF\n");
-			jc_writeb(JC_CATEGORY_LENS,
-					0x01, 0x05);
-			jc_writeb(JC_CATEGORY_LENS,
-					0x02, 0x01);
-		}
-	}
-	CAM_DEBUG("X");
-
-	return rc;
-}
-
 void jc_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	CAM_DEBUG("E");
@@ -3598,22 +3673,6 @@ void jc_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 		jc_ctrl->stream_on = false;
 	}
 	CAM_DEBUG("X");
-}
-
-static int jc_sensor_stop_stream_internal(struct msm_sensor_ctrl_t *s_ctrl)
-{
-	int rc = 0;
-
-	CAM_DEBUG("E");
-	if (jc_ctrl->anti_stream_off == false) {
-		/* change to parameter mode */
-		cam_info("change to parameter mode\n");
-		rc = jc_set_mode(JC_PARMSET_MODE);
-		jc_ctrl->stream_on = false;
-	}
-	CAM_DEBUG("X");
-
-	return rc;
 }
 
 long jc_sensor_subdev_ioctl(struct v4l2_subdev *sd,
@@ -3694,12 +3753,11 @@ int jc_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		break;
 
 	case CFG_START_STREAM:
-		rc = jc_sensor_start_stream_internal(s_ctrl);
+		s_ctrl->func_tbl->sensor_start_stream(s_ctrl);
 		break;
 
 	case CFG_STOP_STREAM:
-		rc = jc_sensor_stop_stream_internal(s_ctrl);
-		cam_info("%s CFG_STOP_STREAM : %d\n", __func__, (int)rc);
+		s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
 		break;
 
 	case CFG_GET_AF_MAX_STEPS:
@@ -3766,34 +3824,9 @@ static ssize_t jc_camera_check_fw_show(struct device *dev,
 	return sprintf(buf, "%s %s %s\n", sysfs_isp_fw_str, sysfs_phone_fw_str, sysfs_sensor_fw_str);
 }
 
-static ssize_t jc_camera_check_app_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", jc_ctrl->samsung_app);
-}
-
-static ssize_t jc_camera_check_app_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-	unsigned long value = simple_strtoul(buf, NULL, 0);
-
-	CAM_DEBUG(" received value: %d\n", (int)value);
-
-	if (value == 0) {
-	    jc_ctrl->samsung_app = false;
-	} else {
-	    CAM_DEBUG(" samsung app");
-	    jc_ctrl->samsung_app = true;
-	}
-
-	return size;
-}
-
 static DEVICE_ATTR(rear_camtype, S_IRUGO, jc_camera_type_show, NULL);
 static DEVICE_ATTR(rear_camfw, S_IRUGO, jc_camera_fw_show, NULL);
 static DEVICE_ATTR(rear_checkfw, S_IRUGO, jc_camera_check_fw_show, NULL);
-static DEVICE_ATTR(rear_checkApp, S_IRUGO|S_IWUSR|S_IWGRP,
-    jc_camera_check_app_show, jc_camera_check_app_store);
 
 int32_t jc_init_vreg_port(struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -3942,8 +3975,6 @@ static int jc_i2c_probe(struct i2c_client *client,
 		s_ctrl->sensor_v4l2_subdev.devnode->num;
 
 	jc_ctrl->fw_update = true;
-	jc_ctrl->samsung_app = false;
-	jc_ctrl->factory_bin = false;
 	jc_ctrl->system_rev = s_ctrl->sensordata->sensor_platform_info->sys_rev();
 
 	/* to solve sleep current issue */
@@ -4013,13 +4044,7 @@ static int __init jc_init(void)
 	if (device_create_file
 	(cam_dev_rear, &dev_attr_rear_checkfw) < 0) {
 		cam_err("failed to create device file, %s\n",
-		dev_attr_rear_checkfw.attr.name);
-	}
-
-	if (device_create_file
-	(cam_dev_rear, &dev_attr_rear_checkApp) < 0) {
-		cam_err("failed to create device file, %s\n",
-		dev_attr_rear_checkApp.attr.name);
+		dev_attr_rear_camfw.attr.name);
 	}
 
 	return i2c_add_driver(&jc_i2c_driver);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -683,7 +683,7 @@ static enum msm_camera_vreg_name_t ov2720_veg_seq[] = {
 };
 
 static int32_t ov2720_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 	uint32_t fl_lines, offset;
 	uint8_t int_time[3];
@@ -846,6 +846,7 @@ static struct msm_sensor_ctrl_t ov2720_s_ctrl = {
 	.sensor_v4l2_subdev_ops = &ov2720_subdev_ops,
 	.func_tbl = &ov2720_func_tbl,
 	.clk_rate = MSM_SENSOR_MCLK_24HZ,
+	.fps_divider = Q10,
 };
 
 module_init(msm_sensor_init_module);
