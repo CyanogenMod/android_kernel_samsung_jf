@@ -60,7 +60,7 @@
 #include "pm-boot.h"
 #include <mach/event_timer.h>
 #include <linux/cpu_pm.h>
-#if CONFIG_SEC_DEBUG
+#if defined(CONFIG_SEC_DEBUG)
 #include <mach/sec_debug.h>
 #endif
 #include <linux/regulator/consumer.h>
@@ -532,7 +532,6 @@ static bool __ref msm_pm_spm_power_collapse(
 #ifdef CONFIG_VFP
 	vfp_pm_suspend();
 #endif
-
 #ifdef CONFIG_SEC_DEBUG
 	secdbg_sched_msg("+pc(I:%d,R:%d)", from_idle, notify_rpm);
 #endif

@@ -3261,7 +3261,7 @@ static struct platform_device msm_tsens_device = {
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 7,
 	.poll_ms = 250,
-	.limit_temp_degC = 60,
+	.limit_temp_degC = 70,
 	.temp_hysteresis_degC = 10,
 	.freq_step = 2,
 	.core_limit_temp_degC = 80,
@@ -5363,7 +5363,7 @@ static void __init apq8064_common_init(void)
 
 		/* Add GSBI4 I2C Device for non-fusion3 platform */
 		if (socinfo_get_platform_subtype() !=
-				PLATFORM_SUBTYPE_SGLTE2) {
+					PLATFORM_SUBTYPE_SGLTE2) {
 			platform_device_register(&apq8064_device_qup_i2c_gsbi4);
 		}
 	}

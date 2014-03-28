@@ -433,6 +433,7 @@ static void *msm_bus_noc_allocate_noc_data(struct platform_device *pdev,
 		GFP_KERNEL);
 	if (!ninfo->mas_modes) {
 		MSM_BUS_DBG("Couldn't alloc mem for noc master-modes\n");
+		kfree(ninfo);
 		return NULL;
 	}
 
@@ -442,9 +443,7 @@ static void *msm_bus_noc_allocate_noc_data(struct platform_device *pdev,
 			GFP_KERNEL);
 		if (!ninfo->cdata[i].mas) {
 			MSM_BUS_DBG("Couldn't alloc mem for noc master-bw\n");
-			kfree(ninfo->mas_modes);
-			kfree(ninfo);
-			return NULL;
+			goto err;
 		}
 
 		ninfo->cdata[i].slv = kzalloc(sizeof(struct
@@ -452,7 +451,6 @@ static void *msm_bus_noc_allocate_noc_data(struct platform_device *pdev,
 			GFP_KERNEL);
 		if (!ninfo->cdata[i].slv) {
 			MSM_BUS_DBG("Couldn't alloc mem for noc master-bw\n");
-			kfree(ninfo->cdata[i].mas);
 			goto err;
 		}
 	}
@@ -486,6 +484,12 @@ skip_mem:
 	return (void *)ninfo;
 
 err:
+	for(i = 0 ; i < NUM_CTX ; i++) {
+		if (ninfo->cdata[i].mas)
+			kfree(ninfo->cdata[i].mas);
+		if(ninfo->cdata[i].slv)
+			kfree(ninfo->cdata[i].slv);
+	}
 	kfree(ninfo->mas_modes);
 	kfree(ninfo);
 	return NULL;

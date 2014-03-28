@@ -4,6 +4,7 @@ config ECRYPT_FS
 	select CRYPTO_ECB
 	select CRYPTO_CBC
 	select CRYPTO_MD5
+	select CRYPTO_SHA256
 	help
 	  Encrypted filesystem that operates on the VFS layer.  See
 	  <file:Documentation/filesystems/ecryptfs.txt> to learn more about

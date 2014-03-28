@@ -46,6 +46,15 @@
 #define TAIKO_LDOH_2P75_V 0x2
 #define TAIKO_LDOH_2P85_V 0x3
 
+#define TAPAN_CFILT1_SEL 0x0
+#define TAPAN_CFILT2_SEL 0x1
+#define TAPAN_CFILT3_SEL 0x2
+
+#define WCD9XXX_LDOH_1P95_V 0x0
+#define WCD9XXX_LDOH_2P35_V 0x1
+#define WCD9XXX_LDOH_2P75_V 0x2
+#define WCD9XXX_LDOH_2P85_V 0x3
+#define WCD9XXX_LDOH_3P0_V 0x3
 
 #define MAX_AMIC_CHANNEL 7
 
@@ -125,7 +134,7 @@ struct wcd9xxx_ocp_setting {
 	unsigned int	hph_ocp_limit:3; /* Headphone OCP current limit */
 };
 
-#define MAX_REGULATOR	7
+#define MAX_REGULATOR	8
 /*
  *      format : TABLA_<POWER_SUPPLY_PIN_NAME>_CUR_MAX
  *
@@ -140,11 +149,14 @@ struct wcd9xxx_ocp_setting {
 #define  WCD9XXX_VDDD_CDC_D_CUR_MAX       5000
 #define  WCD9XXX_VDDD_CDC_A_CUR_MAX       5000
 
+#define WCD9XXX_VDD_SPKDRV_NAME "cdc-vdd-spkdrv"
+
 struct wcd9xxx_regulator {
 	const char *name;
 	int min_uV;
 	int max_uV;
 	int optimum_uA;
+	bool ondemand;
 	struct regulator *regulator;
 };
 
@@ -158,6 +170,7 @@ struct wcd9xxx_pdata {
 	struct wcd9xxx_micbias_setting micbias;
 	struct wcd9xxx_ocp_setting ocp;
 	struct wcd9xxx_regulator regulator[MAX_REGULATOR];
+	u32 mclk_rate;
 };
 
 #endif

@@ -672,7 +672,7 @@ static int fastrpc_internal_invoke(struct fastrpc_apps *me, uint32_t kernel,
 	remote_arg_t *rpra = 0;
 	struct fastrpc_device *dev = 0;
 	struct smq_invoke_ctx *ctx = 0;
-	struct fastrpc_buf obuf, *abufs = 0, *b;
+	struct fastrpc_buf obuf = {0}, *abufs = 0, *b;
 	int interrupted = 0;
 	uint32_t sc;
 	int i, nbufs = 0, err = 0;

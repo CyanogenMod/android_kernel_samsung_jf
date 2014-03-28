@@ -178,10 +178,12 @@ static struct pm8xxx_gpio_init pm8917_sd_det[] __initdata = {
 };
 #endif
 
+#if !defined(CONFIG_MACH_JFVE_EUR)
 /* PM8917 GPIO NC state */
 static struct pm8xxx_gpio_init pm8917_nc[] __initdata = {
 	PM8921_GPIO_INPUT(25, PM_GPIO_PULL_DN),
 };
+#endif
 
 /* PM8921 GPIO 42 remaps to PM8917 GPIO 8 */
 static struct pm8xxx_gpio_init pm8917_cdp_kp_gpios[] __initdata = {
@@ -244,18 +246,22 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 #else
 #if defined(CONFIG_MACH_JF_ATT) || defined(CONFIG_MACH_JF_TMO) || defined(CONFIG_MACH_JF_EUR)
 		if (system_rev >= BOARD_REV09)
+#elif defined(CONFIG_MACH_JFVE_EUR)
+		if (system_rev >= BOARD_REV00)
 #else /* VZW/SPT/USCC */
 		if (system_rev >= BOARD_REV10)
 #endif
 			apq8064_configure_gpios(pm8917_sd_det, ARRAY_SIZE(pm8917_sd_det));
 #endif
 
+#if !defined(CONFIG_MACH_JFVE_EUR)
 #if defined(CONFIG_MACH_JF_ATT) || defined(CONFIG_MACH_JF_TMO)
 		if (system_rev >= BOARD_REV11)
 #else /* EUR/VZW/SPR/USC/CRI */
 		if (system_rev >= BOARD_REV12)
 #endif
 			apq8064_configure_gpios(pm8917_nc, ARRAY_SIZE(pm8917_nc));
+#endif
 	}
 
 	if (machine_is_apq8064_cdp() || machine_is_apq8064_liquid()) {

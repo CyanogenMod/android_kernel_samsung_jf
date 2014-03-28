@@ -41,7 +41,7 @@ static DEFINE_SPINLOCK(sync_timeline_list_lock);
 
 static LIST_HEAD(sync_fence_list_head);
 static DEFINE_SPINLOCK(sync_fence_list_lock);
-
+extern void xlog_dump(void);
 struct sync_timeline *sync_timeline_create(const struct sync_timeline_ops *ops,
 					   int size, const char *name)
 {
@@ -620,6 +620,7 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 			pr_info("fence timeout on [%p] after %dms\n", fence,
 				jiffies_to_msecs(timeout));
 			sync_dump(fence);
+			xlog_dump();
 		}
 		return -ETIME;
 	}

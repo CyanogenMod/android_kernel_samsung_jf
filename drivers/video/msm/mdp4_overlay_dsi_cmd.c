@@ -294,9 +294,9 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait, u32 *release_busy)
 /*
  * allow stage_commit without pipes queued
  * (vp->update_cnt == 0) to unstage pipes after
- * overlay_unset
- */
-
+ * overlay_unset                               
+ */                                            
+	xlog(__func__, wait, vp->update_cnt, 0, 0, 0);
 	vctrl->update_ndx++;
 	vctrl->update_ndx &= 0x01;
 	vp->update_cnt = 0;     /* reset */
@@ -415,6 +415,8 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait, u32 *release_busy)
 			mdp4_dsi_cmd_wait4dmap(0);
 	}
 
+	
+	xlog(__func__, 0x9999, 0, 0, 0, 0);
 	return cnt;
 }
 

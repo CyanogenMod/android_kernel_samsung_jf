@@ -579,7 +579,7 @@ static struct platform_device apq8064_android_pmem_audio_device = {
 static struct platform_device battery_bcl_device = {
 	.name = "battery_current_limit",
 	.id = -1,
-	};
+};
 #endif
 
 struct fmem_platform_data apq8064_fmem_pdata = {
@@ -1112,7 +1112,7 @@ static void __init reserve_cache_dump_memory(void)
 		apq8064_cache_dump_pdata.l2_size;
 	apq8064_reserve_table[MEMTYPE_EBI1].size += total;
 	pr_info("mem_map: cache_dump reserved with size 0x%x in pool\n",
-			total);
+				total);
 #endif
 }
 
@@ -3280,7 +3280,7 @@ static struct mdm_platform_data sglte2_mdm_platform_data = {
 static struct mdm_platform_data sglte2_qsc_platform_data = {
 	.mdm_version = "3.0",
 	.ramdump_delay_ms = 2000,
-     /* delay between two PS_HOLDs */
+	/* delay between two PS_HOLDs */
 	.ps_hold_delay_ms = 500,
 	.ramdump_timeout_ms = 600000,
 	.no_powerdown_after_ramdumps = 1,
@@ -3306,7 +3306,7 @@ static struct platform_device msm_tsens_device = {
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 7,
 	.poll_ms = 250,
-	.limit_temp_degC = 60,
+	.limit_temp_degC = 70,
 	.temp_hysteresis_degC = 10,
 	.freq_step = 2,
 	.core_limit_temp_degC = 80,
@@ -3682,11 +3682,11 @@ static void __init apq8064ab_update_krait_spm(void)
 			if (pdata->modes[j].cmd ==
 					spm_power_collapse_without_rpm)
 				pdata->modes[j].cmd =
-				spm_power_collapse_without_rpm_krait_v3;
+					spm_power_collapse_without_rpm_krait_v3;
 			else if (pdata->modes[j].cmd ==
 					spm_power_collapse_with_rpm)
 				pdata->modes[j].cmd =
-				spm_power_collapse_with_rpm_krait_v3;
+					spm_power_collapse_with_rpm_krait_v3;
 		}
 	}
 }
@@ -4034,7 +4034,7 @@ static struct platform_device *early_common_devices[] __initdata = {
 	&apq8064_device_dmov,
 #if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 	&apq8064_device_qup_spi_gsbi5,
-#endif	
+#endif
 };
 
 static struct platform_device *pm8921_common_devices[] __initdata = {
@@ -4560,11 +4560,10 @@ static void __init apq8064_i2c_init(void)
 					&apq8064_i2c_qup_gsbi3_pdata;
 	apq8064_device_qup_i2c_gsbi1.dev.platform_data =
 					&apq8064_i2c_qup_gsbi1_pdata;
-
 	/* Add GSBI4 I2C pdata for non-fusion3 SGLTE2 */
 	if (socinfo_get_platform_subtype() !=
-				PLATFORM_SUBTYPE_SGLTE2) {
-		apq8064_device_qup_i2c_gsbi4.dev.platform_data =
+			PLATFORM_SUBTYPE_SGLTE2) {
+	apq8064_device_qup_i2c_gsbi4.dev.platform_data =
 					&apq8064_i2c_qup_gsbi4_pdata;
 	}
 	mpq8064_device_qup_i2c_gsbi5.dev.platform_data =
@@ -5345,7 +5344,7 @@ static void __init apq8064ab_update_retention_spm(void)
 			if (pdata->modes[j].cmd ==
 					spm_retention_cmd_sequence)
 				pdata->modes[j].cmd =
-				spm_retention_with_krait_v3_cmd_sequence;
+					spm_retention_with_krait_v3_cmd_sequence;
 		}
 	}
 }
@@ -5353,8 +5352,6 @@ static void __init apq8064ab_update_retention_spm(void)
 static void __init apq8064_common_init(void)
 {
 	u32 platform_version = socinfo_get_platform_version();
-	struct msm_rpmrs_level rpmrs_level;
-
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
 	int ret;
 #endif
@@ -5425,6 +5422,12 @@ static void __init apq8064_common_init(void)
 			machine_is_mpq8064_dtv())) {
 		platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
+		/* Add GSBI4 I2C Device for non-fusion3 platform */
+		if (socinfo_get_platform_subtype() !=
+				PLATFORM_SUBTYPE_SGLTE2) {
+			platform_device_register(&apq8064_device_qup_i2c_gsbi4);
+		}
+	}
 	
 		/* Add GSBI4 I2C Device for non-fusion3 platform */
 		if (socinfo_get_platform_subtype() !=
@@ -5468,7 +5471,7 @@ static void __init apq8064_common_init(void)
 				&bmdm_platform_data;
 			platform_device_register(&bmdm_8064_device);
 		} else if (socinfo_get_platform_subtype() ==
-				   PLATFORM_SUBTYPE_SGLTE2) {
+				PLATFORM_SUBTYPE_SGLTE2) {
 			sglte_mdm_8064_device.dev.platform_data =
 				&sglte2_mdm_platform_data;
 			platform_device_register(&sglte_mdm_8064_device);
@@ -5615,7 +5618,6 @@ static void __init samsung_jf_init(void)
 #ifdef CONFIG_MSM_CAMERA
 	apq8064_init_cam();
 #endif
-
 	if (machine_is_mpq8064_hrd() || machine_is_mpq8064_dtv()) {
 #ifdef CONFIG_SERIAL_MSM_HS
 		/* GSBI6(2) - UARTDM_RX */
@@ -5644,6 +5646,7 @@ static void __init samsung_jf_init(void)
 	bcm2079x_init();
 	nfc_gpio_rev_init();
 #endif
+
 #ifndef CONFIG_MACH_JF
 	if (machine_is_mpq8064_cdp()) {
 		platform_device_register(&mpq_gpio_keys_pdev);

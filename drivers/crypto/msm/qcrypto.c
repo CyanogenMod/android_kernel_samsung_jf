@@ -1169,7 +1169,7 @@ static int _qcrypto_process_ahash(struct crypto_priv *cp,
 static int _qcrypto_process_aead(struct crypto_priv *cp,
 				struct crypto_async_request *async_req)
 {
-	struct qce_req qreq;
+	struct qce_req qreq = {0};
 	int ret = 0;
 	struct qcrypto_cipher_req_ctx *rctx;
 	struct qcrypto_cipher_ctx *cipher_ctx;

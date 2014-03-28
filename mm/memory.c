@@ -154,6 +154,9 @@ static void add_mm_counter_fast(struct mm_struct *mm, int member, int val)
 
 /* sync counter once per 64 page faults */
 #define TASK_RSS_EVENTS_THRESH	(64)
+#if defined(CONFIG_VMWARE_MVP)
+EXPORT_SYMBOL_GPL(get_mm_counter);
+#endif
 static void check_sync_rss_stat(struct task_struct *task)
 {
 	if (unlikely(task != current))

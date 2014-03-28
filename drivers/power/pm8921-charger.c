@@ -1827,9 +1827,6 @@ static int get_prop_batt_temp(struct pm8921_chg_chip *chip, int *temp)
 	}
 	pr_debug("batt_temp phy = %lld meas = 0x%llx\n", result.physical,
 						result.measurement);
-
-	result.physical = 650; //for temp
-
 	if (result.physical > MAX_TOLERABLE_BATT_TEMP_DDC)
 		pr_err("BATT_TEMP= %d > 68degC, device will be shutdown\n",
 							(int) result.physical);

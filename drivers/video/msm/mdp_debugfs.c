@@ -160,7 +160,10 @@ static ssize_t mdp_reg_write(
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
 	printk(KERN_INFO "%s: addr=%x data=%x\n", __func__, off, data);
-
+	{
+		void xlog_dump(void);
+		xlog_dump();
+	}
 	return count;
 }
 

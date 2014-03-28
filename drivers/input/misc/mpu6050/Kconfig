@@ -1,0 +1,26 @@
+config INPUT_MPU6050
+	bool "Invensense MPU-6050 sensor"
+	default n
+	help
+	  Say Y here if you want support for the MPU-6050 sensor
+	  device.
+	  To compile this driver as a module, choose M here: the
+	  module will be called MPU6050.
+
+config INPUT_MPU6050_SELFTEST
+	bool "Self-test of Invensense MPU-6050 sensor"
+	default n
+	help
+	  Say Y here if you want support for self-test of the MPU-6050 sensor
+	  device.
+	  To compile this driver as a module, choose M here: the
+	  module will be called MPU6050.
+
+config INPUT_MPU6050_POLLING
+	bool "Polling-mode of Invensense MPU-6050 sensor"
+	default n
+	help
+	  Say Y here if you want support for polling-mode of the MPU-6050 sensor
+	  device.
+	  To compile this driver as a module, choose M here: the
+	  module will be called MPU6050.

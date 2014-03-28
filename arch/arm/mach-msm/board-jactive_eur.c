@@ -533,11 +533,11 @@ static struct platform_device apq8064_android_pmem_audio_device = {
 #endif /* CONFIG_MSM_MULTIMEDIA_USE_ION */
 #endif /* CONFIG_ANDROID_PMEM */
 
-#ifdef CONFIG_BATTERY_BCL
+#ifdef CONFIG_BATTERY_BCL  
 static struct platform_device battery_bcl_device = {
 	.name = "battery_current_limit",
 	.id = -1,
-	};
+};
 #endif
 
 struct fmem_platform_data apq8064_fmem_pdata = {
@@ -5478,6 +5478,7 @@ static void __init samsung_jf_init(void)
 	bcm2079x_init();
 	nfc_gpio_rev_init();
 #endif
+
 #ifndef CONFIG_MACH_JF
 	if (machine_is_mpq8064_cdp()) {
 		platform_device_register(&mpq_gpio_keys_pdev);

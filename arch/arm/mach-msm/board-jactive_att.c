@@ -543,7 +543,7 @@ static struct platform_device apq8064_android_pmem_audio_device = {
 static struct platform_device battery_bcl_device = {
 	.name = "battery_current_limit",
 	.id = -1,
-	};
+};
 #endif
 
 struct fmem_platform_data apq8064_fmem_pdata = {
@@ -1068,7 +1068,7 @@ static void __init reserve_cache_dump_memory(void)
 		apq8064_cache_dump_pdata.l2_size;
 	apq8064_reserve_table[MEMTYPE_EBI1].size += total;
 	pr_info("mem_map: cache_dump reserved with size 0x%x in pool\n",
-			total);
+				total);
 #endif
 }
 
@@ -1195,6 +1195,7 @@ static struct i2c_board_info touchkey_i2c_devices_info[] __initdata = {
 };
 
 #endif
+
 
 static char prim_panel_name[PANEL_NAME_MAX_LEN];
 static char ext_panel_name[PANEL_NAME_MAX_LEN];
@@ -3203,7 +3204,7 @@ static struct mdm_platform_data sglte2_mdm_platform_data = {
 static struct mdm_platform_data sglte2_qsc_platform_data = {
 	.mdm_version = "3.0",
 	.ramdump_delay_ms = 2000,
-     /* delay between two PS_HOLDs */
+	/* delay between two PS_HOLDs */
 	.ps_hold_delay_ms = 500,
 	.ramdump_timeout_ms = 600000,
 	.no_powerdown_after_ramdumps = 1,
@@ -3229,7 +3230,7 @@ static struct platform_device msm_tsens_device = {
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 7,
 	.poll_ms = 250,
-	.limit_temp_degC = 60,
+	.limit_temp_degC = 70,
 	.temp_hysteresis_degC = 10,
 	.freq_step = 2,
 	.core_limit_temp_degC = 80,
@@ -3628,11 +3629,11 @@ static void __init apq8064ab_update_krait_spm(void)
 			if (pdata->modes[j].cmd ==
 					spm_power_collapse_without_rpm)
 				pdata->modes[j].cmd =
-				spm_power_collapse_without_rpm_krait_v3;
+					spm_power_collapse_without_rpm_krait_v3;
 			else if (pdata->modes[j].cmd ==
 					spm_power_collapse_with_rpm)
 				pdata->modes[j].cmd =
-				spm_power_collapse_with_rpm_krait_v3;
+					spm_power_collapse_with_rpm_krait_v3;
 		}
 	}
 }
@@ -3980,7 +3981,7 @@ static struct platform_device *early_common_devices[] __initdata = {
 	&apq8064_device_dmov,
 #if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 	&apq8064_device_qup_spi_gsbi5,
-#endif 
+#endif
 };
 
 static struct platform_device *pm8921_common_devices[] __initdata = {
@@ -4513,12 +4514,11 @@ static void __init apq8064_i2c_init(void)
 					&apq8064_i2c_qup_gsbi3_pdata;
 	apq8064_device_qup_i2c_gsbi1.dev.platform_data =
 					&apq8064_i2c_qup_gsbi1_pdata;
-
 	/* Add GSBI4 I2C pdata for non-fusion3 SGLTE2 */
 	if (socinfo_get_platform_subtype() !=
-				PLATFORM_SUBTYPE_SGLTE2) {
+			PLATFORM_SUBTYPE_SGLTE2) {
 		apq8064_device_qup_i2c_gsbi4.dev.platform_data =
-					&apq8064_i2c_qup_gsbi4_pdata;
+		&apq8064_i2c_qup_gsbi4_pdata;
 	}
 	mpq8064_device_qup_i2c_gsbi5.dev.platform_data =
 					&mpq8064_i2c_qup_gsbi5_pdata;
@@ -5122,7 +5122,7 @@ static void enable_avc_i2c_bus(void)
 	rc = gpio_request(avc_i2c_en_mpp, "avc_i2c_en");
 	if (rc)
 		pr_err("request for avc_i2c_en mpp failed,"
-						 "rc=%d\n", rc);
+				"rc=%d\n", rc);
 	else
 		gpio_set_value_cansleep(avc_i2c_en_mpp, 1);
 }
@@ -5142,10 +5142,10 @@ static void main_mic_bias_init(void)
 	};
 
 	ret = gpio_request(PM8921_GPIO_PM_TO_SYS(PMIC_MAIN_MICBIAS_EN),
-		"micbias_en");
+			"micbias_en");
 	if (ret) {
 		pr_err("%s : gpio_request failed for %d\n", __func__,
-			PM8921_GPIO_PM_TO_SYS(PMIC_MAIN_MICBIAS_EN));
+				PM8921_GPIO_PM_TO_SYS(PMIC_MAIN_MICBIAS_EN));
 		return;
 	}
 
@@ -5174,12 +5174,12 @@ static void __init gpio_rev_init(void)
 	}
 	if (system_rev > BOARD_REV05)
 		barcode_emul_info.cresetb =
-		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_FPGA_CRESET_B);
+			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_FPGA_CRESET_B);
 
 	barcode_emul_info.spi_clk =
-			PM8921_MPP_PM_TO_SYS(PMIC_MPP_FPGA_SPI_CLK);
+		PM8921_MPP_PM_TO_SYS(PMIC_MPP_FPGA_SPI_CLK);
 	barcode_emul_info.spi_si  =
-			PM8921_MPP_PM_TO_SYS(PMIC_MPP_FPGA_SPI_SI);
+		PM8921_MPP_PM_TO_SYS(PMIC_MPP_FPGA_SPI_SI);
 #endif
 }
 static void sec_jack_init(void)
@@ -5217,10 +5217,10 @@ static void sec_jack_init(void)
 		.output_value	= 1,		
 	};
 	ret = gpio_request(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_EAR_MICBIAS_EN),
-		"ear_micbias_en");
+			"ear_micbias_en");
 	if (ret) {
 		pr_err("%s : gpio_request failed for %d\n", __func__,
-			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_EAR_MICBIAS_EN));
+				PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_EAR_MICBIAS_EN));
 		return;
 	}
 
@@ -5236,13 +5236,13 @@ static void sec_jack_init(void)
 	}
 	if (system_rev == BOARD_REV08) {
 		pm8xxx_gpio_config(
-			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_FSA8048_EN),
-			&fsa8048_en_old);
+				PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_FSA8048_EN),
+				&fsa8048_en_old);
 	}
 	if (system_rev >= BOARD_REV10) {
 		pm8xxx_gpio_config(
-			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_FSA8048_EN),
-			&fsa8048_en);
+				PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_FSA8048_EN),
+				&fsa8048_en);
 	}
 }
 
@@ -5261,10 +5261,10 @@ static void vps_sound_init(void)
 	};
 
 	ret = gpio_request(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_VPS_SOUND_EN),
-		"vps_sound_en");
+			"vps_sound_en");
 	if (ret) {
 		pr_err("%s : gpio_request failed for %d\n", __func__,
-			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_VPS_SOUND_EN));
+				PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_VPS_SOUND_EN));
 		return;
 	}
 
@@ -5298,7 +5298,7 @@ static void __init apq8064ab_update_retention_spm(void)
 			if (pdata->modes[j].cmd ==
 					spm_retention_cmd_sequence)
 				pdata->modes[j].cmd =
-				spm_retention_with_krait_v3_cmd_sequence;
+					spm_retention_with_krait_v3_cmd_sequence;
 		}
 	}
 }
@@ -5306,8 +5306,6 @@ static void __init apq8064ab_update_retention_spm(void)
 static void __init apq8064_common_init(void)
 {
 	u32 platform_version = socinfo_get_platform_version();
-	struct msm_rpmrs_level rpmrs_level;
-
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
 	int ret;
 #endif
@@ -5375,8 +5373,7 @@ static void __init apq8064_common_init(void)
 	if (!(machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
 			machine_is_mpq8064_dtv())) {
 		platform_add_devices(common_not_mpq_devices,
-			ARRAY_SIZE(common_not_mpq_devices));
-	
+				ARRAY_SIZE(common_not_mpq_devices));
 		/* Add GSBI4 I2C Device for non-fusion3 platform */
 		if (socinfo_get_platform_subtype() !=
 				PLATFORM_SUBTYPE_SGLTE2) {
@@ -5413,18 +5410,18 @@ static void __init apq8064_common_init(void)
 				&bmdm_platform_data;
 			platform_device_register(&bmdm_8064_device);
 		} else if (socinfo_get_platform_subtype() ==
-				   PLATFORM_SUBTYPE_SGLTE2) {
+				PLATFORM_SUBTYPE_SGLTE2) {
 			sglte_mdm_8064_device.dev.platform_data =
 				&sglte2_mdm_platform_data;
 			platform_device_register(&sglte_mdm_8064_device);
 			sglte2_qsc_8064_device.dev.platform_data =
 				&sglte2_qsc_platform_data;
 			platform_device_register(&sglte2_qsc_8064_device);
- 
+
 			/* GSBI4 UART device for Primay IPC */
 			apq8064_uartdm_gsbi4_pdata.wakeup_irq = gpio_to_irq(11);
 			apq8064_device_uartdm_gsbi4.dev.platform_data =
-						&apq8064_uartdm_gsbi4_pdata;
+				&apq8064_uartdm_gsbi4_pdata;
 			platform_device_register(&apq8064_device_uartdm_gsbi4);
 		} else if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
 			i2s_mdm_8064_device.dev.platform_data =
@@ -5450,7 +5447,6 @@ static void __init apq8064_common_init(void)
 	}
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 	apq8064_epm_adc_init();
-	msm_pm_set_tz_retention_flag(1);
 	samsung_sys_class_init();
 	
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI) || defined(CONFIG_TOUCHSCREEN_ATMEL_MXTS)
@@ -5564,6 +5560,16 @@ static void __init samsung_jf_init(void)
 #ifdef CONFIG_MSM_CAMERA
 	apq8064_init_cam();
 #endif
+	if (machine_is_mpq8064_hrd() || machine_is_mpq8064_dtv()) {
+#ifdef CONFIG_SERIAL_MSM_HS
+		/* GSBI6(2) - UARTDM_RX */
+		mpq8064_gsbi6_uartdm_pdata.wakeup_irq = gpio_to_irq(15);
+		mpq8064_device_uartdm_gsbi6.dev.platform_data =
+			&mpq8064_gsbi6_uartdm_pdata;
+#endif
+		platform_device_register(&mpq8064_device_uartdm_gsbi6);
+	}
+
 #if defined(CONFIG_BATTERY_SAMSUNG)
 	msm8960_init_battery();
 #endif
@@ -5596,6 +5602,7 @@ static void __init samsung_jf_init(void)
 	bcm2079x_init();
 	nfc_gpio_rev_init();
 #endif
+
 #ifndef CONFIG_MACH_JF
 	if (machine_is_mpq8064_cdp()) {
 		platform_device_register(&mpq_gpio_keys_pdev);

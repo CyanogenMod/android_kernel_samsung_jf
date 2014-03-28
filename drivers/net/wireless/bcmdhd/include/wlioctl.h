@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wlioctl.h 429124 2013-10-11 09:47:05Z $
+ * $Id: wlioctl.h 429833 2013-10-16 06:43:06Z $
  */
 
 #ifndef _wlioctl_h_
@@ -4738,6 +4738,36 @@ typedef struct {
 #endif /* DONGLEOVERLAYS */
 
 #endif /* LINUX_POSTMOGRIFY_REMOVAL */
+
+#define BSS_PEER_INFO_PARAM_CUR_VER	0
+/* Input structure for IOV_BSS_PEER_INFO */
+typedef BWL_PRE_PACKED_STRUCT	struct {
+	uint16			version;
+	struct	ether_addr ea;	/* peer MAC address */
+} BWL_POST_PACKED_STRUCT bss_peer_info_param_t;
+
+#define BSS_PEER_INFO_CUR_VER		0
+
+typedef BWL_PRE_PACKED_STRUCT struct {
+	uint16			version;
+	struct ether_addr	ea;
+	int32			rssi;
+	uint32			tx_rate;	/* current tx rate */
+	uint32			rx_rate;	/* current rx rate */
+	wl_rateset_t		rateset;	/* rateset in use */
+	uint32			age;		/* age in seconds */
+} BWL_POST_PACKED_STRUCT bss_peer_info_t;
+
+#define BSS_PEER_LIST_INFO_CUR_VER	0
+
+typedef BWL_PRE_PACKED_STRUCT struct {
+	uint16			version;
+	uint16			bss_peer_info_len;	/* length of bss_peer_info_t */
+	uint32			count;			/* number of peer info */
+	bss_peer_info_t		peer_info[1];		/* peer info */
+} BWL_POST_PACKED_STRUCT bss_peer_list_info_t;
+
+#define BSS_PEER_LIST_INFO_FIXED_LEN OFFSETOF(bss_peer_list_info_t, peer_info)
 
 /* no default structure packing */
 #include <packed_section_end.h>

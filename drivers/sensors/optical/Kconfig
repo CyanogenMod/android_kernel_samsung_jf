@@ -1,0 +1,4 @@
+config OPTICAL_TAOS_TMD3782
+	depends on I2C
+	tristate "TAOS RGBC sensor input device"
+	default n

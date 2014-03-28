@@ -102,6 +102,19 @@ config WLAN_REGION_CODE
 		- 202 : KOR KTT
 		- 203 : KOR LGT
 		- 300 : CHN OPEN
+		- 400 : USA OPEN
+		- 401 : USA ATT
+		- 402 : USA TMO
+		- 403 : USA VZW
+		- 404 : USA SPR
+		- 405 : USA USC
+
+config WIFI_2GHZ_VHT_NO_SUPPORT
+	bool "BROADCOM Reserved memory for wifi device"
+	depends on BCM4339
+	default n
+	---help---
+	  This is a configuration for 2GHZ VHT mode.
 
 config SUPPORT_AIBSS
 	bool "Advanced IBSS mode"

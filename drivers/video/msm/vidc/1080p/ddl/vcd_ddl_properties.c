@@ -536,7 +536,6 @@ static u32 ddl_set_dec_property(struct ddl_client_context *ddl,
 	}
 	break;
 	case VCD_REQ_PERF_LEVEL:
-		DDL_MSG_LOW("%s: VCD_REQ_PERF_LEVEL (do nithing)", __func__);
 		vcd_status = VCD_S_SUCCESS;
 		break;
 	default:
@@ -1181,7 +1180,6 @@ static u32 ddl_set_enc_property(struct ddl_client_context *ddl,
 		}
 	break;
 	case VCD_REQ_PERF_LEVEL:
-		DDL_MSG_LOW("%s: VCD_REQ_PERF_LEVEL (do nithing)", __func__);
 		vcd_status = VCD_S_SUCCESS;
 		break;
 	case VCD_I_ENABLE_DELIMITER_FLAG:
