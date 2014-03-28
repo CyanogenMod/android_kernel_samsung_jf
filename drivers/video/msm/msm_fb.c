@@ -354,8 +354,6 @@ static void msm_fb_remove_sysfs(struct platform_device *pdev)
 	sysfs_remove_group(&mfd->fbi->dev->kobj, &msm_fb_attr_group);
 }
 
-static void bl_workqueue_handler(struct work_struct *work);
-
 static void msm_fb_shutdown(struct platform_device *pdev)
 {
        struct msm_fb_data_type *mfd = platform_get_drvdata(pdev);
