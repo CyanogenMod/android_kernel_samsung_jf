@@ -135,7 +135,7 @@ DHDCFLAGS :=$(filter-out -DMULTIPLE_SUPPLICANT,$(DHDCFLAGS))
 # m: module type driver
 # y: built-in type driver
 ##########################
-DRIVER_TYPE ?= m
+DRIVER_TYPE ?= y
 
 #########################
 # Chip dependent feature
