@@ -3026,9 +3026,7 @@ static unsigned long rtcc_do_try_to_free_pages(struct zonelist *zonelist, struct
 
 	for (priority = DEF_PRIORITY/2; priority >= 0; priority--) {
 		sc->nr_scanned = 0;
-		if (!priority)
-			disable_swap_token(sc->target_mem_cgroup);
-		aborted_reclaim = shrink_zones(priority, zonelist, sc);
+		aborted_reclaim = shrink_zones(zonelist, sc);
 
 		total_scanned += sc->nr_scanned;
 		if (sc->nr_reclaimed >= sc->nr_to_reclaim)
