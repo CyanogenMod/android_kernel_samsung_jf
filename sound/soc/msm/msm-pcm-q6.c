@@ -46,7 +46,7 @@ struct snd_msm {
 #define CAPTURE_MIN_NUM_PERIODS  2
 #define CAPTURE_MAX_NUM_PERIODS  16
 #define CAPTURE_MAX_PERIOD_SIZE  4096
-#define CAPTURE_MIN_PERIOD_SIZE  320
+#define CAPTURE_MIN_PERIOD_SIZE  64
 
 static struct snd_pcm_hardware msm_pcm_hardware_capture = {
 	.info =                 (SNDRV_PCM_INFO_MMAP |
@@ -83,7 +83,7 @@ static struct snd_pcm_hardware msm_pcm_hardware_playback = {
 	.channels_max =         2,
 	.buffer_bytes_max =     PLAYBACK_MAX_NUM_PERIODS *
 				PLAYBACK_MAX_PERIOD_SIZE,
-	.period_bytes_min =     PLAYBACK_MIN_PERIOD_SIZE,
+	.period_bytes_min =	PLAYBACK_MIN_PERIOD_SIZE,
 	.period_bytes_max =     PLAYBACK_MAX_PERIOD_SIZE,
 	.periods_min =          PLAYBACK_MIN_NUM_PERIODS,
 	.periods_max =          PLAYBACK_MAX_NUM_PERIODS,
