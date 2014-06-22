@@ -424,9 +424,12 @@ static int __init do_early_param(char *param, char *val)
 	/* We accept everything at this stage. */
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 	/*  check power off charging */
-	if ((strncmp(param, "androidboot.bootchg", 19) == 0)) {
-		if (strncmp(val, "true", 4) == 0)
+	if ((strncmp(param, "androidboot.mode", 16) == 0) ||
+	    (strncmp(param, "androidboot.bootchg", 19) == 0)) {
+		if ((strncmp(val, "charger", 7) == 0) ||
+		    (strncmp(val, "true", 4) == 0)) {
 			poweroff_charging = 1;
+		}
 	}
 #endif
 	return 0;
