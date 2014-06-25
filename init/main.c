@@ -424,8 +424,8 @@ static int __init do_early_param(char *param, char *val)
 	/* We accept everything at this stage. */
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 	/*  check power off charging */
-	if ((strncmp(param, "androidboot.bootchg", 19) == 0)) {
-		if (strncmp(val, "true", 4) == 0)
+	if (strncmp(param, "androidboot.mode", 16) == 0) {
+		if (strncmp(val, "charger", 7) == 0)
 			poweroff_charging = 1;
 	}
 #endif
@@ -495,6 +495,8 @@ asmlinkage void __init start_kernel(void)
 {
 	char * command_line;
 	extern const struct kernel_param __start___param[], __stop___param[];
+	static char buffer[4096];
+	char *p, *cmd_char;
 
 	/*
 	 * Need to run as early as possible, to initialize the
@@ -525,6 +527,17 @@ asmlinkage void __init start_kernel(void)
 	setup_arch(&command_line);
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
+
+	cmd_char = (char*)boot_command_line;
+	p = (strstr(cmd_char, "androidboot.bootchg=true"));
+	if(p)
+	{
+		strncpy(buffer, cmd_char, p - cmd_char);
+		buffer[p - cmd_char] = '\0';
+		sprintf(buffer + (p - cmd_char), "%s%s", "androidboot.mode=charger", p + strlen("androidboot.bootchg=true"));
+		strncpy(boot_command_line, buffer, strlen(buffer));
+	}
+
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
 	setup_per_cpu_areas();
