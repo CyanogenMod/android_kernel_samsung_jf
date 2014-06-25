@@ -495,6 +495,8 @@ asmlinkage void __init start_kernel(void)
 {
 	char * command_line;
 	extern const struct kernel_param __start___param[], __stop___param[];
+	static char buffer[4096];
+	char *p, *cmd_char;
 
 	/*
 	 * Need to run as early as possible, to initialize the
@@ -525,6 +527,16 @@ asmlinkage void __init start_kernel(void)
 	setup_arch(&command_line);
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
+
+	cmd_char = (char*)boot_command_line;
+	if((p = (strstr(cmd_char, "androidboot.mode=charger"))));
+	{
+		strncpy(buffer, cmd_char, p - cmd_char);
+		buffer[p - cmd_char] = '\0';
+		sprintf(buffer + (p - cmd_char), "%s%s", "androidboot.bootchg=true", p + strlen("androidboot.mode=charger"));
+		strncpy(boot_command_line, buffer, strlen(buffer));
+	}
+
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
 	setup_per_cpu_areas();
