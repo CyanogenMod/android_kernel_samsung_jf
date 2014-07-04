@@ -289,6 +289,10 @@ static int msm_ispif_config(struct ispif_device *ispif,
 			ispif_params[i].cid_mask, vfe_intf);
 	}
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	msm_camera_io_w(0x40, ispif->base + ISPIF_CTRL_ADDR);
+#endif
+
 	msm_camera_io_w(ISPIF_IRQ_STATUS_MASK, ispif->base +
 					ISPIF_IRQ_MASK_ADDR);
 	msm_camera_io_w(ISPIF_IRQ_STATUS_MASK, ispif->base +
