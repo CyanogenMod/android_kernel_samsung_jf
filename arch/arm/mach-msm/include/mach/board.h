@@ -84,7 +84,7 @@ struct msm_camera_legacy_device_platform_data {
 #define MSM_CAMERA_FLASH_SRC_EXT     (0x00000001<<3)
 #define MSM_CAMERA_FLASH_SRC_LED (0x00000001<<3)
 #define MSM_CAMERA_FLASH_SRC_LED1 (0x00000001<<4)
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #define MSM_CAMERA_FLASH_SRC_PMIC_GPIO (0x00000001<<5) /* richardra added 3 */
 #endif
 
@@ -97,7 +97,7 @@ struct msm_camera_sensor_flash_pmic {
 	int (*pmic_set_current)(enum pmic8058_leds id, unsigned mA);
 };
 
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 /* richardra added 4 */
 struct msm_camera_sensor_flash_pmic_gpio {
 	uint8_t num_of_src;
@@ -139,7 +139,7 @@ struct msm_camera_sensor_flash_led {
 	const int led_name_len;
 };
 
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 struct msm_camera_sensor_flash_src {
 	int flash_sr_type;
 

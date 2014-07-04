@@ -537,8 +537,10 @@ long diagchar_ioctl(struct file *filp,
 			return -ENOMEM;
 		}
 		if (copy_from_user(dci_params, (void *)ioarg,
-				 sizeof(struct diag_dci_client_tbl)))
+				 sizeof(struct diag_dci_client_tbl))){
+			kfree(dci_params);
 			return -EFAULT;
+			}
 		mutex_lock(&driver->dci_mutex);
 		if (!(driver->num_dci_client))
 			driver->in_busy_dci = 0;

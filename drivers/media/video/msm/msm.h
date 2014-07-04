@@ -589,6 +589,9 @@ struct msm_cam_server_dev {
 	struct v4l2_subdev *cpp_device[MAX_NUM_CPP_DEV];
 	struct v4l2_subdev *irqr_device;
 	struct v4l2_subdev *cci_device;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	struct v4l2_subdev *eeprom_device;
+#endif
 
 	spinlock_t  intr_table_lock;
 	struct irqmgr_intr_lkup_table irq_lkup_table;
@@ -734,6 +737,11 @@ int msm_cam_register_subdev_node(struct v4l2_subdev *sd,
 	struct msm_cam_subdev_info *sd_info);
 int msm_mctl_find_sensor_subdevs(struct msm_cam_media_controller *p_mctl,
 	int core_index);
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+/*Start : shchang@qualcomm.com : 1104 -FROM*/
+void msm_mctl_find_eeprom_subdevs(struct msm_cam_media_controller *p_mctl);
+/*End : shchang@qualcomm.com : 1104 - FROM*/
+#endif
 int msm_server_open_client(int *p_qidx);
 int msm_server_send_ctrl(struct msm_ctrl_cmd *out, int ctrl_id);
 int msm_server_close_client(int idx);
@@ -747,6 +755,9 @@ void msm_queue_init(struct msm_device_queue *queue, const char *name);
 void msm_enqueue(struct msm_device_queue *queue, struct list_head *entry);
 void msm_drain_eventq(struct msm_device_queue *queue);
 extern void sensor_native_control(void __user *arg);
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+extern void sensor_native_control_front(void __user *arg);
+#endif
 #endif /* __KERNEL__ */
 
 #endif /* _MSM_H */

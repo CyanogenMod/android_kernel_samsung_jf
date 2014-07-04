@@ -38,6 +38,22 @@ struct msm_camera_eeprom_fn_t {
 		(struct msm_eeprom_ctrl_t*, uint32_t*);
 	void (*eeprom_format_data)
 		(void);
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+/*Start : shchang@qualcomm.com : 1104 -FROM*/
+	int32_t (*eeprom_read)
+		(struct msm_eeprom_ctrl_t *ectrl,
+		 uint32_t reg_addr, void *data, uint32_t num_byte);
+	int32_t (*eeprom_direct_data_read)
+		(struct msm_eeprom_ctrl_t *ectrl,
+		 struct eeprom_data_access_t *data_access);
+	int32_t (*eeprom_direct_data_write)
+		(struct msm_eeprom_ctrl_t *ectrl,
+		 struct eeprom_data_access_t *data_access);
+	int32_t (*eeprom_direct_data_erase)
+		(struct msm_eeprom_ctrl_t *ectrl,
+		 struct eeprom_data_access_t *data_access);
+/*End : shchang@qualcomm.com : 1104 - FROM*/
+#endif
 };
 
 struct msm_camera_eeprom_read_t {
@@ -66,8 +82,24 @@ struct msm_eeprom_ctrl_t {
 	uint16_t read_tbl_size;
 	struct msm_camera_eeprom_data_t *data_tbl;
 	uint16_t data_tbl_size;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+/*Start : shchang@qualcomm.com : 1104 -FROM*/
+	struct spi_device *spi;
+#endif
 };
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+/*Start : shchang@qualcomm.com : 1104 -FROM*/
+extern void imx175_eeprom_init(void);
+#if defined(CONFIG_IMX175)
+extern int32_t imx175_spi_read_id(struct msm_eeprom_ctrl_t *ectrl);
+#endif
+/*End : shchang@qualcomm.com : 1104 - FROM*/
+
+int32_t msm_camera_eeprom_read_tbl(struct msm_eeprom_ctrl_t *ectrl,
+	struct msm_camera_eeprom_read_t *read_tbl, uint16_t tbl_size);
+/*End : shchang@qualcomm.com : 1104 - FROM*/
+#endif
 int32_t msm_camera_eeprom_get_data(struct msm_eeprom_ctrl_t *ectrl,
 	struct msm_eeprom_data_t *edata);
 int32_t msm_camera_eeprom_get_info(struct msm_eeprom_ctrl_t *ectrl,

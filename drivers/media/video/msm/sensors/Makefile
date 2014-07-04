@@ -15,5 +15,11 @@ obj-$(CONFIG_MSM_CAMERA_SENSOR) += msm_sensor_common.o msm_sensor.o
 #obj-$(CONFIG_WEBCAM_OV9726) += ov9726_v4l2.o
 #obj-$(CONFIG_OV7692) += ov7692_v4l2.o
 #obj-$(CONFIG_VX6953) += vx6953.o
+ifeq ($(CONFIG_MACH_JACTIVE_EUR),y)
+#obj-$(CONFIG_JC) += jc_v4l2.o jc_spi.o
+obj-$(CONFIG_S5K3H5XA) += s5k3h5xa.o
+#obj-$(CONFIG_IMX175) += imx175.o
+else
 obj-$(CONFIG_JC) += jc_v4l2.o jc_spi.o
+endif
 obj-$(CONFIG_S5K6B2YX) += s5k6b2yx.o
