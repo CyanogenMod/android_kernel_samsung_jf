@@ -26,7 +26,7 @@ static wait_queue_head_t reset_wait;
 
 int msm_gemini_core_reset(uint8_t op_mode, void *base, int size)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	int rc = 0;
 	int tm = 500; /*500ms*/
 	memset(&fe_pingpong_buf, 0, sizeof(fe_pingpong_buf));
@@ -167,7 +167,7 @@ static int (*msm_gemini_irq_handler) (int, void *, void *);
 irqreturn_t msm_gemini_core_irq(int irq_num, void *context)
 {
 	void *data = NULL;
-	unsigned long flags;
+	unsigned long flags = 0;
 	int gemini_irq_status;
 
 	GMN_DBG("%s:%d] irq_num = %d\n", __func__, __LINE__, irq_num);
@@ -177,8 +177,13 @@ irqreturn_t msm_gemini_core_irq(int irq_num, void *context)
 	spin_unlock_irqrestore(&reset_lock, flags);
 	gemini_irq_status = msm_gemini_hw_irq_get_status();
 
-	pr_err("%s:%d] gemini_irq_status = %0x\n", __func__, __LINE__,
-		gemini_irq_status);
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	pr_err("[%s:%d] gemini_irq_status = %0x\n", __func__, __LINE__,
+			gemini_irq_status);
+#else
+	GMN_DBG("%s:%d] gemini_irq_status = %0x\n", __func__, __LINE__,
+			gemini_irq_status);
+#endif
 
 	/*For reset and framedone IRQs, clear all bits*/
 	if (gemini_irq_status & 0x400) {

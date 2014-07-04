@@ -1464,7 +1464,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			wy = finger_data->wy;
 #ifdef EDGE_SWIPE
 			if (f51) {
-#if defined(CONFIG_MACH_JACTIVE_ATT)
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 				if (f51->proximity_controls & HAS_EDGE_SWIPE) {
 #else
 				if ((f51->proximity_controls & HAS_EDGE_SWIPE)

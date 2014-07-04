@@ -247,6 +247,9 @@ config IMX091_EEPROM
 	bool "IMX091 EEPROM support"
 	depends on MSM_CAMERA
 
+config IMX175_EEPROM
+        bool "IMX175 EEPROM support"
+
 config MSM_GEMINI
 	tristate "Qualcomm MSM Gemini Jpeg Engine support"
 	depends on MSM_CAMERA && (ARCH_MSM7X30 || ARCH_MSM8X60 || ARCH_MSM8960)
@@ -389,6 +392,10 @@ config IMX091
 	  Sony 13MP sensor back camera that uses 4 mipi lanes,
 	  runs at 30 fps preview and 14 fps snapshot
 
+config S5K3H5XA
+        bool "Sensor S5K3H5XA (BAYER 8M)"
+        depends on MSM_CAMERA 
+
 config MSM_V4L2_VIDEO_OVERLAY_DEVICE
 	tristate "Qualcomm MSM V4l2 video overlay device"
 	---help---
@@ -414,6 +421,12 @@ config CAMERA_SW_I2C
 	default n
 	---help---
 	CAMERA_SW_I2C
+
+config CAMERA_SW_I2C_ACT
+	bool "CAMERA_SW_I2C_ACT"
+	default n
+	---help---
+	CAMERA_SW_I2C_ACT
 
 config CAMERA_USE_GSBI7
 	bool "CAMERA_USE_GSBI7"

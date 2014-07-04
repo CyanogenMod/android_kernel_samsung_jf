@@ -552,6 +552,13 @@ enum VFE_YUV_INPUT_COSITING_MODE {
 };
 
 #define VFE32_GAMMA_NUM_ENTRIES  64
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+#define VFE32_GAMMA_CH0_G_POS    0
+
+#define VFE32_GAMMA_CH1_B_POS    32
+
+#define VFE32_GAMMA_CH2_R_POS    64
+#endif
 
 #define VFE32_LA_TABLE_LENGTH    64
 
@@ -830,7 +837,9 @@ struct vfe32_output_ch {
 #define VFE32_IMASK_STATS_IHIST_BUS_OVFL      (0x00000001<<20)
 #define VFE32_IMASK_STATS_SKIN_BHIST_BUS_OVFL (0x00000001<<21)
 #define VFE32_IMASK_AXI_ERROR                 (0x00000001<<22)
-
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+#define VFE32_IMASK_BUS_OVFL_ERROR		0x005FFF00
+#endif
 #define VFE_COM_STATUS 0x000FE000
 
 struct vfe32_output_path {
@@ -927,6 +936,9 @@ struct vfe32_frame_extra {
 #define VFE_DMI_ADDR                    0x0000059C
 #define VFE_DMI_DATA_HI                 0x000005A0
 #define VFE_DMI_DATA_LO                 0x000005A4
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+#define VFE_AXI_CFG                     0x00000600
+#endif
 #define VFE_BUS_IO_FORMAT_CFG           0x000006F8
 #define VFE_PIXEL_IF_CFG                0x000006FC
 #define VFE_RDI0_CFG                    0x00000734
@@ -936,6 +948,9 @@ struct vfe32_frame_extra {
 
 #define VFE33_DMI_DATA_HI               0x000005A0
 #define VFE33_DMI_DATA_LO               0x000005A4
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+#define VFE_AXI_CFG_MASK                0x80000000
+#endif
 
 #define VFE32_OUTPUT_MODE_PT			BIT(0)
 #define VFE32_OUTPUT_MODE_S			BIT(1)
@@ -989,6 +1004,9 @@ struct vfe_share_ctrl_t {
 	uint16_t cmd_type;
 	uint8_t vfe_reset_flag;
 	uint8_t dual_enabled;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	uint8_t default_dual_enabled;
+#endif
 	uint8_t lp_mode;
 
 	uint8_t axi_ref_cnt;
@@ -1011,6 +1029,9 @@ struct vfe_share_ctrl_t {
 	atomic_t rdi2_update_ack_pending;
 
 	uint8_t stream_error;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	uint32_t rdi_comp;
+#endif
 
 };
 

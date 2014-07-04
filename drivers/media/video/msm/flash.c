@@ -551,6 +551,49 @@ int msm_camera_flash_pmic(
 	return rc;
 }
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+int msm_camera_flash_pmic_gpio(
+	struct msm_camera_sensor_flash_pmic_gpio *pmic_gpio,
+	unsigned led_state)
+{
+	int rc = 0;
+
+	printk(">>>>> msm_camera_flash_pmic_gpio: %d\n", led_state);
+
+	switch (led_state) {
+		case MSM_CAMERA_LED_LOW:		
+			printk("LED_LOW\n");
+			rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_1, 1); /* flash for a short time */
+			//rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_2, 1);
+			break;
+
+		case MSM_CAMERA_LED_HIGH:
+			printk("LED_HIGH\n");
+			//rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_1,	1);
+			rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_2, 1); /* emitting until coming LOW signal */
+			break;
+
+		case MSM_CAMERA_LED_INIT:
+		case MSM_CAMERA_LED_RELEASE:
+		case MSM_CAMERA_LED_OFF:
+			printk("LED_OFF\n");
+			rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_2, 0);
+			rc = pmic_gpio->pmic_set_func(pmic_gpio->led_src_1, 0);
+			break;
+
+		default:
+			printk("LED_DEFAULT\n");
+			rc = -EFAULT;
+			break;
+	}
+	CDBG("flash_set_led_state: return %d\n", rc);
+
+	printk("%s Exit rc = %d \n", __func__, rc);
+
+	return rc;
+}
+#endif
+
 int32_t msm_camera_flash_set_led_state(
 	struct msm_camera_sensor_flash_data *fdata, unsigned led_state)
 {
@@ -588,6 +631,13 @@ int32_t msm_camera_flash_set_led_state(
 				&fdata->flash_src->_fsrc.ext_driver_src,
 				led_state);
 		break;
+
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	case MSM_CAMERA_FLASH_SRC_PMIC_GPIO:
+		rc = msm_camera_flash_pmic_gpio(&fdata->flash_src->_fsrc.pmic_gpio_src,
+			led_state);
+		break;
+#endif
 
 	default:
 		rc = -ENODEV;
@@ -754,6 +804,9 @@ int msm_flash_ctrl(struct msm_camera_sensor_info *sdata,
 {
 	int rc = 0;
 	sensor_data = sdata;
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	printk(">>>>> %s Enter flashtype : %d \n", __func__, flash_info->flashtype);
+#endif
 	switch (flash_info->flashtype) {
 	case LED_FLASH:
 		rc = msm_camera_flash_set_led_state(sdata->flash_data,
