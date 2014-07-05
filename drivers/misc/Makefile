@@ -84,3 +84,4 @@ obj-$(CONFIG_SEC_TORCH_FLASH)	+= sec_torch.o
 ifeq ($(TIMA_ENABLED),1)
 obj-$(CONFIG_TIMA_LOG)		+= tima_debug_log.o
 endif
+obj-$(CONFIG_GAMMA_CONTROL)	+= gamma_control.o
