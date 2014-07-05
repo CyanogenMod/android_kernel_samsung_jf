@@ -25,7 +25,7 @@ int v203_val[3]	= {    0,     0,     0};
 int v151_val[3]	= {    0,     0,     0};
 #endif
 int v87_val[3]	= {    0,     0,     0};
-#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
 #ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
 int v59_val[3]	= {    0,     0,     0};
 #else
@@ -43,6 +43,15 @@ int v3_val[3]	= {    0,     0,     0};
 int v43_val[3]	= {    0,     0,     0};
 int v19_val[3]	= {    0,     0,     0};
 #endif
+int tuner[3]	= {    0,     0,     0};
+
+int color_mods[5][21] = {
+    {  0,  0,  5, -18, -16, -10, 0, 0,  3, 0, 0,  3, 0, 0,  3, 0, 0,  3, 0, 0,  3 },
+    {  0,  0,  2,  -9,  -8,  -5, 0, 0,  1, 0, 0,  1, 0, 0,  1, 0, 0,  1, 0, 0,  1 },
+    {  0,  0,  0,   0,   0,   0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0 },
+    {  0,  0, -2,   9,   8,   5, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1 },
+    {  0,  0, -5,  18,  16,  10, 0, 0, -3, 0, 0, -3, 0, 0, -3, 0, 0, -3, 0, 0, -3 }
+};
 
 extern void panel_load_colors(void);
 
@@ -200,7 +209,7 @@ static ssize_t v87_store(struct device * dev, struct device_attribute * attr, co
 	return size;
 }
 
-#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
 #ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
 static ssize_t v59_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -402,6 +411,93 @@ static ssize_t v19_store(struct device * dev, struct device_attribute * attr, co
 }
 #endif /* CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT */
 
+static ssize_t tuner_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d %d %d\n", tuner[0], tuner[1], tuner[2]);
+}
+
+static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+{
+	int new_r, new_g, new_b;
+
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
+
+	if (new_r > 5 || new_r < 0 || new_g > 5 || new_g < 0 || new_b > 5 || new_b < 0) {
+		new_r = new_g = new_b = 2;
+	}
+
+	if (new_r != tuner[0] || tuner != v19_val[1] || tuner != v19_val[2]) {
+		pr_debug("New master tuner: %d %d %d\n", new_r, new_g, new_b);
+		tuner[0] = new_r;
+		tuner[1] = new_g;
+		tuner[2] = new_b;
+		v255_val[0] = color_mods[new_r][0];
+		v255_val[1] = color_mods[new_g][0];
+		v255_val[2] = color_mods[new_b][0];
+#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
+		v1_val[0] = color_mods[new_r][1];
+		v1_val[1] = color_mods[new_g][1];
+		v1_val[2] = color_mods[new_b][1];
+		v171_val[0] = color_mods[new_r][2];
+		v171_val[1] = color_mods[new_g][2];
+		v171_val[2] = color_mods[new_b][2];
+#else
+		vt_val[0] = color_mods[new_r][2];
+		vt_val[1] = color_mods[new_g][2];
+		vt_val[2] = color_mods[new_b][2];
+		v203_val[0] = color_mods[new_r][2];
+		v203_val[1] = color_mods[new_g][2];
+		v203_val[2] = color_mods[new_b][2];
+		v151_val[0] = color_mods[new_r][2];
+		v151_val[1] = color_mods[new_g][2];
+		v151_val[2] = color_mods[new_b][2];
+#endif
+		v87_val[0] = color_mods[new_r][3];
+		v87_val[1] = color_mods[new_g][3];
+		v87_val[2] = color_mods[new_b][3];
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
+		v59_val[0] = color_mods[new_r][4];
+		v59_val[1] = color_mods[new_g][4];
+		v59_val[2] = color_mods[new_b][4];
+#else
+		v51_val[0] = color_mods[new_r][4];
+		v51_val[1] = color_mods[new_g][4];
+		v51_val[2] = color_mods[new_b][4];
+#endif
+		v35_val[0] = color_mods[new_r][5];
+		v35_val[1] = color_mods[new_g][5];
+		v35_val[2] = color_mods[new_b][5];
+#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
+		v15_val[0] = color_mods[new_r][6];
+		v15_val[1] = color_mods[new_g][6];
+		v15_val[2] = color_mods[new_b][6];
+#else
+		v23_val[0] = color_mods[new_r][6];
+		v23_val[1] = color_mods[new_g][6];
+		v23_val[2] = color_mods[new_b][6];
+		v11_val[0] = color_mods[new_r][6];
+		v11_val[1] = color_mods[new_g][6];
+		v11_val[2] = color_mods[new_b][6];
+		v3_val[0] = color_mods[new_r][6];
+		v3_val[1] = color_mods[new_g][6];
+		v3_val[2] = color_mods[new_b][6];
+#endif
+#else
+		v43_val[0] = color_mods[new_r][4];
+		v43_val[1] = color_mods[new_g][4];
+		v43_val[2] = color_mods[new_b][4];
+		v19_val[0] = color_mods[new_r][5];
+		v19_val[1] = color_mods[new_g][5];
+		v19_val[2] = color_mods[new_b][5];
+#endif
+
+		panel_load_colors();
+	}
+
+	return size;
+}
+
 static ssize_t gammacontrol_version(struct device * dev, struct device_attribute * attr, char * buf)
 {
 	return sprintf(buf, "%u\n", GAMMACONTROL_VERSION);
@@ -417,7 +513,7 @@ static DEVICE_ATTR(v203rgb, 0644, v203_show, v203_store);
 static DEVICE_ATTR(v151rgb, 0644, v151_show, v151_store);
 #endif
 static DEVICE_ATTR(v87rgb, 0644, v87_show, v87_store);
-#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
 #ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
 static DEVICE_ATTR(v59rgb, 0644, v59_show, v59_store);
 #else
@@ -436,6 +532,7 @@ static DEVICE_ATTR(v43rgb, 0644, v43_show, v43_store);
 static DEVICE_ATTR(v19rgb, 0644, v19_show, v19_store);
 #endif
 static DEVICE_ATTR(version, 0644, gammacontrol_version, NULL);
+static DEVICE_ATTR(tuner, 0644, tuner_show, tuner_store);
 
 static struct attribute *gammacontrol_attributes[] =
 {
@@ -449,7 +546,7 @@ static struct attribute *gammacontrol_attributes[] =
 	&dev_attr_v151rgb.attr,
 #endif
 	&dev_attr_v87rgb.attr,
-#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
 #ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
 	&dev_attr_v59rgb.attr,
 #else
@@ -467,6 +564,7 @@ static struct attribute *gammacontrol_attributes[] =
 	&dev_attr_v43rgb.attr,
 	&dev_attr_v19rgb.attr,
 #endif
+	&dev_attr_tuner.attr,
 	&dev_attr_version.attr,
 	NULL
 };
