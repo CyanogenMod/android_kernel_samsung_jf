@@ -12,6 +12,7 @@
 #include <linux/f2fs_fs.h>
 #include <linux/buffer_head.h>
 #include <linux/mpage.h>
+#include <linux/aio.h>
 #include <linux/writeback.h>
 #include <linux/backing-dev.h>
 #include <linux/blkdev.h>
@@ -25,40 +26,33 @@
 
 static void f2fs_read_end_io(struct bio *bio, int err)
 {
-	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
-	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
+	struct bio_vec *bvec;
+	int i;
 
-	do {
+	__bio_for_each_segment(bvec, bio, i, 0) {
 		struct page *page = bvec->bv_page;
 
-		if (--bvec >= bio->bi_io_vec)
-			prefetchw(&bvec->bv_page->flags);
-
-		if (unlikely(!uptodate)) {
+		if (!err) {
+			SetPageUptodate(page);
+		} else {
 			ClearPageUptodate(page);
 			SetPageError(page);
-		} else {
-			SetPageUptodate(page);
 		}
 		unlock_page(page);
-	} while (bvec >= bio->bi_io_vec);
-
+	}
 	bio_put(bio);
 }
 
 static void f2fs_write_end_io(struct bio *bio, int err)
 {
-	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
-	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
 	struct f2fs_sb_info *sbi = bio->bi_private;
+	struct bio_vec *bvec;
+	int i;
 
-	do {
+	__bio_for_each_segment(bvec, bio, i, 0) {
 		struct page *page = bvec->bv_page;
 
-		if (--bvec >= bio->bi_io_vec)
-			prefetchw(&bvec->bv_page->flags);
-
-		if (unlikely(!uptodate)) {
+		if (unlikely(err)) {
 			SetPageError(page);
 			set_bit(AS_EIO, &page->mapping->flags);
 			set_ckpt_flags(sbi->ckpt, CP_ERROR_FLAG);
@@ -66,7 +60,7 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 		}
 		end_page_writeback(page);
 		dec_page_count(sbi, F2FS_WRITEBACK);
-	} while (bvec >= bio->bi_io_vec);
+	}
 
 	if (sbi->wait_io) {
 		complete(sbi->wait_io);
@@ -141,7 +135,7 @@ void f2fs_submit_merged_bio(struct f2fs_sb_info *sbi,
 
 	io = is_read_io(rw) ? &sbi->read_io : &sbi->write_io[btype];
 
-	mutex_lock(&io->io_mutex);
+	down_write(&io->io_rwsem);
 
 	/* change META to META_FLUSH in the checkpoint procedure */
 	if (type >= META_FLUSH) {
@@ -149,7 +143,7 @@ void f2fs_submit_merged_bio(struct f2fs_sb_info *sbi,
 		io->fio.rw = WRITE_FLUSH_FUA | REQ_META | REQ_PRIO;
 	}
 	__submit_merged_bio(io);
-	mutex_unlock(&io->io_mutex);
+	up_write(&io->io_rwsem);
 }
 
 /*
@@ -187,7 +181,7 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 
 	verify_block_addr(sbi, blk_addr);
 
-	mutex_lock(&io->io_mutex);
+	down_write(&io->io_rwsem);
 
 	if (!is_read)
 		inc_page_count(sbi, F2FS_WRITEBACK);
@@ -211,7 +205,7 @@ alloc_new:
 
 	io->last_block_in_bio = blk_addr;
 
-	mutex_unlock(&io->io_mutex);
+	up_write(&io->io_rwsem);
 	trace_f2fs_submit_page_mbio(page, fio->rw, fio->type, blk_addr);
 }
 
@@ -921,6 +915,16 @@ skip_write:
 	return 0;
 }
 
+static void f2fs_write_failed(struct address_space *mapping, loff_t to)
+{
+	struct inode *inode = mapping->host;
+
+	if (to > inode->i_size) {
+		truncate_pagecache(inode, 0, inode->i_size);
+		truncate_blocks(inode, inode->i_size);
+	}
+}
+
 static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 		loff_t pos, unsigned len, unsigned flags,
 		struct page **pagep, void **fsdata)
@@ -938,11 +942,13 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 repeat:
 	err = f2fs_convert_inline_data(inode, pos + len);
 	if (err)
-		return err;
+		goto fail;
 
 	page = grab_cache_page_write_begin(mapping, index, flags);
-	if (!page)
-		return -ENOMEM;
+	if (!page) {
+		err = -ENOMEM;
+		goto fail;
+	}
 
 	/* to avoid latency during memory pressure */
 	unlock_page(page);
@@ -956,10 +962,9 @@ repeat:
 	set_new_dnode(&dn, inode, NULL, NULL, 0);
 	err = f2fs_reserve_block(&dn, index);
 	f2fs_unlock_op(sbi);
-
 	if (err) {
 		f2fs_put_page(page, 0);
-		return err;
+		goto fail;
 	}
 inline_data:
 	lock_page(page);
@@ -989,19 +994,20 @@ inline_data:
 			err = f2fs_read_inline_data(inode, page);
 			if (err) {
 				page_cache_release(page);
-				return err;
+				goto fail;
 			}
 		} else {
 			err = f2fs_submit_page_bio(sbi, page, dn.data_blkaddr,
 							READ_SYNC);
 			if (err)
-				return err;
+				goto fail;
 		}
 
 		lock_page(page);
 		if (unlikely(!PageUptodate(page))) {
 			f2fs_put_page(page, 1);
-			return -EIO;
+			err = -EIO;
+			goto fail;
 		}
 		if (unlikely(page->mapping != mapping)) {
 			f2fs_put_page(page, 1);
@@ -1012,6 +1018,9 @@ out:
 	SetPageUptodate(page);
 	clear_cold_data(page);
 	return 0;
+fail:
+	f2fs_write_failed(mapping, pos + len);
+	return err;
 }
 
 static int f2fs_write_end(struct file *file,
@@ -1023,7 +1032,6 @@ static int f2fs_write_end(struct file *file,
 
 	trace_f2fs_write_end(inode, pos, len, copied);
 
-	SetPageUptodate(page);
 	set_page_dirty(page);
 
 	if (pos + copied > i_size_read(inode)) {
@@ -1048,17 +1056,22 @@ static int check_direct_IO(struct inode *inode, int rw,
 	if (offset & blocksize_mask)
 		return -EINVAL;
 
-	for (i = 0; i < nr_segs; i++)
-		if (iov[i].iov_len & blocksize_mask)
-			return -EINVAL;
+       for (i = 0; i < nr_segs; i++)
+               if (iov[i].iov_len & blocksize_mask)
+                       return -EINVAL;
+
 	return 0;
 }
 
 static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
-		const struct iovec *iov, loff_t offset, unsigned long nr_segs)
+				const struct iovec *iov, loff_t offset,
+				unsigned long nr_segs)
 {
 	struct file *file = iocb->ki_filp;
-	struct inode *inode = file->f_mapping->host;
+	struct address_space *mapping = file->f_mapping;
+	struct inode *inode = mapping->host;
+	size_t count = iov_length(iov, nr_segs);
+	int err;
 
 	/* Let buffer I/O handle the inline data case. */
 	if (f2fs_has_inline_data(inode))
@@ -1070,8 +1083,11 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 	/* clear fsync mark to recover these blocks */
 	fsync_mark_clear(F2FS_SB(inode->i_sb), inode->i_ino);
 
-	return blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
+	err = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
 							get_data_block);
+	if (err < 0 && (rw & WRITE))
+		f2fs_write_failed(mapping, offset + count);
+	return err;
 }
 
 static void f2fs_invalidate_data_page(struct page *page, unsigned long offset)
