@@ -45,6 +45,11 @@ static int gc_thread_func(void *data)
 		if (kthread_should_stop())
 			break;
 
+		if (sbi->sb->s_frozen >= SB_FREEZE_WRITE) {
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
+			continue;
+		}
+
 		/*
 		 * [GC triggering condition]
 		 * 0. GC is not conducted currently.
@@ -246,7 +251,7 @@ static inline unsigned int get_gc_cost(struct f2fs_sb_info *sbi,
 }
 
 /*
- * This function is called from two pathes.
+ * This function is called from two paths.
  * One is garbage collection and the other is SSR segment selection.
  * When it is called during GC, it just gets a victim segment
  * and it does not remove it from dirty seglist.
