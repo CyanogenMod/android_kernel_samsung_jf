@@ -122,6 +122,11 @@ disable_ext_identify   Disable the extension list configured by mkfs, so f2fs
 inline_xattr           Enable the inline xattrs feature.
 inline_data            Enable the inline data feature: New created small(<~3.4k)
                        files can be written into inode block.
+nobarrier              This option can be used if underlying storage guarantees
+                       its cached data should be written to the novolatile area.
+		       If this option is set, no cache_flush commands are issued
+		       but f2fs still guarantees the write ordering of all the
+		       data writes.
 
 ================================================================================
 DEBUGFS ENTRIES
