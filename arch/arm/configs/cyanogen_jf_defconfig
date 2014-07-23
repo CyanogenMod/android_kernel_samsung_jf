@@ -1543,8 +1543,8 @@ CONFIG_WLAN=y
 CONFIG_BCM4335=y
 # CONFIG_BCM4339 is not set
 # CONFIG_BCM43241 is not set
-CONFIG_BCMDHD_FW_PATH="/system/etc/firmware/fw_bcmdhd.bin"
-CONFIG_BCMDHD_NVRAM_PATH="/system/etc/wifi/bcmdhd.cal"
+CONFIG_BCMDHD_FW_PATH="/system/etc/wifi/bcmdhd_sta.bin"
+CONFIG_BCMDHD_NVRAM_PATH="/system/etc/wifi/nvram_net.txt"
 CONFIG_BROADCOM_WIFI_RESERVED_MEM=y
 CONFIG_BCM4335BT=y
 CONFIG_WLAN_REGION_CODE=100
