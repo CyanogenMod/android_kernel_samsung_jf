@@ -536,6 +536,7 @@ static u32 ddl_set_dec_property(struct ddl_client_context *ddl,
 	}
 	break;
 	case VCD_REQ_PERF_LEVEL:
+		DDL_MSG_LOW("%s: VCD_REQ_PERF_LEVEL (do nithing)", __func__);
 		vcd_status = VCD_S_SUCCESS;
 		break;
 	default:
@@ -1180,6 +1181,7 @@ static u32 ddl_set_enc_property(struct ddl_client_context *ddl,
 		}
 	break;
 	case VCD_REQ_PERF_LEVEL:
+		DDL_MSG_LOW("%s: VCD_REQ_PERF_LEVEL (do nithing)", __func__);
 		vcd_status = VCD_S_SUCCESS;
 		break;
 	case VCD_I_ENABLE_DELIMITER_FLAG:
@@ -2013,7 +2015,6 @@ void ddl_set_default_dec_property(struct ddl_client_context *ddl)
 	decoder->client_frame_size.width  = VCD_DDL_TEST_DEFAULT_WIDTH;
 	decoder->client_frame_size.stride = VCD_DDL_TEST_DEFAULT_WIDTH;
 	decoder->client_frame_size.scan_lines = VCD_DDL_TEST_DEFAULT_HEIGHT;
-	decoder->client_input_buf_req.sz = 2 * 1024 * 1024;
 	decoder->progressive_only = 1;
 	decoder->idr_only_decoding = false;
 	decoder->output_order = VCD_DEC_ORDER_DISPLAY;
@@ -2260,16 +2261,6 @@ u32 ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
 		output_buf_req = &decoder->actual_output_buf_req;
 		input_buf_req = &decoder->actual_input_buf_req;
 		min_dpb = decoder->min_dpb_num;
-		if (decoder->cont_mode &&
-			decoder->codec.codec == VCD_CODEC_H264) {
-			min_dpb = res_trk_get_min_dpb_count();
-			min_dpb_from_res_trk = 1;
-			if (min_dpb < decoder->min_dpb_num) {
-				DDL_MSG_INFO("Warning: cont_mode dpb count"\
-					"(%u) is less than decoder min dpb count(%u)",
-					min_dpb, decoder->min_dpb_num);
-			}
-		}
 		if ((decoder->buf_format.buffer_format ==
 			VCD_BUFFER_FORMAT_TILE_4x2) &&
 			(frame_size->height < MDP_MIN_TILE_HEIGHT)) {
@@ -2316,16 +2307,7 @@ u32 ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
 	input_buf_req->min_count = 1;
 	input_buf_req->actual_count = input_buf_req->min_count + 1;
 	input_buf_req->max_count = DDL_MAX_BUFFER_COUNT;
-	if (decoder->client_input_buf_req.sz <= DDL_MEGA_BYTE(2)) {
-		input_buf_req->sz = DDL_MEGA_BYTE(2);
-	} else if (decoder->client_input_buf_req.sz <=
-					DDL_MEGA_BYTE(4)) {
-		input_buf_req->sz = DDL_MEGA_BYTE(4);
-	} else {
-		DDL_MSG_ERROR("Setting incorrect input buffer size = %d",
-			decoder->client_input_buf_req.sz);
-		return false;
-	}
+	input_buf_req->sz = (1024 * 1024 * 2);
 	input_buf_req->align = DDL_LINEAR_BUFFER_ALIGN_BYTES;
 	decoder->min_input_buf_req = *input_buf_req;
 	if (frame_height_actual) {

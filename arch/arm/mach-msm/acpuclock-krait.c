@@ -1119,7 +1119,6 @@ static struct pvs_table * __init select_freq_plan(u32 pte_efuse_phys,
 	speed_bin = bin_idx;
 	pvs_bin = tbl_idx;
 #endif
-	
 	return &pvs_tables[bin_idx][tbl_idx];
 }
 

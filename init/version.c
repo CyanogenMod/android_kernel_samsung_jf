@@ -37,6 +37,26 @@ struct uts_namespace init_uts_ns = {
 };
 EXPORT_SYMBOL_GPL(init_uts_ns);
 
+/*  Google REQUIREMENT **
+ *  GPE Device Build Requirements doc calls out that the kernel version string 
+ *  should have '(android@gpe)' included in it. Here is the text.
+ * 
+ *  Kernel Version String
+ *  For the purpose of integration with Android issue reporting used in internal dogfooding, 
+ *  the kernel version string reported in /proc/version on device must contain substring '(android@gpe)'. 
+ *  There are no further requirements on the specific position of such substring within the entire kernel version st
+*/
+#if defined(CONFIG_GED_BUILD)
+#if defined(LINUX_COMPILE_BY)
+#undef LINUX_COMPILE_BY
+#define LINUX_COMPILE_BY	"android"
+#endif /* LINUX_COMPILE_BY */
+#if defined(LINUX_COMPILE_HOST)
+#undef LINUX_COMPILE_HOST
+#define LINUX_COMPILE_HOST	"gpe"
+#endif /* LINUX_COMPILE_HOST */
+#endif /* CONFIG_GED_BUILD */
+
 /* FIXED STRINGS! Don't touch! */
 const char linux_banner[] =
 	"Linux version " UTS_RELEASE " (" LINUX_COMPILE_BY "@"

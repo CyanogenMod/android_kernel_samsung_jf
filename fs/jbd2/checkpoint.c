@@ -624,12 +624,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
 				    transaction->t_tid, stats);
 
 	__jbd2_journal_drop_transaction(journal, transaction);
-
-	if ((journal->j_commit_callback == NULL) || (transaction->t_callbacked)) {
-		jbd2_journal_free_transaction(transaction);
-	} else {
-		transaction->t_dropped = 1;	
-	}
+	jbd2_journal_free_transaction(transaction);
 
 	/* Just in case anybody was waiting for more transactions to be
            checkpointed... */

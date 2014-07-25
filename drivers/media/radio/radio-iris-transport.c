@@ -153,13 +153,7 @@ static int radio_hci_smd_register_dev(struct radio_data *hsmd)
 	struct radio_hci_dev *hdev;
 	int rc;
 
-	if (hsmd == NULL)
-		return -ENODEV;
-
 	hdev = kmalloc(sizeof(struct radio_hci_dev), GFP_KERNEL);
-	if (hdev == NULL)
-		return -ENODEV;
-
 	hsmd->hdev = hdev;
 	tasklet_init(&hsmd->rx_task, radio_hci_smd_recv_event,
 		(unsigned long) hsmd);
@@ -172,8 +166,6 @@ static int radio_hci_smd_register_dev(struct radio_data *hsmd)
 
 	if (rc < 0) {
 		FMDERR("Cannot open the command channel");
-		hsmd->hdev = NULL;
-		kfree(hdev);
 		return -ENODEV;
 	}
 
@@ -181,9 +173,6 @@ static int radio_hci_smd_register_dev(struct radio_data *hsmd)
 
 	if (radio_hci_register_dev(hdev) < 0) {
 		FMDERR("Can't register HCI device");
-		smd_close(hsmd->fm_channel);
-		hsmd->hdev = NULL;
-		kfree(hdev);
 		return -ENODEV;
 	}
 

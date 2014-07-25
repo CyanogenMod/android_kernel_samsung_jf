@@ -29,7 +29,7 @@
 
 extern void *restart_reason;
 
-#if defined(CONFIG_SEC_DEBUG)
+#if CONFIG_SEC_DEBUG
 extern int sec_debug_init(void);
 extern int sec_debug_dump_stack(void);
 extern void sec_debug_hw_reset(void);
@@ -50,7 +50,7 @@ static inline int sec_debug_init(void)
 {
 	return 0;
 }
-static inline int sec_debug_dump_stack(void) { return 0; }
+static inline int sec_debug_dump_stack(void) {}
 static inline void sec_debug_check_crash_key(unsigned int code, int value) {}
 
 static inline void sec_getlog_supply_fbinfo(void *p_fb, u32 res_x, u32 res_y,

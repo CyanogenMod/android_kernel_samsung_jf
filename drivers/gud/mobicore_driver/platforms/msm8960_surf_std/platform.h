@@ -35,6 +35,6 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 }
 
 /* Enable mobicore mem traces */
-//#define MC_MEM_TRACES
+#define MC_MEM_TRACES
 
 #endif /* _MC_PLATFORM_H_ */

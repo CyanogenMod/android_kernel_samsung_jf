@@ -1,21 +1,12 @@
 /*
- * fs/sdcardfs/file.c
- *
- * Copyright (c) 2013 Samsung Electronics Co. Ltd
- *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun, 
- *               Sunghwan Yun, Sungjong Seo
- *                      
- * This program has been developed as a stackable file system based on
- * the WrapFS which written by 
- *
  * Copyright (c) 1998-2011 Erez Zadok
- * Copyright (c) 2009     Shrikar Archak
+ * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2011 Stony Brook University
  * Copyright (c) 2003-2011 The Research Foundation of SUNY
  *
- * This file is dual licensed.  It may be redistributed and/or modified
- * under the terms of the Apache 2.0 License OR version 2 of the GNU
- * General Public License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include "sdcardfs.h"
@@ -63,11 +54,13 @@ static ssize_t sdcardfs_write(struct file *file, const char __user *buf,
 	struct file *lower_file;
 	struct dentry *dentry = file->f_path.dentry;
 
+#if defined(LOWER_FS_MIN_FREE_SIZE)
 	/* check disk space */
 	if (!check_min_free_space(dentry, count, 0)) {
 		printk(KERN_INFO "No minimum free space.\n");
 		return -ENOSPC;
 	}
+#endif
 
 	lower_file = sdcardfs_lower_file(file);
 	err = vfs_write(lower_file, buf, count, ppos);
@@ -89,8 +82,6 @@ static int sdcardfs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	struct dentry *dentry = file->f_path.dentry;
 
 	lower_file = sdcardfs_lower_file(file);
-
-	lower_file->f_pos = file->f_pos;
 	err = vfs_readdir(lower_file, filldir, dirent);
 	file->f_pos = lower_file->f_pos;
 	if (err >= 0)		/* copy the atime */
@@ -206,38 +197,18 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	int err = 0;
 	struct file *lower_file = NULL;
 	struct path lower_path;
-	struct dentry *dentry = file->f_path.dentry;
-	struct dentry *parent = dget_parent(dentry);
-	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb); 
-	const struct cred *saved_cred = NULL;
-	int has_rw;
 
 	/* don't open unhashed/deleted files */
-	if (d_unhashed(dentry)) {
+	if (d_unhashed(file->f_path.dentry)) {
 		err = -ENOENT;
 		goto out_err;
 	}
-	
-	has_rw = get_caller_has_rw_locked(sbi->pkgl_id, sbi->options.derive);
-
-	if(!check_caller_access_to_name(parent->d_inode, dentry->d_name.name, 
-				sbi->options.derive, 
-				open_flags_to_access_mode(file->f_flags), has_rw)) {
-		printk(KERN_INFO "%s: need to check the caller's gid in packages.list\n" 
-                         "	dentry: %s, task:%s\n",
-						 __func__, dentry->d_name.name, current->comm);
-		err = -EACCES;
-		goto out_err;
-	}
-
-	/* save current_cred and override it */
-	OVERRIDE_CRED(sbi, saved_cred);
 
 	file->private_data =
 		kzalloc(sizeof(struct sdcardfs_file_info), GFP_KERNEL);
 	if (!SDCARDFS_F(file)) {
 		err = -ENOMEM;
-		goto out_revert_cred;
+		goto out_err;
 	}
 
 	/* open lower object and link sdcardfs's file struct to lower's */
@@ -259,13 +230,9 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 		kfree(SDCARDFS_F(file));
 	else {
 		fsstack_copy_attr_all(inode, sdcardfs_lower_inode(inode));
-		fix_derived_permission(inode); 
+		fix_fat_permission(inode); 
 	}
-
-out_revert_cred:
-	REVERT_CRED(saved_cred);
 out_err:
-	dput(parent);
 	return err;
 }
 

@@ -713,17 +713,8 @@ static int shmem_writepage(struct page *page, struct writeback_control *wbc)
 	info = SHMEM_I(inode);
 	if (info->flags & VM_LOCKED)
 		goto redirty;
-#ifdef CONFIG_RUNTIME_COMPCACHE
-	/*
-	 * Modification for runtime compcache
-	 * shmem_writepage can be reason of kernel panic when using swap.
-	 * This modification prevent using swap by shmem.
-	 */
-	goto redirty;
-#else
 	if (!total_swap_pages)
 		goto redirty;
-#endif /* CONFIG_RUNTIME_COMPCACHE */
 
 	/*
 	 * shmem_backing_dev_info's capabilities prevent regular writeback or

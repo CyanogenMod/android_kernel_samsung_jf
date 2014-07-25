@@ -22,11 +22,6 @@ OBJS		+= sdhi-sh7372.o
 endif
 
 AFLAGS_head.o += -DTEXT_OFFSET=$(TEXT_OFFSET)
-# change@wtl.rsengott
-# FIPS_KERNEL_RAM_BASE is start of kernel text in RAM
-ifeq ($(CONFIG_CRYPTO_FIPS),y)
-AFLAGS_head.o += -DFIPS_KERNEL_RAM_BASE=0x80208000
-endif
 HEAD	= head.o
 OBJS	+= misc.o decompress.o
 FONTC	= $(srctree)/drivers/video/console/font_acorn_8x8.c

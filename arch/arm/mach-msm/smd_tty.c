@@ -589,8 +589,7 @@ static int __init smd_tty_init(void)
 			/*
 			 * use legacy mode for 8660 Standalone (subtype 0)
 			 */
-			legacy_ds |= (cpu_is_msm8930() || cpu_is_msm8930aa() ||
-				cpu_is_msm8930ab() || cpu_is_msm8x60())  &&
+			legacy_ds |= cpu_is_msm8x60() &&
 					(socinfo_get_platform_subtype() == 0x0);
 
 			if (!legacy_ds)

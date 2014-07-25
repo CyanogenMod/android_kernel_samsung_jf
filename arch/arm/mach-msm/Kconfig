@@ -835,16 +835,6 @@ config MACH_MSM8930_EVT
 	help
 	  Support for the Qualcomm Reference Design 8930 EVT device.
 
-config MACH_MELIUS
-	depends on ARCH_MSM8930
-	bool "MSM8930 MELIUS"
-	help
-	  Support for the Samsung Melius device.
-config MACH_MELIUS_SPR
-	depends on MACH_MELIUS
-	bool "MSM8930 MELIUS SPR"
-	help
-	  Support for the Samsung Melius device.
 config MACH_MSM8627_CDP
 	depends on ARCH_MSM8930
 	bool "MSM8627 CDP"
@@ -948,13 +938,6 @@ config MACH_JF_SPR
 	help
 	  Support for the Samsung JF device.
 
-config BOARD_JF_REFRESH
-	depends on MACH_JF_SPR
-	default n
-	bool "APQ8064 Samsung JF_REFRESH"
-	help
-	  Support for the Samsung JF device.
-
 config MACH_JF_ATT
 	depends on ARCH_APQ8064
 	default n
@@ -989,27 +972,6 @@ config MACH_JF_EUR
 	bool "APQ8064 Samsung JF_EUR"
 	help
 	  Support for the Samsung JF device.
-
-config MACH_JFVE_EUR
-	depends on ARCH_APQ8064
-	default n
-	bool "APQ8064 Samsung JFVE_EUR"
-	help
-	  Support for the Samsung JFVE device.
-
-config MACH_JFVE_EUR_3G
-	depends on ARCH_APQ8064
-	default n
-	bool "APQ8064 Samsung JFVE_EUR 3G"
-	help
-	  Support for the Samsung JFVE 3G specific device.
-
-config MACH_JFVE_EUR_LTE
-	depends on ARCH_APQ8064
-	default n
-	bool "APQ8064 Samsung JFVE_EUR LTE"
-	help
-	  Support for the Samsung JFVE LTE specific device.
 
 config MACH_JF_SKT
 	depends on ARCH_APQ8064
@@ -2785,13 +2747,6 @@ config MSM_L2_ERP_2BIT_PANIC
 	  For production builds, it may be acceptable to say 'N' here, since
 	  an uncorrectable error might not necessarily cause further problems.
 
-config SEC_SSR_DEBUG_LEVEL_CHK
-	bool "SSR DEBUG LEVEL check"
-	help
-	  To check the level of debug for SSR.
-
-
-
 config MSM_DCVS
 	bool "Use MSM DCVS for CPU/GPU Frequency control"
 	depends on MSM_SCM
@@ -2862,166 +2817,12 @@ config SEC_THERMISTOR
 	default n
 	help
 	Use thermistor driver for checking temperature near AP chip.
-	  
-config EXT_MAINMIC_BIAS
-	depends on ARCH_MSM8930
-	default n
-	bool "EXTERNAL MAIN MICBIAS"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use External bias
-         for Main mic.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
 
-config EXT_EARMIC_BIAS
-	depends on ARCH_MSM8930
+config GED_BUILD
+	bool "Use Google Experience Device"
 	default n
-	bool "EXTERNAL EAR MICBIAS"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use External bias
-         for Ear mic.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config EXT_SUBMIC_BIAS
-	depends on ARCH_MSM8930
-	default n
-       	bool "EXTERNAL SUB MICBIAS"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use External bias
-         for Sub mic.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config EXT_SPK_AMP
-       	depends on ARCH_MSM8930
-	default n
-       	bool "EXTERNAL SPK AMP"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use External amp for speaker.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config 2MIC_QUP_I2C
-	depends on ARCH_MSM8930
-	default n
-       	bool "2MIC QUP I2C"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use External amp for speaker.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config JACK_VDD_CTRL
-	depends on ARCH_MSM8930
-	default n
-       	bool "JACK VDD CONTROL"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use VDD.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config 2MIC_QUP_I2C_GSBI11
-	depends on ARCH_MSM8930
-	default n
-       	bool "2MIC QUP GSBI11"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use 2MIC QUP GSBI11.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config 2MIC_QUP_I2C_GSBI2
-	depends on ARCH_MSM8930
-	default n
-       	bool "2MIC QUP GSBI2"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use 2MIC QUP GSBI2.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-	 
-config EXT_ADC_IC
-       	depends on ARCH_MSM8930
-	default n
-       	bool "EXTERNAL SPK AMP"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use External amp for speaker.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config WCD9304_CLK_9600
-	depends on ARCH_MSM8930
-	default n
-	bool "WCD9304 CODEC CLK 9.6Mhz"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use 9.6Mhz mclk for wcd 9304 codec.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config RADIO_USE_MI2S
-	depends on ARCH_MSM8930
-	default n
-	bool "FM Radio Digital mode"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use MI2S and Si4705 digital mode.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config SEC_MODEM_MELIUS_CTC
-	bool "Melius-CTC with msm8930"
-	depends on SEC_MODEM
-	select LINK_DEVICE_SPI
-
-config SEC_PRODUCT_8930
-	bool "MSM8930 Peripheral device support"
-	depends on ARCH_MSM8930
-	default n
-	---help---
-	Flag support for Samsung 8930 peripheral
-	device drivers
-
-config SWITCH_DUAL_MODEM
-	default n
-	bool "Switch UART/USB to AP/CP/CP2"
-
-config WCD9304_USE_MI2S_CLK_9600
-	depends on ARCH_MSM8930
-	default n
-	bool "WCD9304 CODEC USE MI2S CLK 9.6Mhz"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use 9.6Mhz mi2s mclk for wcd 9304 codec.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-
-config AUXPCM_INTERFACE
-	depends on ARCH_MSM8930
-	default n
-	bool "AUXPCM Interface"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want use auxpcm interface for external device.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
-	 
-config PCM_ROUTE_VOICE_STUB
-	depends on ARCH_MSM8930
-	default n
-	bool "External AUXPCM device route to I2S or WCN(BT) using the VOICE_STUB Front End"
-	---help---
-         Support for the SAMSUNG MSM8930 audio.
-         Say Y here if you want to route between auxpcm and I2S/WCN using the VOICE_STUB Front End.
-	 To compile this option, choose M here:
-	 If unsure, say N here.
+	help
+	Use Google Experience Device.
 
 config SEC_FACTORY
 	bool "Enable FACTORY Features"

@@ -1196,13 +1196,7 @@ config MSM_CAMERA_DEBUG
 	  Enable printk() debug for msm camera
 
 
-if MACH_JACTIVE || MACH_JACTIVE_EUR
-	source "drivers/media/video/msm-bayer/Kconfig"
-endif # MACH_JACTIVE || MACH_JACTIVE_EUR 
-
-if !MACH_JACTIVE && !MACH_JACTIVE_EUR
-	source "drivers/media/video/msm/Kconfig"
-endif # !MACH_JACTIVE && !MACH_JACTIVE_EUR
+source "drivers/media/video/msm/Kconfig"
 
 endif # V4L_PLATFORM_DRIVERS
 endif # VIDEO_CAPTURE_DRIVERS

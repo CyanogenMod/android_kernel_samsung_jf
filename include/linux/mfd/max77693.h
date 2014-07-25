@@ -30,9 +30,6 @@
 
 #include <linux/regulator/consumer.h>
 #include <linux/battery/sec_charger.h>
-#if defined (CONFIG_SEC_PRODUCT_8930)
-#include <linux/battery/charger/max77693_charger.h>
-#endif
 
 enum {
 	MAX77693_MUIC_DETACHED = 0,
@@ -112,7 +109,7 @@ struct max77693_platform_data {
 	/* led (flash/torch) data */
 	struct max77693_led_platform_data *led_data;
 #endif
-#if defined(CONFIG_CHARGER_MAX77693) || defined(CONFIG_MACH_MELIUS)
+#if defined(CONFIG_CHARGER_MAX77693)
 	sec_battery_platform_data_t *charger_data;
 #endif
 };
@@ -124,11 +121,7 @@ struct max77693_muic_data {
 	int (*charger_cb) (enum cable_type_muic);
 	void (*deskdock_cb) (bool attached);
 	void (*cardock_cb) (bool attached);
-#if defined(CONFIG_SEC_PRODUCT_8930)
-	void (*smartdock_cb) (bool attached, u8 cable_type);
-#else
 	void (*smartdock_cb) (bool attached);
-#endif
 	void (*audiodock_cb) (bool attached);
 	void (*mhl_cb) (int attached);
 	void (*init_cb) (void);
@@ -136,10 +129,6 @@ struct max77693_muic_data {
 	 bool(*is_mhl_attached) (void);
 	int (*cfg_uart_gpio) (void);
 	void (*jig_uart_cb) (int path);
-#if defined(CONFIG_MUIC_DET_JACK)
-	void (*earjack_cb) (int attached);
-	void (*earjackkey_cb) (int pressed, unsigned int code);
-#endif
 	int (*host_notify_cb) (int enable);
 	int gpio_usb_sel;
 	int sw_path;

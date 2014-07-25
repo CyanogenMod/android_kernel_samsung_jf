@@ -13,16 +13,13 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of_gpio.h>
-#include <linux/of_irq.h>
 #include <linux/slab.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/wcd9xxx/wcd9xxx-slimslave.h>
 #include <linux/mfd/wcd9xxx/core.h>
 #include <linux/mfd/wcd9xxx/pdata.h>
 #include <linux/mfd/wcd9xxx/wcd9xxx_registers.h>
-#if defined(CONFIG_MACH_MELIUS) || defined(CONFIG_MACH_KS02) || defined(CONFIG_MACH_LT02_CHN_CTC)
-#include <linux/mfd/pm8xxx/pm8921.h>
-#endif
+
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/debugfs.h>
@@ -36,18 +33,7 @@
 
 #define MAX_WCD9XXX_DEVICE	4
 #define TABLA_I2C_MODE	0x03
-#define TAPAN_I2C_MODE	0x03
 #define SITAR_I2C_MODE	0x01
-#define CODEC_DT_MAX_PROP_SIZE   40
-#define WCD9XXX_I2C_GSBI_SLAVE_ID "3-000d"
-#define WCD9XXX_I2C_TOP_SLAVE_ADDR	0x0d
-#define WCD9XXX_ANALOG_I2C_SLAVE_ADDR	0x77
-#define WCD9XXX_DIGITAL1_I2C_SLAVE_ADDR	0x66
-#define WCD9XXX_DIGITAL2_I2C_SLAVE_ADDR	0x55
-#define WCD9XXX_I2C_TOP_LEVEL	0
-#define WCD9XXX_I2C_ANALOG	1
-#define WCD9XXX_I2C_DIGITAL_1	2
-#define WCD9XXX_I2C_DIGITAL_2	3
 
 struct wcd9xxx_i2c {
 	struct i2c_client *client;
@@ -55,17 +41,6 @@ struct wcd9xxx_i2c {
 	struct mutex xfer_lock;
 	int mod_id;
 };
-
-static char *taiko_supplies[] = {
-	"cdc-vdd-buck", "cdc-vdd-tx-h", "cdc-vdd-rx-h", "cdc-vddpx-1",
-	"cdc-vdd-a-1p2v", "cdc-vddcx-1", "cdc-vddcx-2", WCD9XXX_VDD_SPKDRV_NAME,
-};
-
-static int wcd9xxx_dt_parse_vreg_info(struct device *dev,
-	struct wcd9xxx_regulator *vreg, const char *vreg_name);
-static int wcd9xxx_dt_parse_micbias_info(struct device *dev,
-	struct wcd9xxx_micbias_setting *micbias);
-static struct wcd9xxx_pdata *wcd9xxx_populate_dt_pdata(struct device *dev);
 
 struct wcd9xxx_i2c wcd9xxx_modules[MAX_WCD9XXX_DEVICE];
 static int wcd9xxx_intf = -1;
@@ -277,38 +252,18 @@ static struct mfd_cell taiko_devs[] = {
 		.name = "taiko_codec",
 	},
 };
-/*
-static struct mfd_cell tapan_devs[] = {
-	{
-		.name = "tapan_codec",
-	},
-};
-*/
+
 static struct wcd9xx_codec_type {
 	u8 byte[4];
 	struct mfd_cell *dev;
 	int size;
-	int num_irqs;
 } wcd9xxx_codecs[] = {
-	{{0x2, 0x0, 0x0, 0x1}, tabla_devs, ARRAY_SIZE(tabla_devs),
-	 TABLA_NUM_IRQS},
-	{{0x1, 0x0, 0x0, 0x1}, tabla1x_devs, ARRAY_SIZE(tabla1x_devs),
-	 TABLA_NUM_IRQS},
-	{{0x0, 0x0, 0x2, 0x1}, taiko_devs, ARRAY_SIZE(taiko_devs),
-	 TAIKO_NUM_IRQS},
-	{{0x0, 0x0, 0x0, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs),
-	 SITAR_NUM_IRQS},
-	{{0x1, 0x0, 0x1, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs),
-	 SITAR_NUM_IRQS},
-	{{0x2, 0x0, 0x1, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs),
-	 SITAR_NUM_IRQS},
-/*	 
-	{{0x0, 0x0, 0x3, 0x1}, tapan_devs, ARRAY_SIZE(tapan_devs),
-	
-	 TAPAN_NUM_IRQS},
-	{{0x1, 0x0, 0x3, 0x1}, tapan_devs, ARRAY_SIZE(tapan_devs),
-	 TAPAN_NUM_IRQS},	 
-*/	 
+	{{0x2, 0x0, 0x0, 0x1}, tabla_devs, ARRAY_SIZE(tabla_devs)},
+	{{0x1, 0x0, 0x0, 0x1}, tabla1x_devs, ARRAY_SIZE(tabla1x_devs)},
+	{{0x0, 0x0, 0x2, 0x1}, taiko_devs, ARRAY_SIZE(taiko_devs)},
+	{{0x0, 0x0, 0x0, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs)},
+	{{0x1, 0x0, 0x1, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs)},
+	{{0x2, 0x0, 0x1, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs)},
 };
 
 static void wcd9xxx_bring_up(struct wcd9xxx *wcd9xxx)
@@ -331,18 +286,7 @@ static void wcd9xxx_bring_down(struct wcd9xxx *wcd9xxx)
 static int wcd9xxx_reset(struct wcd9xxx *wcd9xxx)
 {
 	int ret;
-#if defined(CONFIG_MACH_MELIUS) || defined(CONFIG_MACH_KS02) \
-	|| defined(CONFIG_MACH_LT02_CHN_CTC)
-    struct pm_gpio param = {
-        .direction      = PM_GPIO_DIR_OUT,
-        .output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-        .output_value   = 1,
-        .pull       = PM_GPIO_PULL_NO,
-        .vin_sel    = PM_GPIO_VIN_S4,
-        .out_strength   = PM_GPIO_STRENGTH_MED,
-        .function       = PM_GPIO_FUNC_NORMAL,
-    };
-#endif
+
 	if (wcd9xxx->reset_gpio) {
 		ret = gpio_request(wcd9xxx->reset_gpio, "CDC_RESET");
 		if (ret) {
@@ -351,30 +295,7 @@ static int wcd9xxx_reset(struct wcd9xxx *wcd9xxx)
 			wcd9xxx->reset_gpio = 0;
 			return ret;
 		}
-#if defined(CONFIG_MACH_MELIUS) || defined(CONFIG_MACH_KS02) \
-	|| defined(CONFIG_MACH_LT02_CHN_CTC)
-        ret = pm8xxx_gpio_config
-            (wcd9xxx->reset_gpio, &param);
-        if (ret) {
-            pr_err("%s: Failed to configure gpio %d\n", __func__,
-                wcd9xxx->reset_gpio);
-            wcd9xxx->reset_gpio = 0;
-            return ret;
-        }
-#else
-#if !defined(CONFIG_MACH_JF)
-		ret = gpio_tlmm_config
-			(GPIO_CFG(wcd9xxx->reset_gpio,
-			0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-			GPIO_CFG_8MA), GPIO_CFG_ENABLE);
-		if (ret) {
-			pr_err("%s: Failed to gpio_tlmm_config %d\n", __func__,
-				wcd9xxx->reset_gpio);
-			wcd9xxx->reset_gpio = 0;
-			return ret;
-		}
-#endif
-#endif
+
 		gpio_direction_output(wcd9xxx->reset_gpio, 0);
 		msleep(20);
 		gpio_direction_output(wcd9xxx->reset_gpio, 1);
@@ -391,9 +312,8 @@ static void wcd9xxx_free_reset(struct wcd9xxx *wcd9xxx)
 	}
 }
 static int wcd9xxx_check_codec_type(struct wcd9xxx *wcd9xxx,
-				    struct mfd_cell **wcd9xxx_dev,
-				    int *wcd9xxx_dev_size,
-				    int *wcd9xxx_dev_num_irqs)
+					struct mfd_cell **wcd9xxx_dev,
+					int *wcd9xxx_dev_size)
 {
 	int i;
 	int ret;
@@ -423,7 +343,6 @@ static int wcd9xxx_check_codec_type(struct wcd9xxx *wcd9xxx,
 				wcd9xxx_codecs[i].dev->name);
 			*wcd9xxx_dev = wcd9xxx_codecs[i].dev;
 			*wcd9xxx_dev_size = wcd9xxx_codecs[i].size;
-			*wcd9xxx_dev_num_irqs = wcd9xxx_codecs[i].num_irqs;
 			break;
 		}
 		i++;
@@ -432,10 +351,10 @@ static int wcd9xxx_check_codec_type(struct wcd9xxx *wcd9xxx,
 		ret = -ENODEV;
 	pr_info("%s: Read codec idbytes & version\n"
 		"byte_0[%08x] byte_1[%08x] byte_2[%08x]\n"
-		" byte_3[%08x] version = %x ret = %d\n", __func__,
+		" byte_3[%08x] version = %x\n", __func__,
 		wcd9xxx->idbyte[0], wcd9xxx->idbyte[1],
 		wcd9xxx->idbyte[2], wcd9xxx->idbyte[3],
-		wcd9xxx->version, ret);
+		wcd9xxx->version);
 exit:
 	return ret;
 }
@@ -460,11 +379,6 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx, int irq)
 
 	wcd9xxx_bring_up(wcd9xxx);
 
-	ret = wcd9xxx_check_codec_type(wcd9xxx, &wcd9xxx_dev, &wcd9xxx_dev_size,
-				       &wcd9xxx->num_irqs);
-	if (ret < 0)
-		goto err_irq;
-#if defined(CONFIG_MACH_JF) 
 	if (wcd9xxx->irq != -1) {
 		ret = wcd9xxx_irq_init(wcd9xxx);
 		if (ret) {
@@ -472,8 +386,11 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx, int irq)
 			goto err;
 		}
 	}
-#endif
-		
+	ret = wcd9xxx_check_codec_type(wcd9xxx, &wcd9xxx_dev,
+					&wcd9xxx_dev_size);
+
+	if (ret < 0)
+		goto err_irq;
 	ret = mfd_add_devices(wcd9xxx->dev, -1, wcd9xxx_dev, wcd9xxx_dev_size,
 			      NULL, 0);
 	if (ret != 0) {
@@ -483,9 +400,7 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx, int irq)
 	return ret;
 err_irq:
 	wcd9xxx_irq_exit(wcd9xxx);
-#if defined(CONFIG_MACH_JF)
 err:
-#endif
 	wcd9xxx_bring_down(wcd9xxx);
 	pm_qos_remove_request(&wcd9xxx->pm_qos_req);
 	mutex_destroy(&wcd9xxx->pm_lock);
@@ -624,13 +539,6 @@ static int wcd9xxx_enable_supplies(struct wcd9xxx *wcd9xxx,
 	}
 
 	wcd9xxx->num_of_supplies = 0;
-
-	if (ARRAY_SIZE(pdata->regulator) > MAX_REGULATOR) {
-		pr_err("%s: Array Size out of bound\n", __func__);
-		ret = -EINVAL;
-		goto err;
-	}
-
 	for (i = 0; i < ARRAY_SIZE(pdata->regulator); i++) {
 		if (pdata->regulator[i].name) {
 			wcd9xxx->supplies[i].supply = pdata->regulator[i].name;
@@ -648,8 +556,7 @@ static int wcd9xxx_enable_supplies(struct wcd9xxx *wcd9xxx,
 
 	for (i = 0; i < wcd9xxx->num_of_supplies; i++) {
 		ret = regulator_set_voltage(wcd9xxx->supplies[i].consumer,
-									pdata->regulator[i].min_uV,
-									pdata->regulator[i].max_uV);
+			pdata->regulator[i].min_uV, pdata->regulator[i].max_uV);
 		if (ret) {
 			pr_err("%s: Setting regulator voltage failed for "
 				"regulator %s err = %d\n", __func__,
@@ -664,8 +571,6 @@ static int wcd9xxx_enable_supplies(struct wcd9xxx *wcd9xxx,
 				"regulator %s err = %d\n", __func__,
 				wcd9xxx->supplies[i].supply, ret);
 			goto err_get;
-		} else {
-			ret = 0;
 		}
 	}
 
@@ -692,34 +597,6 @@ err:
 	return ret;
 }
 
-static int wcd9xxx_enable_static_supplies(struct wcd9xxx *wcd9xxx,
-				  struct wcd9xxx_pdata *pdata)
-{
-	int i;
-	int ret = 0;
-
-	for (i = 0; i < wcd9xxx->num_of_supplies; i++) {
-		if (pdata->regulator[i].ondemand)
-			continue;
-		ret = regulator_enable(wcd9xxx->supplies[i].consumer);
-		if (ret) {
-			pr_err("%s: Failed to enable %s\n", __func__,
-			       wcd9xxx->supplies[i].supply);
-			break;
-		} else {
-			pr_debug("%s: Enabled regulator %s\n", __func__,
-				 wcd9xxx->supplies[i].supply);
-		}
-	}
-
-	while (ret && --i)
-		if (!pdata->regulator[i].ondemand)
-			regulator_disable(wcd9xxx->supplies[i].consumer);
-
-	return ret;
-}
-
-
 static void wcd9xxx_disable_supplies(struct wcd9xxx *wcd9xxx,
 				     struct wcd9xxx_pdata *pdata)
 {
@@ -736,7 +613,7 @@ static void wcd9xxx_disable_supplies(struct wcd9xxx *wcd9xxx,
 	kfree(wcd9xxx->supplies);
 }
 
-enum wcd9xxx_intf_status wcd9xxx_get_intf_type(void)
+int wcd9xxx_get_intf_type(void)
 {
 	return wcd9xxx_intf;
 }
@@ -748,7 +625,6 @@ struct wcd9xxx_i2c *get_i2c_wcd9xxx_device_info(u16 reg)
 	int value = 0;
 	struct wcd9xxx_i2c *wcd9xxx = NULL;
 	value = ((reg & mask) >> 8) & 0x000f;
-
 	switch (value) {
 	case 0:
 		wcd9xxx = &wcd9xxx_modules[0];
@@ -765,7 +641,6 @@ struct wcd9xxx_i2c *get_i2c_wcd9xxx_device_info(u16 reg)
 	default:
 		break;
 	}
-
 	return wcd9xxx;
 }
 
@@ -859,171 +734,89 @@ int wcd9xxx_i2c_read(struct wcd9xxx *wcd9xxx, unsigned short reg,
 int wcd9xxx_i2c_write(struct wcd9xxx *wcd9xxx, unsigned short reg,
 			 int bytes, void *src, bool interface_reg)
 {
-#ifndef CONFIG_EXT_EARMIC_BIAS
-	int wakeup_wait_tries = 200;
-
-	while (wcd9xxx->pm_state == WCD9XXX_PM_ASLEEP) {
-		if(--wakeup_wait_tries == 0)
-			break;
-		usleep_range(1000, 1000);
-	}
-	if (wakeup_wait_tries < 200)
-		pr_info("%s wakeup delay : %dms\n", __func__, (200 - wakeup_wait_tries));
-#endif
 	return wcd9xxx_i2c_write_device(reg, src, bytes);
-}
-
-static int wcd9xxx_i2c_get_client_index(struct i2c_client *client,
-					int *wcd9xx_index)
-{
-	int ret = 0;
-	switch (client->addr) {
-	case WCD9XXX_I2C_TOP_SLAVE_ADDR:
-		*wcd9xx_index = WCD9XXX_I2C_TOP_LEVEL;
-	break;
-	case WCD9XXX_ANALOG_I2C_SLAVE_ADDR:
-		*wcd9xx_index = WCD9XXX_I2C_ANALOG;
-	break;
-	case WCD9XXX_DIGITAL1_I2C_SLAVE_ADDR:
-		*wcd9xx_index = WCD9XXX_I2C_DIGITAL_1;
-	break;
-	case WCD9XXX_DIGITAL2_I2C_SLAVE_ADDR:
-		*wcd9xx_index = WCD9XXX_I2C_DIGITAL_2;
-	break;
-	default:
-		ret = -EINVAL;
-	break;
-	}
-	return ret;
 }
 
 static int __devinit wcd9xxx_i2c_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	struct wcd9xxx *wcd9xxx = NULL;
-	struct wcd9xxx_pdata *pdata = NULL;
+	struct wcd9xxx *wcd9xxx;
+	struct wcd9xxx_pdata *pdata;
 	int val = 0;
 	int ret = 0;
 	int i2c_mode = 0;
-	int wcd9xx_index = 0;
-	struct device *dev;
-printk("%s Debashis1 \n",__func__);
-	//wcd9xxx_intf=WCD9XXX_INTERFACE_TYPE_I2C;
-	printk("%s: interface status %d\n", __func__, wcd9xxx_intf);
+	static int device_id;
+
+	pr_info("%s\n", __func__);
 	if (wcd9xxx_intf == WCD9XXX_INTERFACE_TYPE_SLIMBUS) {
-		dev_dbg(&client->dev, "%s:Codec is detected in slimbus mode\n",
-			__func__);
-printk("%s Debashis2 \n",__func__);			
+		pr_info("tabla card is already detected in slimbus mode\n");
 		return -ENODEV;
-	} else if (wcd9xxx_intf == WCD9XXX_INTERFACE_TYPE_I2C) {
-		ret = wcd9xxx_i2c_get_client_index(client, &wcd9xx_index);
-printk("%s Debashis3 \n",__func__);		
-		if (ret != 0)
-			dev_err(&client->dev, "%s: I2C set codec I2C\n"
-				"client failed\n", __func__);
-		else {
-			dev_err(&client->dev, "%s:probe for other slaves\n"
-				"devices of codec I2C slave Addr = %x\n",
-				__func__, client->addr);
-			wcd9xxx_modules[wcd9xx_index].client = client;
-		}
+	}
+	pdata = client->dev.platform_data;
+	if (device_id > 0) {
+		wcd9xxx_modules[device_id++].client = client;
+		pr_info("probe for other slaves devices of tabla\n");
 		return ret;
-	} else if (wcd9xxx_intf == WCD9XXX_INTERFACE_TYPE_PROBING) {
-		dev = &client->dev;
-		if (client->dev.of_node) {
-			dev_dbg(&client->dev, "%s:Platform data\n"
-				"from device tree\n", __func__);
-			pdata = wcd9xxx_populate_dt_pdata(&client->dev);
-			client->dev.platform_data = pdata;
-		} else {
-			dev_dbg(&client->dev,
-				"%s:Platform data from board file\n", __func__);
-			pdata = client->dev.platform_data;
-		}
-		wcd9xxx = kzalloc(sizeof(struct wcd9xxx), GFP_KERNEL);
-		if (wcd9xxx == NULL) {
-			pr_err("%s: error, allocation failed\n", __func__);
-			ret = -ENOMEM;
-			goto fail;
-		}
+	}
 
-		if (!pdata) {
-			dev_dbg(&client->dev, "no platform data?\n");
-			ret = -EINVAL;
-			goto fail;
-		}
-		if (i2c_check_functionality(client->adapter,
-					    I2C_FUNC_I2C) == 0) {
-			dev_dbg(&client->dev, "can't talk I2C?\n");
-			ret = -EIO;
-			goto fail;
-		}
-		dev_set_drvdata(&client->dev, wcd9xxx);
-		wcd9xxx->dev = &client->dev;
-		wcd9xxx->reset_gpio = pdata->reset_gpio;
-		wcd9xxx->mclk_rate = pdata->mclk_rate;
+	wcd9xxx = kzalloc(sizeof(struct wcd9xxx), GFP_KERNEL);
+	if (wcd9xxx == NULL) {
+		pr_err("%s: error, allocation failed\n", __func__);
+		ret = -ENOMEM;
+		goto fail;
+	}
 
-		ret = wcd9xxx_enable_supplies(wcd9xxx, pdata);
+	if (!pdata) {
+		dev_dbg(&client->dev, "no platform data?\n");
+		ret = -EINVAL;
+		goto fail;
+	}
+	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C) == 0) {
+		dev_dbg(&client->dev, "can't talk I2C?\n");
+		ret = -EIO;
+		goto fail;
+	}
+	dev_set_drvdata(&client->dev, wcd9xxx);
+	wcd9xxx->dev = &client->dev;
+	wcd9xxx->reset_gpio = pdata->reset_gpio;
+	ret = wcd9xxx_enable_supplies(wcd9xxx, pdata);
+	if (ret) {
+		pr_err("%s: Fail to enable Codec supplies\n", __func__);
+		goto err_codec;
+	}
 
-		if (ret) {
-			pr_err("%s: Fail to enable Codec supplies\n",
-			       __func__);
-			goto err_codec;
-		}
-		ret = wcd9xxx_enable_static_supplies(wcd9xxx, pdata);
-		if (ret) {
-			pr_err("%s: Fail to enable Codec pre-reset supplies\n",
-				   __func__);
-			goto err_codec;
-		}
+	usleep_range(5, 5);
+	ret = wcd9xxx_reset(wcd9xxx);
+	if (ret) {
+		pr_err("%s: Resetting Codec failed\n", __func__);
+		goto err_supplies;
+	}
+	wcd9xxx_modules[device_id++].client = client;
 
-		usleep_range(5, 5);
-		ret = wcd9xxx_reset(wcd9xxx);
-		if (ret) {
-			pr_err("%s: Resetting Codec failed\n", __func__);
-			goto err_supplies;
-		}
+	wcd9xxx->read_dev = wcd9xxx_i2c_read;
+	wcd9xxx->write_dev = wcd9xxx_i2c_write;
+	wcd9xxx->irq = pdata->irq;
+	wcd9xxx->irq_base = pdata->irq_base;
 
-		ret = wcd9xxx_i2c_get_client_index(client, &wcd9xx_index);
-		if (ret != 0) {
-			pr_err("%s:Set codec I2C client failed\n", __func__);
-			goto err_supplies;
-		}
+	ret = wcd9xxx_device_init(wcd9xxx, wcd9xxx->irq);
+	if (ret) {
+		pr_err("%s: error, initializing device failed\n", __func__);
+		goto err_device_init;
+	}
 
-		wcd9xxx_modules[wcd9xx_index].client = client;
-		wcd9xxx->read_dev = wcd9xxx_i2c_read;
-		wcd9xxx->write_dev = wcd9xxx_i2c_write;
-		if (!wcd9xxx->dev->of_node) {
-			wcd9xxx->irq = pdata->irq;
-			wcd9xxx->irq_base = pdata->irq_base;
-		}
+	if ((wcd9xxx->idbyte[0] == 0x2) || (wcd9xxx->idbyte[0] == 0x1))
+		i2c_mode = TABLA_I2C_MODE;
+	else if (wcd9xxx->idbyte[0] == 0x0)
+		i2c_mode = SITAR_I2C_MODE;
 
-		ret = wcd9xxx_device_init(wcd9xxx, wcd9xxx->irq);
-		if (ret) {
-			pr_err("%s: error, initializing device failed\n",
-			       __func__);
-			goto err_device_init;
-		}
+	ret = wcd9xxx_read(wcd9xxx, WCD9XXX_A_CHIP_STATUS, 1, &val, 0);
 
-		if ((wcd9xxx->idbyte[2] == 0x0))
-					i2c_mode = TABLA_I2C_MODE;
-		else if (wcd9xxx->idbyte[2] == 0x1)
-					i2c_mode = SITAR_I2C_MODE;
-		else if (wcd9xxx->idbyte[2] == 0x3)
-					i2c_mode = TAPAN_I2C_MODE;
+	if ((ret < 0) || (val != i2c_mode))
+		pr_err("failed to read the wcd9xxx status ret = %d\n", ret);
 
-		ret = wcd9xxx_read(wcd9xxx, WCD9XXX_A_CHIP_STATUS, 1, &val, 0);
+	wcd9xxx_intf = WCD9XXX_INTERFACE_TYPE_I2C;
 
-		if ((ret < 0) || (val != i2c_mode))
-			pr_err("failed to read the wcd9xxx status ret = %d\n",
-			       ret);
-
-		wcd9xxx_intf = WCD9XXX_INTERFACE_TYPE_I2C;
-
-		return ret;
-	} else
-		pr_err("%s: I2C probe in wrong state\n", __func__);
-printk("%s Debashis4 \n",__func__);
+	return ret;
 err_device_init:
 	wcd9xxx_free_reset(wcd9xxx);
 err_supplies:
@@ -1049,12 +842,10 @@ static int __devexit wcd9xxx_i2c_remove(struct i2c_client *client)
 static int wcd9xxx_dt_parse_vreg_info(struct device *dev,
 	struct wcd9xxx_regulator *vreg, const char *vreg_name)
 {
-	int len, i, ond_cnt, ret = 0;
+	int len, ret = 0;
 	const __be32 *prop;
 	char prop_name[CODEC_DT_MAX_PROP_SIZE];
 	struct device_node *regnode = NULL;
-	const char *ond_prop_name = "qcom,cdc-on-demand-supplies";
-	const char *name = NULL;
 	u32 prop_val;
 
 	snprintf(prop_name, CODEC_DT_MAX_PROP_SIZE, "%s-supply",
@@ -1067,20 +858,6 @@ static int wcd9xxx_dt_parse_vreg_info(struct device *dev,
 		return -ENODEV;
 	}
 	vreg->name = vreg_name;
-
-	ond_cnt = of_property_count_strings(dev->of_node, ond_prop_name);
-	if (ond_cnt && !IS_ERR_VALUE(ond_cnt)) {
-		for (i = 0; i < ond_cnt; i++) {
-			ret = of_property_read_string_index(dev->of_node,
-								ond_prop_name, i,
-								&name);
-			if (!ret && !strncmp(name, prop_name,
-						 CODEC_DT_MAX_PROP_SIZE)) {
-				vreg->ondemand = true;
-				break;
-			}
-		}
-	}
 
 	snprintf(prop_name, CODEC_DT_MAX_PROP_SIZE,
 		"qcom,%s-voltage", vreg_name);
@@ -1106,9 +883,8 @@ static int wcd9xxx_dt_parse_vreg_info(struct device *dev,
 	}
 	vreg->optimum_uA = prop_val;
 
-	dev_info(dev, "%s: vol=[%d %d]uV, curr=[%d]uA, ond %d\n", vreg->name,
-		vreg->min_uV, vreg->max_uV, vreg->optimum_uA, vreg->ondemand);
-
+	dev_info(dev, "%s: vol=[%d %d]uV, curr=[%d]uA\n", vreg->name,
+		vreg->min_uV, vreg->max_uV, vreg->optimum_uA);
 	return 0;
 }
 
@@ -1199,20 +975,6 @@ static int wcd9xxx_dt_parse_micbias_info(struct device *dev,
 	}
 	micbias->bias4_cfilt_sel = (u8)prop_val;
 
-	/* micbias external cap */
-	micbias->bias1_cap_mode =
-	    (of_property_read_bool(dev->of_node, "qcom,cdc-micbias1-ext-cap") ?
-	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
-	micbias->bias2_cap_mode =
-	    (of_property_read_bool(dev->of_node, "qcom,cdc-micbias2-ext-cap") ?
-	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
-	micbias->bias3_cap_mode =
-	    (of_property_read_bool(dev->of_node, "qcom,cdc-micbias3-ext-cap") ?
-	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
-	micbias->bias4_cap_mode =
-	    (of_property_read_bool(dev->of_node, "qcom,cdc-micbias4-ext-cap") ?
-	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
-
 	dev_dbg(dev, "ldoh_v  %u cfilt1_mv %u cfilt2_mv %u cfilt3_mv %u",
 		(u32)micbias->ldoh_v, (u32)micbias->cfilt1_mv,
 		(u32)micbias->cfilt2_mv, (u32)micbias->cfilt3_mv);
@@ -1222,11 +984,6 @@ static int wcd9xxx_dt_parse_micbias_info(struct device *dev,
 
 	dev_dbg(dev, "bias3_cfilt_sel %u bias4_cfilt_sel %u\n",
 		(u32)micbias->bias3_cfilt_sel, (u32)micbias->bias4_cfilt_sel);
-
-	dev_dbg(dev, "bias1_ext_cap %d bias2_ext_cap %d\n",
-		micbias->bias1_cap_mode, micbias->bias2_cap_mode);
-	dev_dbg(dev, "bias3_ext_cap %d bias4_ext_cap %d\n",
-		micbias->bias3_cap_mode, micbias->bias4_cap_mode);
 
 	return 0;
 }
@@ -1261,22 +1018,26 @@ static int wcd9xxx_dt_parse_slim_interface_dev_info(struct device *dev,
 	return 0;
 }
 
+static char *taiko_supplies[] = {
+	"cdc-vdd-buck", "cdc-vdd-tx-h", "cdc-vdd-rx-h", "cdc-vddpx-1",
+	"cdc-vdd-a-1p2v", "cdc-vddcx-1", "cdc-vddcx-2",
+};
+
 static struct wcd9xxx_pdata *wcd9xxx_populate_dt_pdata(struct device *dev)
 {
 	struct wcd9xxx_pdata *pdata;
 	int ret, i;
 	char **codec_supplies;
 	u32 num_of_supplies = 0;
-	u32 mclk_rate = 0;
-printk("%s Debashis\n",__func__);
+
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
 		dev_err(dev,
 			"could not allocate memory for platform data\n");
 		return NULL;
 	}
-	if (!strcmp(dev_name(dev), "taiko-slim-pgd") ||
-		(!strcmp(dev_name(dev), WCD9XXX_I2C_GSBI_SLAVE_ID))) {
+
+	if (!strcmp(dev_name(dev), "taiko-slim-pgd")) {
 		codec_supplies = taiko_supplies;
 		num_of_supplies = ARRAY_SIZE(taiko_supplies);
 	} else {
@@ -1311,20 +1072,12 @@ printk("%s Debashis\n",__func__);
 			pdata->reset_gpio);
 		goto err;
 	}
-	dev_dbg(dev, "%s: reset gpio %d", __func__, pdata->reset_gpio);
-	ret = of_property_read_u32(dev->of_node,
-				   "qcom,cdc-mclk-clk-rate",
-				   &mclk_rate);
-	if (ret) {
-		dev_err(dev, "Looking up %s property in\n"
-			"node %s failed",
-			"qcom,cdc-mclk-clk-rate",
-			dev->of_node->full_name);
-		devm_kfree(dev, pdata);
-		ret = -EINVAL;
+	pdata->irq = -1;
+
+	ret = wcd9xxx_dt_parse_slim_interface_dev_info(dev,
+			&pdata->slimbus_slave_device);
+	if (ret)
 		goto err;
-	}
-	pdata->mclk_rate = mclk_rate;
 	return pdata;
 err:
 	devm_kfree(dev, pdata);
@@ -1356,23 +1109,10 @@ static int wcd9xxx_slim_probe(struct slim_device *slim)
 	struct wcd9xxx *wcd9xxx;
 	struct wcd9xxx_pdata *pdata;
 	int ret = 0;
-printk("%s Debashis\n",__func__);
-	if (wcd9xxx_intf == WCD9XXX_INTERFACE_TYPE_I2C) {
-		dev_dbg(&slim->dev, "%s:Codec is detected in I2C mode\n",
-			__func__);
-		return -ENODEV;
-	}
+
 	if (slim->dev.of_node) {
 		dev_info(&slim->dev, "Platform data from device tree\n");
 		pdata = wcd9xxx_populate_dt_pdata(&slim->dev);
-		ret = wcd9xxx_dt_parse_slim_interface_dev_info(&slim->dev,
-				&pdata->slimbus_slave_device);
-		if (ret) {
-			dev_err(&slim->dev, "Error, parsing slim interface\n");
-			devm_kfree(&slim->dev, pdata);
-			ret = -EINVAL;
-			goto err;
-		}
 		slim->dev.platform_data = pdata;
 
 	} else {
@@ -1401,19 +1141,10 @@ printk("%s Debashis\n",__func__);
 	slim_set_clientdata(slim, wcd9xxx);
 	wcd9xxx->reset_gpio = pdata->reset_gpio;
 	wcd9xxx->dev = &slim->dev;
-	wcd9xxx->mclk_rate = pdata->mclk_rate;
 
 	ret = wcd9xxx_enable_supplies(wcd9xxx, pdata);
-	if (ret) {
-		pr_err("%s: Fail to init Codec supplies %d\n", __func__, ret);
+	if (ret)
 		goto err_codec;
-	}
-	ret = wcd9xxx_enable_static_supplies(wcd9xxx, pdata);
-	if (ret) {
-		pr_err("%s: Fail to enable Codec pre-reset supplies\n",
-			   __func__);
-		goto err_codec;
-	}
 	usleep_range(5, 5);
 
 	ret = wcd9xxx_reset(wcd9xxx);
@@ -1432,12 +1163,14 @@ printk("%s Debashis\n",__func__);
 	}
 	wcd9xxx->read_dev = wcd9xxx_slim_read_device;
 	wcd9xxx->write_dev = wcd9xxx_slim_write_device;
+	wcd9xxx->irq = pdata->irq;
+	wcd9xxx->irq_base = pdata->irq_base;
 	wcd9xxx_pgd_la = wcd9xxx->slim->laddr;
+
+	if (pdata->num_irqs < TABLA_NUM_IRQS)
+		pr_warn("%s: Not enough interrupt lines allocated\n", __func__);
+
 	wcd9xxx->slim_slave = &pdata->slimbus_slave_device;
-	if (!wcd9xxx->dev->of_node) {
-		wcd9xxx->irq = pdata->irq;
-		wcd9xxx->irq_base = pdata->irq_base;
-	}
 
 	ret = slim_add_device(slim->ctrl, wcd9xxx->slim_slave);
 	if (ret) {
@@ -1689,28 +1422,16 @@ static struct slim_driver taiko_slim_driver = {
 	.suspend = wcd9xxx_slim_suspend,
 };
 
-static struct i2c_device_id wcd9xxx_id_table[] = {
-	{"wcd9xxx top level", WCD9XXX_I2C_TOP_LEVEL},
-	{"wcd9xxx analog", WCD9XXX_I2C_ANALOG},
-	{"wcd9xxx digital1", WCD9XXX_I2C_DIGITAL_1},
-	{"wcd9xxx digital2", WCD9XXX_I2C_DIGITAL_2},
-	{}
-};
+#define WCD9XXX_I2C_TOP_LEVEL	0
+#define WCD9XXX_I2C_ANALOG	1
+#define WCD9XXX_I2C_DIGITAL_1	2
+#define WCD9XXX_I2C_DIGITAL_2	3
 
 static struct i2c_device_id tabla_id_table[] = {
 	{"tabla top level", WCD9XXX_I2C_TOP_LEVEL},
 	{"tabla analog", WCD9XXX_I2C_ANALOG},
 	{"tabla digital1", WCD9XXX_I2C_DIGITAL_1},
 	{"tabla digital2", WCD9XXX_I2C_DIGITAL_2},
-	{}
-};
-MODULE_DEVICE_TABLE(i2c, tabla_id_table);
-
-static struct i2c_device_id sitar_id_table[] = {
-	{"sitar top level", WCD9XXX_I2C_TOP_LEVEL},
-	{"sitar analog", WCD9XXX_I2C_ANALOG},
-	{"sitar digital1", WCD9XXX_I2C_DIGITAL_1},
-	{"sitar digital2", WCD9XXX_I2C_DIGITAL_2},
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, tabla_id_table);
@@ -1727,35 +1448,9 @@ static struct i2c_driver tabla_i2c_driver = {
 	.suspend = wcd9xxx_i2c_suspend,
 };
 
-static struct i2c_driver sitar_i2c_driver = {
-	.driver                 = {
-		.owner          =       THIS_MODULE,
-		.name           =       "sitar-i2c-core",
-	},
-	.id_table               =       sitar_id_table,
-	.probe                  =       wcd9xxx_i2c_probe,
-	.remove                 =       __devexit_p(wcd9xxx_i2c_remove),
-	.resume	= wcd9xxx_i2c_resume,
-	.suspend = wcd9xxx_i2c_suspend,
-};
-
-static struct i2c_driver wcd9xxx_i2c_driver = {
-       .driver                 = {
-               .owner          =       THIS_MODULE,
-               .name           =       "wcd9xxx-i2c-core",
-       },
-       .id_table               =       wcd9xxx_id_table,
-       .probe                  =       wcd9xxx_i2c_probe,
-       .remove                 =       __devexit_p(wcd9xxx_i2c_remove),
-       .resume = wcd9xxx_i2c_resume,
-       .suspend = wcd9xxx_i2c_suspend,
-};
-
 static int __init wcd9xxx_init(void)
 {
-	int ret1, ret2, ret3, ret4, ret5, ret6, ret7;
-	printk("%s Debashis \n",__func__);
-	wcd9xxx_intf = WCD9XXX_INTERFACE_TYPE_PROBING;
+	int ret1, ret2, ret3, ret4, ret5, ret6;
 
 	ret1 = slim_driver_register(&tabla_slim_driver);
 	if (ret1 != 0)
@@ -1767,7 +1462,7 @@ static int __init wcd9xxx_init(void)
 
 	ret3 = i2c_add_driver(&tabla_i2c_driver);
 	if (ret3 != 0)
-		pr_err("failed to add the tabla2x I2C driver\n");
+		pr_err("failed to add the I2C driver\n");
 
 	ret4 = slim_driver_register(&sitar_slim_driver);
 	if (ret4 != 0)
@@ -1777,19 +1472,11 @@ static int __init wcd9xxx_init(void)
 	if (ret5 != 0)
 		pr_err("Failed to register sitar SB driver: %d\n", ret5);
 
-	ret6 = i2c_add_driver(&sitar_i2c_driver);
+	ret6 = slim_driver_register(&taiko_slim_driver);
 	if (ret6 != 0)
-		pr_err("failed to add the I2C driver\n");
+		pr_err("Failed to register taiko SB driver: %d\n", ret6);
 
-	ret7 = slim_driver_register(&taiko_slim_driver);
-	if (ret7 != 0)
-		pr_err("Failed to register taiko SB driver: %d\n", ret7);
-
-	ret7 = i2c_add_driver(&wcd9xxx_i2c_driver);
-	if (ret7 != 0)
-		pr_err("failed to add the wcd9xxx I2C driver\n");
-
-	return (ret1 && ret2 && ret3 && ret4 && ret5 && ret6 && ret7) ? -1 : 0;
+	return (ret1 && ret2 && ret3 && ret4 && ret5 && ret6) ? -1 : 0;
 }
 module_init(wcd9xxx_init);
 

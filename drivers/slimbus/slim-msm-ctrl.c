@@ -1936,7 +1936,7 @@ static int __devinit
 msm_slim_sps_init(struct msm_slim_ctrl *dev, struct resource *bam_mem)
 {
 	int i, ret;
-	u32 bam_handle = 0;
+	u32 bam_handle;
 	struct sps_bam_props bam_props = {0};
 
 	static struct sps_bam_sec_config_props sec_props = {

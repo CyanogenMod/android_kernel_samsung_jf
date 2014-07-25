@@ -55,6 +55,7 @@
 #include <bcmutils.h>
 #include <bcmendian.h>
 #include <bcmdevs.h>
+#include <bcmsdbus.h>
 
 #include <proto/ethernet.h>
 #include <proto/bcmip.h>
@@ -632,6 +633,7 @@ static char dhd_version[] = "Dongle Host Driver, version " EPI_VERSION_STR
 "\nCompiled in " SRCBASE " on " __DATE__ " at " __TIME__
 #endif
 ;
+int dhd_dev_reset(struct net_device *dev, uint8 flag);
 static void dhd_net_if_lock_local(dhd_info_t *dhd);
 static void dhd_net_if_unlock_local(dhd_info_t *dhd);
 static void dhd_suspend_lock(dhd_pub_t *dhdp);
@@ -3373,18 +3375,6 @@ dhd_open(struct net_device *net)
 	}
 #endif /* CUSTOMER_HW4 */
 
-#if defined(SUPPORT_MULTIPLE_REVISION)
-	/* dhd_open() can be call several times when loading failed */
-	if (strlen(firmware_path) != 0) {
-		ret = concate_revision(dhd->pub.bus, fw_path, MOD_PARAM_PATHLEN,
-			nv_path, MOD_PARAM_PATHLEN);
-		if (ret != 0) {
-			DHD_ERROR(("%s: fail to concatnate revison \n", __FUNCTION__));
-			goto exit;
-		}
-	}
-#endif /* SUPPORT_MULTIPLE_REVISION */
-
 #ifdef CUSTOMER_HW4
 #ifdef FIX_CPU_MIN_CLOCK
 	if (strstr(fw_path, "_apsta")) {
@@ -3431,6 +3421,8 @@ dhd_open(struct net_device *net)
 #if defined(WL_CFG80211)
 		DHD_ERROR(("\n%s\n", dhd_version));
 		if (!dhd_download_fw_on_driverload) {
+			/* update firmware and nvram path to SDIO bus */
+			dhd_bus_update_fw_nv_path(dhd->pub.bus, fw_path, nv_path);
 			ret = wl_android_wifi_on(net);
 			if (ret != 0) {
 				DHD_ERROR(("%s : wl_android_wifi_on failed (%d)\n",
@@ -3692,14 +3684,6 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 		bzero(nv_path, MOD_PARAM_PATHLEN);
 		strncpy(nv_path, nvram_path, sizeof(nv_path) -1);
 	}
-#if defined(SUPPORT_MULTIPLE_REVISION)
-	if (strlen(fw_path) != 0 &&
-		concate_revision(bus, fw_path, MOD_PARAM_PATHLEN,
-		nv_path, MOD_PARAM_PATHLEN) != 0) {
-		DHD_ERROR(("%s: fail to concatnate revison \n", __FUNCTION__));
-		goto fail;
-	}
-#endif /* SUPPORT_MULTIPLE_REVISION */
 
 	/* Allocate etherdev, including space for private structure */
 	if (!(net = alloc_etherdev(sizeof(dhd)))) {
@@ -5241,6 +5225,10 @@ dhd_net_attach(dhd_pub_t *dhdp, int ifidx)
 
 #if 1 && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	if (ifidx == 0) {
+		if (!dhd_download_fw_on_driverload) {
+			dhd_dev_reset(net, TRUE);
+			sdioh_stop(NULL);
+		}
 		dhd_registration_check = TRUE;
 		up(&dhd_registration_sem);
 	}
@@ -6329,7 +6317,7 @@ dhd_dev_init_ioctl(struct net_device *dev)
 
 	dhd_process_cid_mac(&dhd->pub, TRUE);
 
-	if ((ret = dhd_preinit_ioctls(&dhd->pub)) < 0)
+	if ((ret = dhd_prot_init(&dhd->pub)) < 0)
 		goto done;
 
 	dhd_process_cid_mac(&dhd->pub, FALSE);

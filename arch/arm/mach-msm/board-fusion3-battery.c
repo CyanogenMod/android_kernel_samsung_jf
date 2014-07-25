@@ -34,7 +34,6 @@
 #include <linux/battery/sec_charger.h>
 
 #define SEC_BATTERY_PMIC_NAME ""
-#define SHORT_BATTERY_STANDARD		100
 
 static unsigned int sec_bat_recovery_mode;
 static sec_charging_current_t charging_current_table[] = {
@@ -43,7 +42,7 @@ static sec_charging_current_t charging_current_table[] = {
 	{460,	460,	200,	40*60},
 	{1900,	1600,	200,	40*60},
 	{460,	460,	200,	40*60},
-	{1000,	1000,	200,	40*60},
+	{460,	460,	200,	40*60},
 	{1000,	1000,	200,	40*60},
 	{460,	460,	200,	40*60},
 	{1700,	1600,	200,	40*60},
@@ -274,12 +273,12 @@ static int sec_bat_get_cable_from_extended_cable_type(
 				charge_current = 400;
 				break;
 			case ONLINE_POWER_TYPE_MHL_900:
-				cable_type = POWER_SUPPLY_TYPE_MISC;
+				cable_type = POWER_SUPPLY_TYPE_MAINS;
 				charge_current_max = 700;
 				charge_current = 700;
 				break;
 			case ONLINE_POWER_TYPE_MHL_1500:
-				cable_type = POWER_SUPPLY_TYPE_MISC;
+				cable_type = POWER_SUPPLY_TYPE_MAINS;
 				charge_current_max = 1300;
 				charge_current = 1300;
 				break;
@@ -292,19 +291,8 @@ static int sec_bat_get_cable_from_extended_cable_type(
 				cable_type = cable_main;
 			}
 			break;
-		case ONLINE_SUB_TYPE_SMART_OTG:
-				cable_type = POWER_SUPPLY_TYPE_USB;
-				charge_current_max = 1000;
-				charge_current = 1000;
-				break;
-		case ONLINE_SUB_TYPE_SMART_NOTG:
-				cable_type = POWER_SUPPLY_TYPE_MAINS;
-				charge_current_max = 1900;
-				charge_current = 1600;
-				break;
 		default:
 			cable_type = cable_main;
-			charge_current_max = 0;
 			break;
 		}
 		break;
@@ -390,20 +378,6 @@ static bool sec_bat_check_callback(void)
 				__func__, POWER_SUPPLY_PROP_PRESENT, ret);
 			value.intval = 1;
 		}
-#if defined(CONFIG_BOARD_JF_REFRESH)
-		{
-			int data;
-			struct pm8xxx_adc_chan_result result;
-
-			pm8xxx_adc_read(ADC_MPP_1_AMUX8, &result);
-			data = ((int)result.physical) / 1000;
-			pr_info("%s: result.physical(%d)\n", __func__, data);
-			if(data < SHORT_BATTERY_STANDARD) {
-				pr_info("%s: Short Battery is connected.\n", __func__);
-				value.intval = 0;
-			}
-		}
-#endif
 	}
 
 	return value.intval;
@@ -434,10 +408,6 @@ static bool sec_fg_fuelalert_process(bool is_fuel_alerted) {return true; }
 
 #if defined(CONFIG_MACH_JF_DCM)
 static const sec_bat_adc_table_data_t temp_table[] = {
-	{25893,	900},
-	{26142,	850},
-	{26427,	800},
-	{26792,	750},
 	{27120,	700},
 	{27585,	650},
 	{28110,	600},
@@ -461,10 +431,6 @@ static const sec_bat_adc_table_data_t temp_table[] = {
 };
 #elif defined(CONFIG_MACH_JACTIVE_ATT)
 static const sec_bat_adc_table_data_t temp_table[] = {
-	{25893,	900},
-	{26142,	850},
-	{26427,	800},
-	{26792,	750},
 	{27039,	700},
 	{27264,	670},
 	{27435,	650},
@@ -493,10 +459,6 @@ static const sec_bat_adc_table_data_t temp_table[] = {
 };
 #else
 static const sec_bat_adc_table_data_t temp_table[] = {
-	{25893,	900},
-	{26142,	850},
-	{26427,	800},
-	{26792,	750},
 	{27188,	700},
 	{27605,	650},
 	{28182,	600},
@@ -547,20 +509,7 @@ static int polling_time_table[] = {
 #endif
 };
 
-#if defined(CONFIG_BOARD_JF_REFRESH)
-/* for MAX17048 */
-static struct battery_data_t fusion3_battery_data[] = {
-	/* SDI battery data (High voltage 4.35V) */
-	{
-		.RCOMP0 = 0x65,
-		.RCOMP_charging = 0x70,
-		.temp_cohot = -700,
-		.temp_cocold = -4875,
-		.is_using_model_data = true,
-		.type_str = "SDI",
-	}
-};
-#elif defined(CONFIG_MACH_JF_ATT) || defined(CONFIG_MACH_JF_TMO) || \
+#if defined(CONFIG_MACH_JF_ATT) || defined(CONFIG_MACH_JF_TMO) || \
 	defined(CONFIG_MACH_JF_SPR) || defined(CONFIG_MACH_JF_USC) || \
 	defined(CONFIG_MACH_JF_VZW)
 /* for MAX17048 */
@@ -758,21 +707,6 @@ sec_battery_platform_data_t sec_battery_pdata = {
 	.temp_high_recovery_lpm = 400,
 	.temp_low_threshold_lpm = -50,
 	.temp_low_recovery_lpm = 0,
-#elif defined(CONFIG_BOARD_JF_REFRESH)
-	.temp_high_threshold_event = 600,
-	.temp_high_recovery_event = 400,
-	.temp_low_threshold_event = -30,
-	.temp_low_recovery_event = 0,
-
-	.temp_high_threshold_normal = 550,
-	.temp_high_recovery_normal = 430,
-	.temp_low_threshold_normal = -30,
-	.temp_low_recovery_normal = 0,
-
-	.temp_high_threshold_lpm = 495,
-	.temp_high_recovery_lpm = 448,
-	.temp_low_threshold_lpm = -10,
-	.temp_low_recovery_lpm = 20,
 #elif defined(CONFIG_MACH_JF_SPR)
 	.temp_high_threshold_event = 600,
 	.temp_high_recovery_event = 400,
@@ -784,7 +718,7 @@ sec_battery_platform_data_t sec_battery_pdata = {
 	.temp_low_threshold_normal = -30,
 	.temp_low_recovery_normal = 0,
 
-	.temp_high_threshold_lpm = 495,
+	.temp_high_threshold_lpm = 473,
 	.temp_high_recovery_lpm = 448,
 	.temp_low_threshold_lpm = -10,
 	.temp_low_recovery_lpm = 20,
@@ -879,21 +813,6 @@ sec_battery_platform_data_t sec_battery_pdata = {
 	.temp_low_threshold_lpm = -34,
 	.temp_low_recovery_lpm = -1,
 #elif defined(CONFIG_MACH_JF_DCM)
-	.temp_high_threshold_event = 600,
-	.temp_high_recovery_event = 400,
-	.temp_low_threshold_event = -50,
-	.temp_low_recovery_event = 0,
-
-	.temp_high_threshold_normal = 600,
-	.temp_high_recovery_normal = 400,
-	.temp_low_threshold_normal = -50,
-	.temp_low_recovery_normal = 0,
-
-	.temp_high_threshold_lpm = 600,
-	.temp_high_recovery_lpm = 400,
-	.temp_low_threshold_lpm = -50,
-	.temp_low_recovery_lpm = 0,
-#elif defined(CONFIG_MACH_JFVE_EUR)
 	.temp_high_threshold_event = 600,
 	.temp_high_recovery_event = 400,
 	.temp_low_threshold_event = -50,
@@ -1026,12 +945,10 @@ __setup("androidboot.boot_recovery=", sec_bat_current_boot_mode);
 void __init msm8960_init_battery(void)
 {
 	/* FUEL_SDA/SCL setting */
-#if !defined(CONFIG_MACH_JFVE_EUR)
 	if ((system_rev > 0) && (system_rev < 6)) {
 		gpio_i2c_data_fgchg.sda_pin = GPIO_FUELGAUGE_I2C_SDA_OLD;
 		gpio_i2c_data_fgchg.scl_pin = GPIO_FUELGAUGE_I2C_SCL_OLD;
 	}
-#endif
 	platform_add_devices(
 		msm8960_battery_devices,
 		ARRAY_SIZE(msm8960_battery_devices));

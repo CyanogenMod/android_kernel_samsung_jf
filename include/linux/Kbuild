@@ -20,7 +20,6 @@ header-y += netfilter_ipv6/
 header-y += usb/
 header-y += wimax/
 header-y += mfd/
-header-y += tima/
 
 objhdr-y += version.h
 

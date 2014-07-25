@@ -380,51 +380,20 @@ config SENSORS_APDS990X
 	   module will be called apds990x. If unsure, say N here.
 
 config SAMSUNG_JACK
-        bool "3.5 PI JACK driver for Samsung devices"
-        depends on INPUT
-        default n
-        ---help---
-	   This option enables gadget support for JACK controller. If
-	   Say Y here if you want to build a driver for Samsung 3.5 PI JACK device
+	bool "3.5 PI Jack driver for Samsung devices"
+	depends on INPUT
+	default n
+	help
+	 This is 3.5 PI JACK driver for Samsung devies.
+	 sec_jack from samsung driver used for samsung devices.
 
-	   To compile this driver as a module, choose M here: the
-	   module will be called sec_jack. If unsure, say N here.
+	 To samsung jack is reviewed and supported in all the
+	 samsung devices.
 
 config SAMSUNG_JACK_GNDLDET
-	bool "GND plus L Detection for Earjack"
+	bool "3.5 PI Ground Det Jack config"
 	depends on INPUT
 	default n
-	help
-	  This is gnd plus l detection for earjack.
-	  The gnd gpio is added for the detection of earjack.
-	  This is added to decide the earjack properly
-	  in case of the insertion of water.
-	  
-config SAMSUNG_JACK_EXT_LDO
-	bool "Control for External LDO in Samsung Earjack device"
-	depends on INPUT
-	default n
-	help
-	  This is control for externel ldo.
-	  Say Y here if you want to add LDO control for samsung earjack
-
-config MUIC_DET_JACK
-	bool "Micro usb JACK driver for Samsung devices"
-	depends on INPUT
-	default n
-	---help---
-		This option enables mirco usb ear JACK controller.
-
-config 2MIC_ES305
-	bool "ES305 driver for audience 2 mic device"
-	depends on I2C
-	default n
-	---help---
-	   This option enables voice processing audience chip.Please enable this chip
-	   if you want to enable voice processing during call.
-
-	   To compile this driver as a module, choose M here: the
-	   module will be called a2220. If unsure, say N here.
 
 config HMC6352
 	tristate "Honeywell HMC6352 compass"
@@ -752,19 +721,6 @@ config SEC_TORCH_FLASH
 	default n
 	help
 	  This driver provides torch flash function.	  
-
-config TIMA_LOG
-	tristate "Support for dumping TIMA log"
-	default m
-	help
-	  This option enables support for dumping TIMA log
-
-config TIMA_TEST
-	tristate "Tima Test Suite"
-	default n
-	help
-	  This option enables kernel component of tima test suite
-
 	  
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"

@@ -33,7 +33,6 @@ extern u32 mdp_max_clk;
 extern u64 mdp_max_bw;
 extern u32 mdp_bw_ab_factor;
 extern u32 mdp_bw_ib_factor;
-extern u32 mdp_iommu_max_map_size;
 #define MDP4_BW_AB_FACTOR (200)	/* 2.00 */
 #define MDP4_BW_IB_FACTOR (210)	/* 2.10 */
 #define MDP_BUS_SCALE_AB_STEP (0x4000000)
@@ -299,6 +298,8 @@ struct mdp4_overlay_pipe {
 	uint32 src_format;
 	uint32 src_width;	/* source img width */
 	uint32 src_height;	/* source img height */
+	uint32 prev_src_width;  /* source img width */
+	uint32 prev_src_height; /* source img height */
 	uint32 is_3d;
 	uint32 src_width_3d;	/* source img width */
 	uint32 src_height_3d;	/* source img height */
@@ -1005,5 +1006,4 @@ static inline void mdp4_unmap_sec_resource(struct msm_fb_data_type *mfd);
 	return 0;
 }
 #endif
-void xlog(const char *name, u32 data0, u32 data1, u32 data2, u32 data3, u32 data4);
 #endif /* MDP_H */

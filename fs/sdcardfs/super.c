@@ -1,21 +1,12 @@
 /*
- * fs/sdcardfs/super.c
- *
- * Copyright (c) 2013 Samsung Electronics Co. Ltd
- *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun, 
- *               Sunghwan Yun, Sungjong Seo
- *                      
- * This program has been developed as a stackable file system based on
- * the WrapFS which written by 
- *
  * Copyright (c) 1998-2011 Erez Zadok
- * Copyright (c) 2009     Shrikar Archak
+ * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2011 Stony Brook University
  * Copyright (c) 2003-2011 The Research Foundation of SUNY
  *
- * This file is dual licensed.  It may be redistributed and/or modified
- * under the terms of the Apache 2.0 License OR version 2 of the GNU
- * General Public License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include "sdcardfs.h"
@@ -36,18 +27,10 @@ static void sdcardfs_put_super(struct super_block *sb)
 	if (!spd)
 		return;
 
-	if(spd->obbpath_s) {
-		kfree(spd->obbpath_s);
-		path_put(&spd->obbpath);
-	}
-
 	/* decrement lower super references */
 	s = sdcardfs_lower_super(sb);
 	sdcardfs_set_lower_super(sb, NULL);
 	atomic_dec(&s->s_active);
-
-	if(spd->pkgl_id)
-		packagelist_destroy(spd->pkgl_id);
 
 	kfree(spd);
 	sb->s_fs_info = NULL;
@@ -57,32 +40,33 @@ static int sdcardfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
 	int err;
 	struct path lower_path;
+
+#if defined(LOWER_FS_MIN_FREE_SIZE)
 	u32 min_blocks;
-	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
+#endif
 
 	sdcardfs_get_lower_path(dentry, &lower_path);
 	err = vfs_statfs(&lower_path, buf);
 	sdcardfs_put_lower_path(dentry, &lower_path);
 
-	if (sbi->options.reserved_mb) {
-		/* Invalid statfs informations. */
-		if (buf->f_bsize == 0) {
-			printk(KERN_ERR "Returned block size is zero.\n");
-			return -EINVAL;
-		}
-	
-		min_blocks = ((sbi->options.reserved_mb * 1024 * 1024)/buf->f_bsize);
-		buf->f_blocks -= min_blocks;
-	
-		if (buf->f_bavail > min_blocks)
-			buf->f_bavail -= min_blocks;
-		else
-			buf->f_bavail = 0;
-	
-		/* Make reserved blocks invisiable to media storage */
-		buf->f_bfree = buf->f_bavail;
+#if defined(LOWER_FS_MIN_FREE_SIZE)
+	/* Invalid statfs informations. */
+	if (buf->f_bsize == 0) {
+		printk(KERN_ERR "Returned block size is zero.\n");
+		return -EINVAL;
 	}
 
+	min_blocks = (LOWER_FS_MIN_FREE_SIZE/buf->f_bsize);
+	buf->f_blocks -= min_blocks;
+
+	if (buf->f_bavail > min_blocks)
+		buf->f_bavail -= min_blocks;
+	else
+		buf->f_bavail = 0;
+
+	/* Make reserved blocks invisiable to media storage */
+	buf->f_bfree = buf->f_bavail;
+#endif
 	/* set return buf to our f/s to avoid confusing user-level utils */
 	buf->f_type = SDCARDFS_SUPER_MAGIC;
 

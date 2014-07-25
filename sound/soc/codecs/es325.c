@@ -126,8 +126,6 @@ struct es325_slim_ch {
 #define FIRMWARE_NAME "audience-es325-fw-cmcc.bin"
 #elif defined(CONFIG_MACH_JF_EUR)
 #define FIRMWARE_NAME "audience-es325-fw-eur.bin"
-#elif defined(CONFIG_MACH_JFVE_EUR)
-#define FIRMWARE_NAME "audience-es325-fw-eur.bin"
 #elif defined(CONFIG_MACH_JACTIVE_EUR)
 #define FIRMWARE_NAME "audience-es325-fw-jactive-eur.bin"
 #elif defined(CONFIG_MACH_JACTIVE_ATT)

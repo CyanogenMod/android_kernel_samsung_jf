@@ -133,10 +133,6 @@ struct sec_battery_info {
 	bool slate_mode;
 
 	int siop_level;
-#if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
-	int stability_test;
-	int eng_not_full_status;
-#endif
 };
 
 ssize_t sec_bat_show_attrs(struct device *dev,
@@ -222,7 +218,6 @@ enum {
 	BATT_EVENT,
 #if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
 	BATT_TEST_CHARGE_CURRENT,
-	BATT_STABILITY_TEST,
 #endif
 };
 

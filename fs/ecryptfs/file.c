@@ -174,6 +174,7 @@ static int read_or_initialize_metadata(struct dentry *dentry)
 		if (ecryptfs_read_metadata(dentry)) {
 			crypt_stat->flags &= ~(ECRYPTFS_I_SIZE_INITIALIZED
 					| ECRYPTFS_ENCRYPTED);
+			mutex_unlock(&crypt_stat->cs_mutex);
 			rc = 0;
 			goto out;
 		}
@@ -192,6 +193,7 @@ static int read_or_initialize_metadata(struct dentry *dentry)
 				crypt_stat->flags &=
 				~(ECRYPTFS_I_SIZE_INITIALIZED
 				| ECRYPTFS_ENCRYPTED);
+			mutex_unlock(&crypt_stat->cs_mutex);
 			rc = 0;
 			goto out;
 		}

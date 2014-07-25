@@ -1451,7 +1451,15 @@ static int sii8240_init_regs(struct sii8240_data *sii8240)
 		return ret;
 	}
 
+	/* TODO: Why writing the same register two times?? */
 	ret = mhl_write_byte_reg(hdmi, 0x4C, 0xD0);
+	if (unlikely(ret < 0)) {
+		pr_err("sii8240: %s():%d Fail to set register\n",
+			__func__, __LINE__);
+		return ret;
+	}
+
+	ret = mhl_write_byte_reg(hdmi, 0x4C, 0xE0);
 	if (unlikely(ret < 0)) {
 		pr_err("sii8240: %s():%d Fail to set register\n",
 			__func__, __LINE__);
@@ -2509,18 +2517,11 @@ static int sii8240_bypass_avi_info(struct sii8240_data *sii8240)
 
 	ret = sii8240_msc_req_locked(sii8240, START_WRITE_STAT_SET_INT,
 			CBUS_MHL_STATUS_OFFSET_1, sii8240->regs.link_mode, 0);
-	if (unlikely(ret < 0)) {
-		pr_err("[ERROR] sii8240: %s():%d sii8240_msc_req_locked fail\n",
-				__func__, __LINE__);
-		return ret;
-	}
-
-	ret = mhl_write_byte_reg(hdmi, 0x4C, 0xD0);
-	if (unlikely(ret < 0)) {
-		pr_err("[ERROR] sii8240: %s():%d mhl_write_byte_reg\n",
-				__func__, __LINE__);
-		return ret;
-	}
+	/*HDMI input clock is under 75MHz*/
+	if (sii8240->aviInfoFrame[INFO_VIC] < 4)
+		ret = mhl_write_byte_reg(hdmi, 0x4C, 0xE0);
+	else
+		ret = mhl_write_byte_reg(hdmi, 0x4C, 0xD0);
 
 	/*bypass avi info*/
 	memcpy(&sii8240->current_aviInfoFrame,
@@ -3755,8 +3756,8 @@ static irqreturn_t sii8240_irq_thread(int irq, void *data)
 				if (sii8240->pdata->vbus_present)
 					sii8240->pdata->vbus_present(false, 0x03);
 			}
-			if (sii8240->mhl_connected == true)
-				queue_work(sii8240->cbus_cmd_wqs,
+
+			queue_work(sii8240->cbus_cmd_wqs,
 						 &sii8240->redetect_work);
 		}
 		break;
@@ -3775,9 +3776,8 @@ static irqreturn_t sii8240_irq_thread(int irq, void *data)
 				sii8240->irq_enabled = false;
 				pr_info("sii8240: interrupt disabled\n");
 			}
-			if (sii8240->mhl_connected == true)
-				queue_work(sii8240->cbus_cmd_wqs,
-						 &sii8240->redetect_work);
+			queue_work(sii8240->cbus_cmd_wqs,
+					 &sii8240->redetect_work);
 		}
 		break;
 	case STATE_MHL_DISCOVERY_SUCCESS:
@@ -3802,8 +3802,7 @@ static irqreturn_t sii8240_irq_thread(int irq, void *data)
 				sii8240->irq_enabled = false;
 				pr_info("sii8240: interrupt disabled\n");
 			}
-			if (sii8240->mhl_connected == true)
-				queue_work(sii8240->cbus_cmd_wqs,
+			queue_work(sii8240->cbus_cmd_wqs,
 						&sii8240->redetect_work);
 			break;
 		}

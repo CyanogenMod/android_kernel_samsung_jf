@@ -449,23 +449,6 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 			"%s : Failed to create_attrs\n", __func__);
 		goto err_irq;
 	}
-	pr_info("%s: fg_irq: %d, capacity_max: %d, "
-			"cpacity_max_margin: %d, capacity_min: %d,"
-			"calculation_type: 0x%x, fuel_alert_soc: %d,\n"
-			"repeated_fuelalert: %d, RCOMP0: 0x%x,"
-			"RCOMP_charging: 0x%x, temp_cohot: %d,"
-			"temp_cocold: %d, is_using_model_data: %d,"
-			"type_str: %s,\n", __func__, fuelgauge->pdata->fg_irq,
-			fuelgauge->pdata->capacity_max, fuelgauge->pdata->capacity_max_margin,
-			fuelgauge->pdata->capacity_min, fuelgauge->pdata->capacity_calculation_type,
-			fuelgauge->pdata->fuel_alert_soc, fuelgauge->pdata->repeated_fuelalert,
-			get_battery_data(fuelgauge).RCOMP0,
-			get_battery_data(fuelgauge).RCOMP_charging,
-			get_battery_data(fuelgauge).temp_cohot,
-			get_battery_data(fuelgauge).temp_cocold,
-			get_battery_data(fuelgauge).is_using_model_data,
-			get_battery_data(fuelgauge).type_str
-		   );
 
 	dev_dbg(&client->dev,
 		"%s: SEC Fuelgauge Driver Loaded\n", __func__);

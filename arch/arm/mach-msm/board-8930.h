@@ -55,11 +55,6 @@
 #define PM8917_MPP_PM_TO_SYS(pm_gpio)	PM8038_MPP_PM_TO_SYS(pm_gpio)
 #define PM8917_IRQ_BASE			PM8038_IRQ_BASE
 
-#ifdef CONFIG_MFD_MAX77693
-#define IF_PMIC_IRQ_BASE PM8917_IRQ_BASE
-#endif
-
-
 /*
  * TODO: When physical 8930/PM8038 hardware becomes
  * available, replace this block with 8930/pm8038 regulator
@@ -79,11 +74,6 @@ extern struct rpm_regulator_platform_data msm_rpm_regulator_pdata __devinitdata;
 #define GPIO_VREG_ID_EXT_5V		0
 #define GPIO_VREG_ID_EXT_L2		1
 #define GPIO_VREG_ID_EXT_3P3V		2
-#endif
-
-#if defined(CONFIG_MACH_MELIUS) || defined(CONFIG_MACH_BISCOTTO) || defined(CONFIG_MACH_GOLDEN) || defined(CONFIG_MACH_LT02)
-extern int current_cable_type;
-extern unsigned int system_rev;
 #endif
 
 extern struct regulator_init_data msm8930_pm8038_saw_regulator_core0_pdata;
@@ -142,17 +132,6 @@ void msm8930_init_cam(void);
 void msm8930_init_fb(void);
 void msm8930_init_pmic(void);
 extern void msm8930_add_vidc_device(void);
-extern void msm_camera_gpio_install(void);
-extern void cam_ldo_power_on(int mode);
-extern void cam_ldo_power_off(int mode);
-extern void sec_otg_set_vbus_state(int);
-extern void sec_otg_set_id_state(bool enable);
-extern void sec_otg_set_dock_state(int enable);
-#ifdef CONFIG_USB_HOST_NOTIFY
-extern int msm_otg_power_cb(int active);
-extern void msm_otg_set_id_state(int online);
-extern void msm_otg_set_smartdock_state(bool online);
-#endif
 
 /*
  * TODO: When physical 8930/PM8038 hardware becomes
@@ -173,26 +152,11 @@ void msm8930_mdp_writeback(struct memtype_reserve *reserve_table);
 void __init msm8930_init_gpu(void);
 void __init configure_8930_sglte_regulator(void);
 
-int msm8960_get_cable_status(void);
-
-#ifdef CONFIG_SAMSUNG_LPM_MODE
-extern int poweroff_charging;
-#endif
-
 #define PLATFORM_IS_CHARM25() \
 	(machine_is_msm8930_cdp() && \
 		(socinfo_get_platform_subtype() == 1) \
 	)
 
-#define MSM_8960_GSBI8_QUP_I2C_BUS_ID 8
-#ifdef CONFIG_2MIC_ES305
-#ifdef CONFIG_2MIC_QUP_I2C_GSBI11
-#define MSM_8960_GSBI5_QUP_I2C_BUS_ID 11
-#else
-#define MSM_8960_GSBI5_QUP_I2C_BUS_ID 5
-#endif
-#endif
-#define MSM_8960_GSBI2_QUP_I2C_BUS_ID 2
 #define MSM_8930_GSBI3_QUP_I2C_BUS_ID 3
 #define MSM_8930_GSBI4_QUP_I2C_BUS_ID 4
 #define MSM_8930_GSBI8_QUP_I2C_BUS_ID 8

@@ -47,6 +47,4 @@
 #include <mach/jactive_att-gpio.h>
 #elif defined(CONFIG_MACH_JF_CRI)
 #include <mach/jf_cri-gpio.h>
-#elif defined(CONFIG_MACH_JFVE_EUR)
-#include <mach/jfve_eur-gpio.h>
 #endif

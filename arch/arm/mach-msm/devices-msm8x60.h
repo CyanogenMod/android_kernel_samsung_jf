@@ -23,27 +23,10 @@
 #define MSM_SSBI2_I2C_BUS_ID     7
 #define MSM_SSBI3_I2C_BUS_ID     8
 
-#if defined(CONFIG_MACH_MELIUS_CHN_CTC) ||defined(CONFIG_MACH_CRATER_CHN_CTC)
-#define MSM_SNS_I2C_BUS_ID      1
-#elif defined(CONFIG_MACH_LT02_CHN_CTC)
-#define MSM_SNS_I2C_BUS_ID      21
-#else
-#define MSM_SNS_I2C_BUS_ID      12
-#endif
-
-#define MSM_NFC_I2C_BUS_ID      17
-#define MSM_ACTUATOR_I2C_BUS_ID	20
-#ifdef CONFIG_SAMSUNG_CMC624
-#define MSM_CMC624_I2C_BUS_ID   18
-#endif
-
 #define MSM_MHL_I2C_BUS_ID              9
 #define MSM_FUELGAUGE_I2C_BUS_ID	11
-#if defined (CONFIG_MACH_JF) && defined (CONFIG_MFD_MAX77693)
+#ifdef CONFIG_MFD_MAX77693
 #define MSM_FSA9485_I2C_BUS_ID		12
-#endif
-#if defined (CONFIG_MFD_MAX77693) && defined (CONFIG_MACH_MELIUS)
-#define MSM_MUSB_I2C_BUS_ID             22
 #endif
 #define MSM_SEC_FPGA_I2C_BUS_ID     13
 #ifdef CONFIG_IRDA_MC96
@@ -108,8 +91,7 @@ void __init msm8x60_check_2d_hardware(void);
 extern struct platform_device msm_dsps_device;
 #endif
 
-#ifdef CONFIG_MSM_RPM_STATS_LOG
+#if defined(CONFIG_MSM_RPM_STATS_LOG)
 extern struct platform_device msm_rpm_stat_device;
 #endif
-
 #endif

@@ -225,25 +225,6 @@ static void cypress_gpio_setting(bool value)
 
 			printk(KERN_DEBUG "%s in suspend \n",__func__);
 		}
-#elif defined(CONFIG_MACH_JFVE_EUR)
-	if(value) {
-		ret = gpio_request(GPIO_TOUCHKEY_SCL_2, "TKEY_SCL");
-		if (ret)
-			printk(KERN_ERR "%s: request GPIO %s err %d.",\
-					__func__, "TKEY_SCL_2", ret);
-
-		ret = gpio_request(GPIO_TOUCHKEY_SDA, "TKEY_SDA");
-		if (ret)
-			printk(KERN_ERR "%s: request GPIO %s err %d.",\
-					__func__, "TKEY_SDA", ret);
-
-		printk(KERN_DEBUG "%s in resume \n",__func__);
-	} else {
-		gpio_free(GPIO_TOUCHKEY_SCL_2);
-		gpio_free(GPIO_TOUCHKEY_SDA);
-		printk(KERN_DEBUG "%s in suspend \n",__func__);
-	}
-
 #else /*VZW, SPR, USC, CRI*/
 	if(value) {
 		if (system_rev < 10) {

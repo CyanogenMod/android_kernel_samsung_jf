@@ -141,14 +141,9 @@ obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
 #MobiCore
 obj-$(CONFIG_MOBICORE_SUPPORT)  += gud/
 
-obj-$(CONFIG_INPUT_YAS_SENSORS)		+= sensors/
 obj-$(CONFIG_BATTERY_SAMSUNG)	+= battery/
 obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
-ifdef CONFIG_MACH_MELIUS
-obj-$(CONFIG_VIBETONZ)          += motor_msm8930/
-else
 obj-$(CONFIG_VIBETONZ)          += motor/
-endif
 obj-$(CONFIG_SEC_FPGA)	+= barcode_emul/
 obj-$(CONFIG_IRDA_MC96)		+= irda/
 

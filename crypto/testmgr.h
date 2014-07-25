@@ -1312,11 +1312,7 @@ static struct hash_testvec hmac_sha1_tv_template[] = {
 		.plaintext = "Hi There",
 		.psize	= 8,
 		.digest	= "\xb6\x17\x31\x86\x55\x05\x72\x64"
-#if FIPS_FUNC_TEST == 12
-			  "\xe3\x8b\xc0\xb6\xfb\x37\x8c\x8e\xf1"
-#else
 			  "\xe2\x8b\xc0\xb6\xfb\x37\x8c\x8e\xf1"
-#endif
 			  "\x46\xbe",
 	}, {
 		.key	= "Jefe",
@@ -6137,11 +6133,7 @@ static struct cipher_testvec cast6_dec_tv_template[] = {
 static struct cipher_testvec aes_enc_tv_template[] = {
 	{ /* From FIPS-197 */
 		.key	= "\x00\x01\x02\x03\x04\x05\x06\x07"
-#if FIPS_FUNC_TEST == 1
-			  "\x08\x09\x0a\x0b\x0c\x0d\x0e\x01",
-#else
 			  "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
-#endif
 		.klen	= 16,
 		.input	= "\x00\x11\x22\x33\x44\x55\x66\x77"
 			  "\x88\x99\xaa\xbb\xcc\xdd\xee\xff",

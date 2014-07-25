@@ -606,7 +606,7 @@ static struct msmfb_writeback_data_list *get_if_registered(
 					  (ulong *)&temp->addr,
 					  (ulong *)&len,
 					  0,
-					  0)) {
+					  ION_IOMMU_UNMAP_DELAYED)) {
 				ion_free(mfd->iclient, srcp_ihdl);
 				pr_err("%s: unable to get ion mapping addr\n",
 				       __func__);

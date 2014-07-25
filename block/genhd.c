@@ -900,7 +900,7 @@ static struct kobject *base_probe(dev_t devt, int *partno, void *data)
 
 static int __init genhd_device_init(void)
 {
-	int error, ret;
+	int error;
 
 	block_class.dev_kobj = sysfs_dev_block_kobj;
 	error = class_register(&block_class);
@@ -909,9 +909,7 @@ static int __init genhd_device_init(void)
 	bdev_map = kobj_map_init(base_probe, &block_class_lock);
 	blk_dev_init();
 
-	ret = register_blkdev(BLOCK_EXT_MAJOR, "blkext");
-	if(ret)
-		return ret;
+	register_blkdev(BLOCK_EXT_MAJOR, "blkext");
 
 	/* create top-level block dir */
 	if (!sysfs_deprecated)

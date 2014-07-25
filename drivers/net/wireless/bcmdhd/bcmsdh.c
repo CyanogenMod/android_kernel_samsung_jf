@@ -636,7 +636,7 @@ bcmsdh_waitlockfree(void *sdh)
 }
 
 
-#ifdef BCMSPI /* 4329 gSPI won't have CIS reads. */
+#ifdef BCMSPI     /* 4329 gSPI won't have CIS reads. */
 int
 bcmsdh_query_device(void *sdh)
 {

@@ -183,11 +183,4 @@ config USB_MV_OTG
 
 	  To compile this driver as a module, choose M here.
 
-config USB_MSM_OTG_8930
-	tristate " USB OTG driver for MSM8930"
-        depends on ARCH_MSM8930
-        default n
-        help
-         To add support for USB OTG on MSM8930.
-
 endif # USB || OTG

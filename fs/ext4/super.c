@@ -4785,8 +4785,7 @@ out:
 void print_bh(struct super_block *sb, struct buffer_head *bh
 		, int start, int len)
 {
-	if(bh)
-		print_block_data(sb, bh->b_blocknr, bh->b_data, start, len);
+	print_block_data(sb, bh->b_blocknr, bh->b_data, start, len);
 }
 
 void print_block_data(struct super_block *sb, sector_t blocknr

@@ -447,20 +447,6 @@ config SEC_DEBUG_DOUBLE_FREE
 	 when it was first freed. If it matches, the whole
 	 circular buffer is searched. Panic is be called when
 	 the match is found.
-config SEC_DEBUG_LMK_MEMINFO
-	bool "Show info when lowmemorykiller invoked"
-	default n
-	help
-	  When lowmemorykiller invoked there are number of suspicions
-	  that this is normal situation or not. Adding meminfo can help
-	  us when on earth does the lowmemorykiller invoked.
-
-config SEC_DEBUG_LMK_MEMINFO_VERBOSE
-	bool "Show verbose meminfo when lowmemorykiller invoked"
-	depends on SEC_DEBUG_LMK_MEMINFO
-	default n
-	help
-	   Show detailed meminfo when lmk invoked. This may take tens of ms.
 
 config PID_IN_CONTEXTIDR
 	bool "Write the current PID to the CONTEXTIDR register"

@@ -39,8 +39,3 @@ config DIAGFWD_BRIDGE_CODE
 	help
 	 SMUX/HSIC Transport Layer for DIAG Router
 endmenu
-
-config DIAGFWD_REMOTE_PROC_TEMP
-	tristate "DIAGFWD_REMOTE_PROC_TEMP support"
-	default n
-	help

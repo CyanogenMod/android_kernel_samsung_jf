@@ -42,8 +42,6 @@
 #define MODEL_NAME	"SCH-I545"
 #elif defined(CONFIG_MACH_JF_EUR)
 #define MODEL_NAME	"GT-I9505"
-#elif defined(CONFIG_MACH_JFVE_EUR)
-#define MODEL_NAME	"GT-I9515"
 #elif defined(CONFIG_MACH_JACTIVE_EUR)
 #define MODEL_NAME	"GT-I9295"
 #elif defined(CONFIG_MACH_JF_SKT)
@@ -64,7 +62,7 @@
 	defined(CONFIG_MACH_JF_USC) || defined(CONFIG_MACH_JF_VZW) || \
 	defined(CONFIG_MACH_JF_LGT) || defined(CONFIG_MACH_JF_SKT) || \
 	defined(CONFIG_MACH_JF_KTT) || defined(CONFIG_MACH_JF_DCM) || \
-	defined(CONFIG_MACH_JF_CRI) || defined(CONFIG_MACH_JFVE_EUR)
+	defined(CONFIG_MACH_JF_CRI)
 /* {adc, temp*10}, -20 to +70 */
 static struct cp_thm_adc_table temp_table_cp[] = {
 	{200, 700}, {207, 690}, {214, 680}, {221, 670}, {248, 660},
@@ -132,7 +130,7 @@ static int convert_adc_to_temp(struct ssp_data *data, unsigned int adc)
 	defined(CONFIG_MACH_JF_USC) || defined(CONFIG_MACH_JF_VZW) || \
 	defined(CONFIG_MACH_JF_LGT) || defined(CONFIG_MACH_JF_SKT) || \
 	defined(CONFIG_MACH_JF_KTT) || defined(CONFIG_MACH_JF_DCM) || \
-	defined(CONFIG_MACH_JF_CRI) || defined(CONFIG_MACH_JFVE_EUR)
+	defined(CONFIG_MACH_JF_CRI)
 
 	int low = 0;
 	int high = 0;

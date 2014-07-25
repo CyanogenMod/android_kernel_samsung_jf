@@ -43,7 +43,7 @@
 #include <linux/idr.h>
 
 #include "workqueue_sched.h"
-#if defined(CONFIG_SEC_DEBUG)
+#if CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
 
@@ -1871,7 +1871,7 @@ __acquires(&gcwq->lock)
 	lock_map_acquire_read(&cwq->wq->lockdep_map);
 	lock_map_acquire(&lockdep_map);
 	trace_workqueue_execute_start(work);
-#if defined(CONFIG_SEC_DEBUG)
+#if CONFIG_SEC_DEBUG
 	secdbg_sched_msg("@%pS", f);
 #endif
 	f(work);

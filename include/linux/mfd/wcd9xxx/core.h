@@ -20,8 +20,8 @@
 
 #define WCD9XXX_SLIM_NUM_PORT_REG 3
 
-// #define WCD9XXX_INTERFACE_TYPE_SLIMBUS	0x00
-// #define WCD9XXX_INTERFACE_TYPE_I2C	0x01
+#define WCD9XXX_INTERFACE_TYPE_SLIMBUS	0x00
+#define WCD9XXX_INTERFACE_TYPE_I2C	0x01
 
 #define TABLA_VERSION_1_0	0
 #define TABLA_VERSION_1_1	1
@@ -90,10 +90,6 @@ enum {
 };
 
 
-#define MAX(X, Y) (((int)X) >= ((int)Y) ? (X) : (Y))
-#define WCD9XXX_MAX_NUM_IRQS (MAX(MAX(TABLA_NUM_IRQS, SITAR_NUM_IRQS), \
-				  TAIKO_NUM_IRQS))
-				  
 enum {
 	TAIKO_IRQ_SLIMBUS = 0,
 	TAIKO_IRQ_MBHC_REMOVAL,
@@ -120,66 +116,11 @@ enum {
 	TAIKO_NUM_IRQS,
 };
 
-
 enum wcd9xxx_pm_state {
 	WCD9XXX_PM_SLEEPABLE,
 	WCD9XXX_PM_AWAKE,
 	WCD9XXX_PM_ASLEEP,
 };
-
-/*
- * data structure for Slimbus and I2S channel.
- * Some of fields are only used in smilbus mode
- */
-struct wcd9xxx_ch {
-	u32 sph;		/* share channel handle - slimbus only	*/
-	u32 ch_num;		/*
-				 * vitrual channel number, such as 128 -144.
-				 * apply for slimbus only
-				 */
-	u16 ch_h;		/* chanel handle - slimbus only */
-	u16 port;		/*
-				 * tabla port for RX and TX
-				 * such as 0-9 for TX and 10 -16 for RX
-				 * apply for both i2s and slimbus
-				 */
-	u16 shift;		/*
-				 * shift bit for RX and TX
-				 * apply for both i2s and slimbus
-				 */
-	struct list_head list;	/*
-				 * channel link list
-				 * apply for both i2s and slimbus
-				 */
-};
-
-struct wcd9xxx_codec_dai_data {
-	u32 rate;				/* sample rate          */
-	u32 bit_width;				/* sit width 16,24,32   */
-	struct list_head wcd9xxx_ch_list;	/* channel list         */
-	u16 grph;				/* slimbus group handle */
-	unsigned long ch_mask;
-	wait_queue_head_t dai_wait;
-};
-
-struct sitar_codec_dai_data {
-	u32 rate;
-	u32 *ch_num;
-	u32 ch_act;
-	u32 ch_tot;
-	u32 ch_mask;
-	wait_queue_head_t dai_wait;
-		struct list_head wcd9xxx_ch_list;	/* channel list         */
-};
-
-enum wcd9xxx_intf_status {
-	WCD9XXX_INTERFACE_TYPE_PROBING,
-	WCD9XXX_INTERFACE_TYPE_SLIMBUS,
-	WCD9XXX_INTERFACE_TYPE_I2C,
-};
-
-#define WCD9XXX_CH(xport, xshift) \
-	{.port = xport, .shift = xshift}
 
 struct wcd9xxx {
 	struct device *dev;
@@ -191,7 +132,10 @@ struct wcd9xxx {
 	struct mutex nested_irq_lock;
 	u8 version;
 
-
+	unsigned int irq_base;
+	unsigned int irq;
+	u8 irq_masks_cur[WCD9XXX_NUM_IRQ_REGS];
+	u8 irq_masks_cache[WCD9XXX_NUM_IRQ_REGS];
 	u8 irq_level[WCD9XXX_NUM_IRQ_REGS];
 
 	int reset_gpio;
@@ -215,16 +159,6 @@ struct wcd9xxx {
 	int num_tx_port;
 
 	u8 idbyte[4];
-
-	unsigned int irq_base;
-	unsigned int irq;
-	u8 irq_masks_cur[WCD9XXX_NUM_IRQ_REGS];
-	u8 irq_masks_cache[WCD9XXX_NUM_IRQ_REGS];
-	bool irq_level_high[WCD9XXX_MAX_NUM_IRQS];
-	int num_irqs;
-	struct wcd9xxx_ch *rx_chs;
-	struct wcd9xxx_ch *tx_chs;
-	u32 mclk_rate;
 };
 
 int wcd9xxx_reg_read(struct wcd9xxx *wcd9xxx, unsigned short reg);
@@ -240,7 +174,7 @@ int wcd9xxx_bulk_write(struct wcd9xxx *wcd9xxx, unsigned short reg,
 int wcd9xxx_irq_init(struct wcd9xxx *wcd9xxx);
 void wcd9xxx_irq_exit(struct wcd9xxx *wcd9xxx);
 int wcd9xxx_get_logical_addresses(u8 *pgd_la, u8 *inf_la);
-enum wcd9xxx_intf_status wcd9xxx_get_intf_type(void);
+int wcd9xxx_get_intf_type(void);
 
 bool wcd9xxx_lock_sleep(struct wcd9xxx *wcd9xxx);
 void wcd9xxx_unlock_sleep(struct wcd9xxx *wcd9xxx);

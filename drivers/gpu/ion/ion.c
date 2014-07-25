@@ -624,7 +624,7 @@ int ion_map_iommu(struct ion_client *client, struct ion_handle *handle,
 			unsigned long flags, unsigned long iommu_flags)
 {
 	struct ion_buffer *buffer;
-	struct ion_iommu_map *iommu_map = NULL;
+	struct ion_iommu_map *iommu_map;
 	int ret = 0;
 
 	if (client == NULL) {

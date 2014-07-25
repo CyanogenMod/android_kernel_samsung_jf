@@ -224,21 +224,6 @@ config FB_MSM_MIPI_DSI_NT35510
 	bool
 	select FB_MSM_MIPI_DSI
 
-config SAMSUNG_CMC624
-	bool "Support for integrated LCD controller in msm8930"
-	depends on FB && ARCH_MSM
-	default n
-
-config FB_EBOOK_PANEL_SCENARIO
-	bool "Samsung EBOOK PANEL SCENARIO"
-	depends on FB_MSM
-	depends on SAMSUNG_CMC624
-	default n
-
-config FB_MSM_MIPI_DSI_NOVATEK_NT35596
-	bool
-	select FB_MSM_MIPI_DSI
-	default n
 config FB_MSM_MIPI_DSI_ORISE
         bool
         select FB_MSM_MIPI_DSI
@@ -392,11 +377,6 @@ config FB_MSM_MIPI_NOVATEK_CMD_QHD_PT
 	select FB_MSM_MIPI_DSI_NOVATEK
 	default n
 
-config FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT
-	bool
-	select FB_MSM_MIPI_DSI_NOVATEK_NT35596
-	default n
-
 config FB_MSM_MIPI_ORISE_VIDEO_720P_PT
 	bool
 	select FB_MSM_MIPI_DSI_ORISE
@@ -524,10 +504,6 @@ config FB_MSM_OVERLAY0_WRITEBACK
 config FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT
 	bool
 	select FB_MSM_MIPI_DSI_RENESAS_TFT
-	default n
-
-config DISPLAY_DISABLE_TEST_KEY
-	bool "Disable test key"
 	default n
 
 config FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT
@@ -811,9 +787,6 @@ config FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT_PANEL
 	bool "MIPI Renesas Command FWVGA PT Panel"
 	select FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT
 
-config FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT_PANEL
-	bool "MIPI NOVATEK VIDEO HD PT Panel"
-	select FB_MSM_MIPI_NOVATEK_VIDEO_HD_PT
 config FB_MSM_MIPI_CHIMEI_WXGA_PANEL
 	bool "MIPI Chimei WXGA PT Panel"
 	select FB_MSM_MIPI_CHIMEI_WXGA
@@ -937,9 +910,6 @@ config FB_MSM_SECONDARY_PANEL_NONE
 	  No secondary panel
 endchoice
 
-config MIPI_SAMSUNG_ESD_REFRESH
-	bool "Samsung ESD Recovery Driver"
-	default n
 config FB_MSM_LCDC_DSUB
 	depends on FB_MSM_LCDC_SAMSUNG_WSVGA && FB_MSM_MDP40 && FB_MSM_LCDC_HW
 	bool "External DSUB support"
@@ -1132,12 +1102,6 @@ config FB_MSM_EBI2_PANEL_DETECT
 	---help---
 	  Support for EBI2 panel auto detect
 
-config MIPI_DSI_RESET_LP11	
-	bool "mipi dsi reset during LP11"
-	default n
-config MDP_SHUTDOWN	
-	bool "use mdp shutdown"
-	default n
 config FB_MDP4_ENHANCE
 	bool "MDP4 VIDEO ENHANCEMENT"
 	default n

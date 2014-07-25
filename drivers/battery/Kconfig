@@ -30,29 +30,6 @@ config FUELGAUGE_MAX17042
 	 This fuel-gauge can be used in voltage-tracking mode
 	 or coulomb-counting mode.
 
-if MACH_MELIUS
-config BATTERY_SAMSUNG
-	tristate "samsung battery driver"
-	help
-	 Say Y to include support for samsung battery driver
-	 This battery driver integrated all battery-related functions
-	 To see battery-related functions,
-	 refer to sec_charging_common.h
-
-
-# Fuel Gauge
-
-config FUELGAUGE_DUMMY
-	tristate "dummy fuel gauge driver"
-	default n
-	depends on BATTERY_SAMSUNG
-	help
-	 Say Y to include support
-	 for dummy fuel gauge driver.
-	 This driver source code implemented
-	 skeleton source code for fuel gauge functions.
-endif
-
 config FUELGAUGE_MAX17042_VOLTAGE_TRACKING
 	tristate "use MAX17042 fuel gauge only as voltage tracking"
 	default n
@@ -230,15 +207,3 @@ config SAMSUNG_BATTERY_FACTORY
 	  enable this feature only factory mode
 	  this featuren must disabled user binary
 	  stability test etc..
-
-if MACH_MELIUS
-config CHARGER_MAX77XXX
-	tristate "MAX77693 or MAX77803 battery charger support"
-	depends on MFD_MAX77693 && I2C
-	help
-	  Say Y here to enable support for the MAX77803 charger
-	  MAX77803 incluse muic, pmic, haptic, led,
-	  flash driver.
-	  You have to define MFD_MAX77693
-endif
-

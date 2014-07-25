@@ -27,9 +27,7 @@
 #include "hdmi_msm.h"
 #include "external_common.h"
 #include "mhl_api.h"
-#ifdef CONFIG_SAMSUNG_MHL_8240
-#include "mhl_v2/sii8240/sii8240_driver.h"
-#endif
+#include "mhl_v2/sii8240_driver.h"
 #include "mdp.h"
 
 struct external_common_state_type *external_common_state;
@@ -1329,7 +1327,7 @@ static const uint8 *hdmi_edid_find_block(const uint8 *in_buf,
 	uint32 offset = start_offset;
 	uint32 end_dbc_offset = in_buf[2];
 
-	if (offset >= 128 || (end_dbc_offset >= (128-offset)))
+	if(offset >= 128 || (end_dbc_offset >= (128-offset)))
 		return NULL;
 	*len = 0;
 
@@ -1644,16 +1642,16 @@ static void hdmi_edid_detail_desc(const uint8 *data_buf, uint32 *disp_mode)
 
 static void limit_supported_video_format(uint32 *video_format)
 {
-	switch (sp_get_link_bw()) {
+	switch(sp_get_link_bw()){
 	case 0x0a:
-		if ((*video_format == HDMI_VFRMT_1920x1080p60_16_9) ||
-			(*video_format == HDMI_VFRMT_2880x480p60_4_3) ||
+		if((*video_format == HDMI_VFRMT_1920x1080p60_16_9) ||
+			(*video_format == HDMI_VFRMT_2880x480p60_4_3)||
 			(*video_format == HDMI_VFRMT_2880x480p60_16_9) ||
 			(*video_format == HDMI_VFRMT_1280x720p120_16_9))
 
 			*video_format = HDMI_VFRMT_1280x720p60_16_9;
-		else if ((*video_format == HDMI_VFRMT_1920x1080p50_16_9) ||
-			(*video_format == HDMI_VFRMT_2880x576p50_4_3) ||
+		else if((*video_format == HDMI_VFRMT_1920x1080p50_16_9) ||
+			(*video_format == HDMI_VFRMT_2880x576p50_4_3)||
 			(*video_format == HDMI_VFRMT_2880x576p50_16_9) ||
 			(*video_format == HDMI_VFRMT_1280x720p100_16_9))
 
@@ -1665,7 +1663,7 @@ static void limit_supported_video_format(uint32 *video_format)
 			*video_format = HDMI_VFRMT_1920x1080i60_16_9;
 		break;
 	case 0x06:
-		if (*video_format != HDMI_VFRMT_640x480p60_4_3)
+		if(*video_format != HDMI_VFRMT_640x480p60_4_3)
 			*video_format = HDMI_VFRMT_640x480p60_4_3;
 		break;
 	case 0x14:
@@ -1691,11 +1689,8 @@ static void add_supported_video_format(
 	DEV_DBG("EDID: format: %d [%s], %s\n",
 		video_format, msm_hdmi_mode_2string(video_format),
 		supported ? "Supported" : "Not-Supported");
-	if (mhl_is_connected()
-#if defined (CONFIG_SAMSUNG_MHL_8240)
-		|| (0x01 != sii8240_mhl_get_version())
-#endif
-	){
+
+	if (mhl_is_connected() || (0x01 != sii8240_mhl_get_version())) {
 		const struct msm_hdmi_mode_timing_info *mhl_timing =
 			hdmi_mhl_get_supported_mode(video_format);
 		mhl_supported = mhl_timing != NULL;
@@ -1704,6 +1699,7 @@ static void add_supported_video_format(
 			msm_hdmi_mode_2string(video_format),
 			mhl_supported ? "Supported" : "Not-Supported");
 	}
+
 	if (supported && mhl_supported) {
 		disp_mode_list->disp_mode_list[
 			disp_mode_list->num_of_elements++] = video_format;
@@ -2146,7 +2142,8 @@ static void hdmi_edid_get_display_mode(const uint8 *data_buf,
 		add_supported_video_format(disp_mode_list,
 			HDMI_VFRMT_640x480p60_4_3);
 }
-#if !defined (CONFIG_SAMSUNG_MHL_8240)
+
+#if  !defined(CONFIG_VIDEO_MHL_V2)
 static int hdmi_common_read_edid_block(int block, uint8 *edid_buf)
 {
 	uint32 ndx, check_sum, print_len;
@@ -2192,8 +2189,7 @@ static int hdmi_common_read_edid_block(int block, uint8 *edid_buf)
 error:
 	return status;
 }
-#endif
-#if 0
+
 static boolean check_edid_header(const uint8 *edid_buf)
 {
 	return (edid_buf[0] == 0x00) && (edid_buf[1] == 0xff)
@@ -2202,6 +2198,7 @@ static boolean check_edid_header(const uint8 *edid_buf)
 		&& (edid_buf[6] == 0xff) && (edid_buf[7] == 0x00);
 }
 #endif
+
 int hdmi_common_read_edid(void)
 {
 	int status = 0;
@@ -2209,15 +2206,10 @@ int hdmi_common_read_edid(void)
 	uint32 num_og_cea_blocks  = 0;
 	uint32 ieee_reg_id = 0;
 	char vendor_id[5];
+	/* EDID_BLOCK_SIZE[0x80] Each page size in the EDID ROM */
 	const u8 edid_signature[] = {0x00, 0xff, 0xff, 0xff,
 				     0xff, 0xff, 0xff, 0x00};
-	/* EDID_BLOCK_SIZE[0x80] Each page size in the EDID ROM */
-#if defined (CONFIG_SAMSUNG_MHL_8240)
 	const uint8 *edid_buf = sii8240_get_mhl_edid();
-#else
-	uint32 i = 1;
-	uint8 edid_buf[0x80 * 4];
-#endif
 
 	/* Default 2ch-audio */
 	external_common_state->audio_speaker_data = 0;
@@ -2259,14 +2251,6 @@ int hdmi_common_read_edid(void)
 			external_common_state->hdmi_sink ? "no" : "yes");
 		break;
 	case 1: /* Read block 1 */
-#if !defined CONFIG_SAMSUNG_MHL_8240
-		status = hdmi_common_read_edid_block(1, &edid_buf[0x80]);
-		if (status) {
-			DEV_ERR("%s: ddc read block(1) failed: %d\n", __func__,
-				status);
-			goto error;
-		}
-#endif
 		if (edid_buf[0x80] != 2)
 			num_og_cea_blocks = 0;
 		if (num_og_cea_blocks) {
@@ -2287,7 +2271,7 @@ int hdmi_common_read_edid(void)
 	case 2:
 	case 3:
 	case 4:
-#if !defined (CONFIG_SAMSUNG_MHL_8240)
+#if  !defined(CONFIG_VIDEO_MHL_V2)
 		for (i = 1; i <= num_og_cea_blocks; i++) {
 			if (!(i % 2)) {
 					status = hdmi_common_read_edid_block(i,

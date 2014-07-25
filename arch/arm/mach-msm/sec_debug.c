@@ -956,6 +956,17 @@ void sec_debug_hw_reset(void)
 }
 EXPORT_SYMBOL(sec_debug_hw_reset);
 
+void sec_debug_low_panic(void)
+{
+	pr_emerg("(%s) rebooting...\n", __func__);
+	flush_cache_all();
+	outer_flush_all();
+	msm_restart(0, "sec_debug_low_panic");
+
+	while (1)
+		;
+}
+
 #ifdef CONFIG_SEC_DEBUG_LOW_LOG
 unsigned sec_debug_get_reset_reason(void)
 {
@@ -969,12 +980,6 @@ static int sec_debug_panic_handler(struct notifier_block *nb,
 	emerg_pet_watchdog();
 	sec_debug_set_upload_magic(0x776655ee);
 
-	if (!enable) {
-#ifdef CONFIG_SEC_DEBUG_LOW_LOG
-		sec_debug_hw_reset();
-#endif
-		return -EPERM;
-	}
 	len = strnlen(buf, 15);
 	if (!strncmp(buf, "User Fault", len))
 		sec_debug_set_upload_cause(UPLOAD_CAUSE_USER_FAULT);
@@ -999,6 +1004,13 @@ static int sec_debug_panic_handler(struct notifier_block *nb,
 	else
 		sec_debug_set_upload_cause(UPLOAD_CAUSE_KERNEL_PANIC);
 
+	if (!enable) {
+#ifdef CONFIG_SEC_DEBUG_LOW_LOG
+		sec_debug_hw_reset();
+#endif
+		sec_debug_low_panic();
+		return -EPERM;
+	}
 /* enable after SSR feature
 	ssr_panic_handler_for_sec_dbg();
 */
@@ -1212,6 +1224,7 @@ int sec_debug_subsys_add_varmon(char *name, unsigned int size, unsigned int pa)
 
 	return 0;
 }
+
 #ifdef CONFIG_SEC_DEBUG_MDM_FILE_INFO
 void sec_set_mdm_subsys_info(char *str_buf)
 {

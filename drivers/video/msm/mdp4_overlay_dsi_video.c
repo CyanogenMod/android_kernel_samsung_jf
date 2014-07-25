@@ -103,7 +103,6 @@ void mdp4_overlay_dsi_video_start(void)
 		mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 1);
 		dsi_video_enabled = 1;
-		xlog(__func__, 0, 0, 0, 0, 0);
 	}
 }
 
@@ -199,7 +198,7 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 * (vp->update_cnt == 0) to unstage pipes after
 * overlay_unset
 */
-	xlog(__func__, wait, vp->update_cnt, 0, 0, 0);
+
 	vctrl->update_ndx++;
 	vctrl->update_ndx &= 0x01;
 	vp->update_cnt = 0;     /* reset */
@@ -309,7 +308,6 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 		else
 			mdp4_dsi_video_wait4dmap(0);
 	}
-	xlog(__func__, 0x9999, 0, 0, 0, 0);
 #ifdef MDP_ODD_RESOLUTION_CTRL
 	current_pipe_ndx = pipe->pipe_ndx;
 	for (i = current_pipe_ndx ; i >= 0; i--, pipe--) {
@@ -692,7 +690,6 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	else
 		pipe->srcp0_addr = (uint32)(buf + buf_offset);
 
-	xlog(__func__, pipe->pipe_ndx, (int)pipe->srcp0_addr, pipe->srcp0_ystride, 0, 0);
 	pipe->dst_h = fbi->var.yres;
 	pipe->dst_w = fbi->var.xres;
 
@@ -841,7 +838,6 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	}
 
 	if (pipe) {
-		xlog(__func__, pipe->pipe_ndx, mfd->ref_cnt, 0, 0, 0);
 		/* sanity check, free pipes besides base layer */
 		mixer = pipe->mixer_num;
 		mdp4_overlay_unset_mixer(mixer);
@@ -881,7 +877,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	/* mdp clock off */
 	mdp_clk_ctrl(0);
 	mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-	xlog(__func__, 0x9999, 0, 0, 0, 0);
+
 	mutex_unlock(&mfd->dma->ov_mutex);
 
 	return ret;
@@ -1043,7 +1039,7 @@ void mdp4_primary_vsync_dsi_video(void)
 	cndx = 0;
 	vctrl = &vsync_ctrl_db[cndx];
 	pr_debug("%s: cpu=%d\n", __func__, smp_processor_id());
-	xlog(__func__, 0, 0, 0, 0, 0);
+
 	spin_lock(&vctrl->spin_lock);
 	vctrl->vsync_time = ktime_get();
 	wake_up_interruptible_all(&vctrl->wait_queue);
@@ -1164,7 +1160,7 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 		vctrl->blt_free = 4;	/* 4 commits to free wb buf */
 		vctrl->blt_change++;
 	}
-	xlog(__func__, vctrl->blt_change, enable, (int)pipe->ov_blt_addr, 0, 0);
+
 	pr_info("%s: changed=%d enable=%d ov_blt_addr=%x\n", __func__,
 		vctrl->blt_change, enable, (int)pipe->ov_blt_addr);
 

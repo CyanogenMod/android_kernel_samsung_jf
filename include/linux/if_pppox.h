@@ -189,7 +189,6 @@ struct pppopns_opt {
 	__u32		xmit_sequence;
 	void		(*data_ready)(struct sock *sk_raw, int length);
 	int		(*backlog_rcv)(struct sock *sk_raw, struct sk_buff *skb);
-	int 		ppp_flags;
 };
 
 #include <net/sock.h>

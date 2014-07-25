@@ -11,8 +11,4 @@ obj-$(CONFIG_CHARGER_SMB347)	+= smb347_charger.o
 obj-$(CONFIG_CHARGER_BQ24157)	+= bq24157_charger.o sec_charger.o
 obj-$(CONFIG_CHARGER_BQ24190)	+= bq24190_charger.o
 obj-$(CONFIG_CHARGER_BQ24191)	+= bq24190_charger.o
-ifeq ($(CONFIG_MACH_MELIUS),y)
-obj-$(CONFIG_CHARGER_MAX77XXX)	+= max77693_charger.o
-else
 obj-$(CONFIG_CHARGER_MAX77693)	+= max77693_charger.o
-endif

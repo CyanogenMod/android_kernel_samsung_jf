@@ -34,7 +34,7 @@ struct tspp_filter {
 	int pid;
 	int mask;
 	enum tspp_mode mode;
-	unsigned int priority;	/* 0 - 15 */
+	int priority;	/* 0 - 15 */
 	int decrypt;
 	enum tspp_source source;
 };

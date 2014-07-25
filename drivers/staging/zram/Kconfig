@@ -1,6 +1,8 @@
 config ZRAM
 	tristate "Compressed RAM block device support"
-	depends on BLOCK && SYSFS
+	# X86 dependency is because zsmalloc uses non-portable pte/tlb
+	# functions
+	depends on BLOCK && SYSFS && X86
 	select ZSMALLOC
 	select LZO_COMPRESS
 	select LZO_DECOMPRESS
@@ -24,10 +26,3 @@ config ZRAM_DEBUG
 	help
 	  This option adds additional debugging code to the compressed
 	  RAM block device driver.
-
-config ZRAM_FOR_ANDROID
-	bool "Optimize zram behavior for android"
-	depends on ZRAM && ANDROID
-	default n
-	help
-	  This option enables modified zram behavior optimized for android

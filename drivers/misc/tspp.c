@@ -1755,7 +1755,7 @@ int tspp_add_filter(u32 dev, u32 channel_id,
 	}
 
 	if (filter->priority >= TSPP_NUM_PRIORITIES) {
-		pr_err("tspp invalid filter priority");
+		pr_err("tspp invalid source");
 		return -ENOSR;
 	}
 
@@ -1883,10 +1883,6 @@ int tspp_remove_filter(u32 dev, u32 channel_id,
 	if (!pdev) {
 		pr_err("tspp_remove: can't find device %i", dev);
 		return -ENODEV;
-	}
-	if (filter->priority >= TSPP_NUM_PRIORITIES) {
-		pr_err("tspp invalid filter priority");
-		return -ENOSR;
 	}
 	channel = &pdev->channels[channel_id];
 

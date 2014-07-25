@@ -137,26 +137,8 @@ def build(target):
     dest_dir = os.path.join(build_dir, target)
     log_name = '%s/log-%s.log' % (build_dir, target)
     zImage_name = '%s/arch/arm/boot/zImage' % (dest_dir)
-    bootImage_name = '%s/arch/arm/boot/boot.img' % (dest_dir) 
-    signedImage_name = '%s/arch/arm/boot/signed_boot.img' % (dest_dir)
     tarball_name = '%s/%s.tar' % (build_dir, target)
 
-    if target == 'jf_att':
-        signing = "SGH-I337_NA_ATT_C"
-    elif target == 'jactive_att':
-        signing = "SGH-I537_NA_ATT_C"
-    elif target == 'jf_tmo':
-        signing = "SGH-M919_NA_TMB_C"
-    elif target == 'jf_vzw':
-        signing = "SCH-I545_NA_VZW_C"
-    elif target == 'jf_spr':
-        signing = "SPH-L720_NA_SPR_C"
-    elif target == 'jf_cri':
-        signing = "SCH-R970C_NA_CRI_C"
-    elif target == 'jf_usc':
-        signing = "SCH-R970_NA_USC_C"
-    elif target == 'jf_eur':
-        signing = "GT-I9505_EUR_XX_C"
     print 'Building %s in %s log %s' % (target, dest_dir, log_name)
     if not os.path.isdir(dest_dir):
         os.mkdir(dest_dir)
@@ -169,8 +151,8 @@ def build(target):
     subprocess.check_call(['make', 'O=%s' % dest_dir,
         'VARIANT_DEFCONFIG=%s_defconfig' % target,
         'DEBUG_DEFCONFIG=%seng_defconfig' % target[:-4],
-#	'SELINUX_DEFCONFIG=%sselinux_defconfig' % target[:-4],
-#	'SELINUX_LOG_DEFCONFIG=%sselinux_log_defconfig' % target[:-4],
+	'SELINUX_DEFCONFIG=%sselinux_defconfig' % target[:-4],
+	'SELINUX_LOG_DEFCONFIG=%sselinux_log_defconfig' % target[:-4],
         '%s_defconfig' % target[:-4]], env=make_env, stdin=devnull)
     devnull.close()
 
@@ -187,12 +169,10 @@ def build(target):
                 fail_or_error = fail
             fail_or_error("Failed to build %s, see %s" % (target, build.logname))
 
-        if result == 0: 
- 		os.rename(zImage_name, bootImage_name)
-		os.system('java -jar ../../buildscript/tools/signclient.jar -runtype ss_openssl_all -model %s -input %s -output %s' %(signing,bootImage_name,signedImage_name))
-		tar = tarfile.open(tarball_name, "w")
-		tar.add(signedImage_name, arcname='boot.img')
-		tar.close()
+        if result == 0:
+	    tar = tarfile.open(tarball_name, "w")
+	    tar.add(zImage_name, arcname='boot.img')
+	    tar.close()
 
     # Copy the defconfig back.
     if all_options.configs or all_options.updateconfigs:

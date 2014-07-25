@@ -443,4 +443,9 @@ config AB8500_BATTERY_THERM_ON_BATCTRL
 	  Say Y to enable battery temperature measurements using
 	  thermistor connected on BATCTRL ADC.
 
+config WIRELESS_CHARGER
+	bool "Wireless Charger Configuration"
+	default n
+	help
+	  wireless charger configuration
 endif # POWER_SUPPLY

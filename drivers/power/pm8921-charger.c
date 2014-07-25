@@ -1827,6 +1827,9 @@ static int get_prop_batt_temp(struct pm8921_chg_chip *chip, int *temp)
 	}
 	pr_debug("batt_temp phy = %lld meas = 0x%llx\n", result.physical,
 						result.measurement);
+
+	result.physical = 650; //for temp
+
 	if (result.physical > MAX_TOLERABLE_BATT_TEMP_DDC)
 		pr_err("BATT_TEMP= %d > 68degC, device will be shutdown\n",
 							(int) result.physical);
@@ -2618,7 +2621,8 @@ static irqreturn_t usbin_valid_irq_handler(int irq, void *data)
 {
 	if (usb_target_ma)
 		schedule_delayed_work(&the_chip->vin_collapse_check_work,
-			      msecs_to_jiffies(VIN_MIN_COLLAPSE_CHECK_MS));
+				      round_jiffies_relative(msecs_to_jiffies
+						(VIN_MIN_COLLAPSE_CHECK_MS)));
 	else
 	    handle_usb_insertion_removal(data);
 	return IRQ_HANDLED;

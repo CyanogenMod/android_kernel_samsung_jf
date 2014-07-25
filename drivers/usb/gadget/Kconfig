@@ -942,15 +942,6 @@ config USB_ANDROID_SAMSUNG_MTP
 		If you enable this option,
 		google mtp will be changed to samsung mtp.
 
-config USB_ANDROID_SAMSUNG_SIDESYNC
-	boolean "Samsung SideSync function"
-	depends on USB_G_ANDROID
-	help
-	  Provides SideSync support
-	  for samsung gadget driver.
-	  If you enable this option,
-	  SideSync will be able to be used.
-
 config USB_CDC_COMPOSITE
 	tristate "CDC Composite Device (Ethernet and ACM)"
 	depends on NET

@@ -153,9 +153,6 @@ static void add_mm_counter_fast(struct mm_struct *mm, int member, int val)
 
 /* sync counter once per 64 page faults */
 #define TASK_RSS_EVENTS_THRESH	(64)
-#if defined(CONFIG_VMWARE_MVP)
-EXPORT_SYMBOL_GPL(get_mm_counter);
-#endif
 static void check_sync_rss_stat(struct task_struct *task)
 {
 	if (unlikely(task != current))
@@ -1728,19 +1725,6 @@ int __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 			}
 			pte_unmap(pte);
 			goto next_page;
-		}
-
-		if (use_user_accessible_timers()) {
-			if (!vma && in_user_timers_area(mm, start)) {
-				int goto_next_page = 0;
-				int user_timer_ret = get_user_timer_page(vma,
-					mm, start, gup_flags, pages, i,
-					&goto_next_page);
-				if (goto_next_page)
-					goto next_page;
-				else
-					return user_timer_ret;
-			}
 		}
 
 		if (!vma ||

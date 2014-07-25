@@ -62,8 +62,8 @@
 
 #define MAX_LUT_SIZE	256
 
-#define PAYLOAD1 mdni_tune_cmd[2]
-#define PAYLOAD2 mdni_tune_cmd[1]
+#define PAYLOAD1 mdni_tune_cmd[3]
+#define PAYLOAD2 mdni_tune_cmd[2]
 
 #define INPUT_PAYLOAD1(x) PAYLOAD1.payload = x
 #define INPUT_PAYLOAD2(x) PAYLOAD2.payload = x
@@ -112,48 +112,30 @@ const char scenario_name[MAX_mDNIe_MODE][16] = {
 #endif
 };
 
-static char tune_data1[MDNIE_TUNE_FIRST_SIZE] = {0,};
-static char tune_data2[MDNIE_TUNE_SECOND_SIZE] = {0,};
-
-#if defined(CONFIG_DISPLAY_DISABLE_TEST_KEY)
-static char level1_key_enable[] = {
-	0xF0,
-	0x5A, 0x5A,
-};
-
-static char level1_key_disable[] = {
-	0xF0,
-	0xA5, 0xA5,
-};
-
-static struct dsi_cmd_desc mdni_tune_cmd[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(level1_key_enable), level1_key_enable},
-
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(tune_data1), tune_data1},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(tune_data2), tune_data2},
-
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(level1_key_disable), level1_key_disable},
-};
-#else
 static char level1_key[] = {
 	0xF0,
 	0x5A, 0x5A,
 };
 
+static char level2_key[] = {
+	0xF1,
+	0x5A, 0x5A,
+};
+
+static char tune_data1[MDNIE_TUNE_FIRST_SIZE] = {0,};
+static char tune_data2[MDNIE_TUNE_SECOND_SIZE] = {0,};
+
 static struct dsi_cmd_desc mdni_tune_cmd[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(level1_key), level1_key},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(level2_key), level2_key},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(tune_data1), tune_data1},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(tune_data2), tune_data2},
 };
-#endif
 
 void print_tun_data(void)
 {

@@ -323,17 +323,6 @@ void __init S5000_tsp_input_init(int version)
 			GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 		i2c_register_board_info(APQ_8064_GSBI3_QUP_I2C_BUS_ID, new_bus2_i2c_devices,
 			ARRAY_SIZE(bus2_i2c_devices));
-#elif defined(CONFIG_MACH_JFVE_EUR)
-		rmi4_platformdata.gpio = GPIO_TOUCH_IRQ;
-		ret = gpio_request(GPIO_TOUCH_IRQ, "tsp_int");
-		if (ret != 0) {
-			printk(KERN_ERR"tsp int request failed, ret=%d", ret);
-			return ;
-		}
-		gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_IRQ, 0,
-			GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-		i2c_register_board_info(APQ_8064_GSBI3_QUP_I2C_BUS_ID, new_bus2_i2c_devices,
-			ARRAY_SIZE(bus2_i2c_devices));
 #else
 	if(system_rev >= BOARD_REV09) {
 		rmi4_platformdata.gpio = NEW_GPIO_TOUCH_IRQ;

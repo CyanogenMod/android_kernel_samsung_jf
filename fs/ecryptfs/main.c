@@ -186,9 +186,6 @@ enum { ecryptfs_opt_sig, ecryptfs_opt_ecryptfs_sig,
 #ifdef CONFIG_WTL_ENCRYPTION_FILTER
 	ecryptfs_opt_enable_filtering,
 #endif
-#ifdef CONFIG_CRYPTO_FIPS
-	ecryptfs_opt_enable_cc,
-#endif
        ecryptfs_opt_err };
 
 static const match_table_t tokens = {
@@ -208,9 +205,6 @@ static const match_table_t tokens = {
 	{ecryptfs_opt_check_dev_ruid, "ecryptfs_check_dev_ruid"},
 #ifdef CONFIG_WTL_ENCRYPTION_FILTER
 	{ecryptfs_opt_enable_filtering, "ecryptfs_enable_filtering=%s"},
-#endif
-#ifdef CONFIG_CRYPTO_FIPS
-	{ecryptfs_opt_enable_cc, "ecryptfs_enable_cc=%s"},
 #endif
 	{ecryptfs_opt_err, NULL}
 };
@@ -349,9 +343,6 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	char *cipher_key_bytes_src;
 	char *fn_cipher_key_bytes_src;
 	u8 cipher_code;
-#ifdef CONFIG_CRYPTO_FIPS
-	char *cc_mode_src;
-#endif
 
 	*check_ruid = 0;
 
@@ -473,13 +464,6 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 				goto out;
 			}
 			mount_crypt_stat->flags |= ECRYPTFS_ENABLE_FILTERING;
-			break;
-#endif
-#ifdef CONFIG_CRYPTO_FIPS
-		case ecryptfs_opt_enable_cc:
-			cc_mode_src = args[0].from;
-			ecryptfs_cc_mode_set((int)simple_strtol(cc_mode_src,
-						   &cc_mode_src, 0));
 			break;
 #endif
 		case ecryptfs_opt_err:
