@@ -1020,7 +1020,7 @@ static struct platform_device ram_console_device = {
 #endif
 
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
-#define RAMCONSOLE_PHYS_ADDR 0x8FD00000
+#define RAMCONSOLE_PHYS_ADDR 0x8FE00000
 static struct persistent_ram_descriptor per_ram_descs[] __initdata = {
        {
                .name = "ram_console",
