@@ -22,49 +22,10 @@
 #define VENDOR		"SENSIRION"
 #define CHIP_ID		"SHTC1"
 #define DONE_CAL	3
-/*
-* this defined value was requested from HW QA
-* if you want to using this driver,
-* you have to define MODEL_NAME
-*/
-
-#if defined(CONFIG_MACH_JF_ATT)
-#define MODEL_NAME	"SGH-I337"
-#elif defined(CONFIG_MACH_JF_SPR)
-#define MODEL_NAME	"SPH-L720"
-#elif defined(CONFIG_MACH_JF_TMO)
-#define MODEL_NAME	"SGH-M919"
-#elif defined(CONFIG_MACH_JF_USC)
-#define MODEL_NAME	"SCH-R970"
-#elif defined(CONFIG_MACH_JF_CRI)
-#define MODEL_NAME	"SCH-R970C"
-#elif defined(CONFIG_MACH_JF_VZW)
-#define MODEL_NAME	"SCH-I545"
-#elif defined(CONFIG_MACH_JF_EUR)
-#define MODEL_NAME	"GT-I9505"
-#elif defined(CONFIG_MACH_JFVE_EUR)
-#define MODEL_NAME	"GT-I9515"
-#elif defined(CONFIG_MACH_JACTIVE_EUR)
-#define MODEL_NAME	"GT-I9295"
-#elif defined(CONFIG_MACH_JF_SKT)
-#define MODEL_NAME	"SHV-E300S"
-#elif defined(CONFIG_MACH_JF_LGT)
-#define MODEL_NAME	"SHV-E300L"
-#elif defined(CONFIG_MACH_JF_KTT)
-#define MODEL_NAME	"SHV-E300K"
-#elif defined(CONFIG_MACH_JF_DCM)
-#define MODEL_NAME	"SGH-N045"
-#else
-#define MODEL_NAME	"XXX-XXXX"
-#endif
+#define MODEL_NAME	"SGS4"
 
 #define CP_THM_ADC_SAMPLING_CNT 7
-#if defined(CONFIG_MACH_JF_ATT) || defined(CONFIG_MACH_JF_TMO) || \
-	defined(CONFIG_MACH_JF_EUR) || defined(CONFIG_MACH_JF_SPR) || \
-	defined(CONFIG_MACH_JF_USC) || defined(CONFIG_MACH_JF_VZW) || \
-	defined(CONFIG_MACH_JF_LGT) || defined(CONFIG_MACH_JF_SKT) || \
-	defined(CONFIG_MACH_JF_KTT) || defined(CONFIG_MACH_JF_DCM) || \
-	defined(CONFIG_MACH_JF_CRI) || defined(CONFIG_MACH_JFVE_EUR)
+
 /* {adc, temp*10}, -20 to +70 */
 static struct cp_thm_adc_table temp_table_cp[] = {
 	{200, 700}, {207, 690}, {214, 680}, {221, 670}, {248, 660},
@@ -87,7 +48,7 @@ static struct cp_thm_adc_table temp_table_cp[] = {
 	{1446, -110}, {1458, -120}, {1470, -130}, {1483, -140},{1495, -150},
 	{1504, -160}, {1513, -170}, {1522, -180}, {1532, -190}, {1542, -200},
  };
-#endif
+
 static int get_cp_thm_value(struct ssp_data *data)
 {
 	int err = 0;
@@ -127,13 +88,6 @@ static int get_cp_thm_value(struct ssp_data *data)
 
 static int convert_adc_to_temp(struct ssp_data *data, unsigned int adc)
 {
-#if defined(CONFIG_MACH_JF_ATT) || defined(CONFIG_MACH_JF_TMO) || \
-	defined(CONFIG_MACH_JF_EUR) || defined(CONFIG_MACH_JF_SPR) || \
-	defined(CONFIG_MACH_JF_USC) || defined(CONFIG_MACH_JF_VZW) || \
-	defined(CONFIG_MACH_JF_LGT) || defined(CONFIG_MACH_JF_SKT) || \
-	defined(CONFIG_MACH_JF_KTT) || defined(CONFIG_MACH_JF_DCM) || \
-	defined(CONFIG_MACH_JF_CRI) || defined(CONFIG_MACH_JFVE_EUR)
-
 	int low = 0;
 	int high = 0;
 	int mid = 0;
@@ -156,10 +110,6 @@ static int convert_adc_to_temp(struct ssp_data *data, unsigned int adc)
 			break;
 	}
 	return temp_table_cp[mid].temperature;
-#else
-	/* No voltage vs temperature table, using fake temp */
-	return -990;
-#endif
 }
 
 static ssize_t temphumidity_vendor_show(struct device *dev,
