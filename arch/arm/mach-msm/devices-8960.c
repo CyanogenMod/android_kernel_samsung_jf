@@ -3543,12 +3543,6 @@ struct resource kgsl_3d0_resources_8960ab[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.name = KGSL_3D0_SHADER_MEMORY,
-		.start = 0x04310000, /* Shader Mem Address (8960AB) */
-		.end = 0x0431ffff,
-		.flags = IORESOURCE_MEM,
-	},
-	{
 		.name = KGSL_3D0_IRQ,
 		.start = GFX3D_IRQ,
 		.end = GFX3D_IRQ,
