@@ -103,7 +103,7 @@ void kgsl_timer(unsigned long data);
 void kgsl_idle_check(struct work_struct *work);
 void kgsl_pre_hwaccess(struct kgsl_device *device);
 int kgsl_pwrctrl_sleep(struct kgsl_device *device);
-int kgsl_pwrctrl_wake(struct kgsl_device *device, int priority);
+int kgsl_pwrctrl_wake(struct kgsl_device *device);
 void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 	unsigned int level);
 int kgsl_pwrctrl_init_sysfs(struct kgsl_device *device);
@@ -124,8 +124,5 @@ int __must_check kgsl_active_count_get(struct kgsl_device *device);
 int __must_check kgsl_active_count_get_light(struct kgsl_device *device);
 void kgsl_active_count_put(struct kgsl_device *device);
 int kgsl_active_count_wait(struct kgsl_device *device, int count);
-#ifdef CONFIG_MSM_KGSL_KERNEL_API_ENABLE
-int kgsl_pwrctrl_min_pwrlevel_store_kernel(int level);
-int kgsl_pwrctrl_num_pwrlevels_show_kernel(void);
-#endif
+
 #endif /* __KGSL_PWRCTRL_H */
