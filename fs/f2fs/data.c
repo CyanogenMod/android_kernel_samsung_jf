@@ -1092,8 +1092,14 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 
 	err = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
 							get_data_block);
+
+	trace_f2fs_direct_IO_enter(inode, offset, count, rw);
+
 	if (err < 0 && (rw & WRITE))
 		f2fs_write_failed(mapping, offset + count);
+
+	trace_f2fs_direct_IO_exit(inode, offset, count, rw, err);
+
 	return err;
 }
 
