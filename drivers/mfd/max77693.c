@@ -30,8 +30,9 @@
 #include <linux/mfd/max77693.h>
 #include <linux/mfd/max77693-private.h>
 #include <linux/regulator/machine.h>
-
+#ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
+#endif
 #include <linux/mfd/pm8xxx/misc.h>
 
 #define I2C_ADDR_PMIC	(0xCC >> 1)	/* Charger, Flash LED */
@@ -168,20 +169,28 @@ static int max77693_i2c_probe(struct i2c_client *i2c,
 	}
 #if 0
 #if defined(CONFIG_MACH_JF_VZW) || defined(CONFIG_MACH_JF_LGT)
+#ifdef CONFIG_SEC_DEBUG
 	if (kernel_sec_get_debug_level() == KERNEL_SEC_DEBUG_LEVEL_LOW) {
+#endif
 		pm8xxx_hard_reset_config(PM8XXX_DISABLE_HARD_RESET);
 		max77693_write_reg(i2c, MAX77693_PMIC_REG_MAINCTRL1, 0x04);
+#ifdef CONFIG_SEC_DEBUG
 	} else {
 		pm8xxx_hard_reset_config(PM8XXX_DISABLE_HARD_RESET);
 		max77693_write_reg(i2c, MAX77693_PMIC_REG_MAINCTRL1, 0x0c);
 	}
+#endif
 #else
+#ifdef CONFIG_SEC_DEBUG
 	if (kernel_sec_get_debug_level() == KERNEL_SEC_DEBUG_LEVEL_LOW) {
+#endif
 		max77693_write_reg(i2c, MAX77693_PMIC_REG_MAINCTRL1, 0x04);
+#ifdef CONFIG_SEC_DEBUG
 	} else {
 		pm8xxx_hard_reset_config(PM8XXX_DISABLE_HARD_RESET);
 		max77693_write_reg(i2c, MAX77693_PMIC_REG_MAINCTRL1, 0x0c);
 	}
+#endif
 #endif
 
 #endif
