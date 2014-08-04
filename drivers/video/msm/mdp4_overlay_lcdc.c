@@ -812,15 +812,7 @@ int mdp4_lcdc_off(struct platform_device *pdev)
 		/* sanity check, free pipes besides base layer */
 		mdp4_overlay_unset_mixer(pipe->mixer_num);
 		if (mfd->ref_cnt == 0) {
-			/* adb stop */
-			if (pipe->pipe_type == OVERLAY_TYPE_BF)
-				mdp4_overlay_borderfill_stage_down(pipe);
-
-			/* base pipe may change after borderfill_stage_down */
-			pipe = vctrl->base_pipe;
-			mdp4_mixer_stage_down(pipe, 1);
-			mdp4_overlay_pipe_free(pipe, 1);
-			vctrl->base_pipe = NULL;
+			mdp4_lcdc_free_base_pipe(mfd);
 		} else {
 			/* system suspending */
 			mdp4_mixer_stage_down(vctrl->base_pipe, 1);
