@@ -455,7 +455,9 @@ static void execute_panel_init(struct msm_fb_data_type *mfd)
 	/* LSI */
 	char *mtp_buffer2 = (char *)&(msd.mpd->smart_se6e8fa.hbm_reg.c8_reg_2);
 	char *mtp_buffer3 = (char *)&(msd.mpd->smart_se6e8fa.hbm_reg.b6_reg_lsi);
+#if defined(CONFIG_MDNIE_LITE_TUNING)
 	char temp[4];
+#endif
 	char C8_reg[3];
 	/* MAGNA */
 	char *mtp_buffer4 = (char *)&(msd.mpd->smart_se6e8fa.hbm_reg.b1_reg);
