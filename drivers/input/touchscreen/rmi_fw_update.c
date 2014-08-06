@@ -78,11 +78,11 @@
 
 #define MIN_SLEEP_TIME_US 50
 #define MAX_SLEEP_TIME_US 100
-#define STATUS_POLLING_PERIOD_US 3000
 
 #if defined(CONFIG_MACH_JACTIVE_EUR) || defined(CONFIG_MACH_JACTIVE_ATT)
-#define FW_SUPPORT_HYNC(x)	 ((strncmp(x->product_id, "SY 03", 5))
-#define FW_NOT_SUPPORT_HYNC(x)	 ((strncmp(x->product_id, "SY 01", 5) == 0) || (strncmp(x->product_id, "S5000B", 6) == 0) || (strncmp(x->product_id, "SY 02", 5) == 0))
+#define FW_SUPPORT_HSYNC03(x)	 (strncmp(x->product_id, "SY 03", 5) == 0)
+#define FW_SUPPORT_HSYNC04(x)	 (strncmp(x->product_id, "SY 04", 5) == 0)
+#define FW_NOT_SUPPORT_HSYNC(x)	 ((strncmp(x->product_id, "SY 01", 5) == 0) || (strncmp(x->product_id, "S5000B", 6) == 0) || (strncmp(x->product_id, "SY 02", 5) == 0))
 #endif
 
 static ssize_t fwu_sysfs_show_image(struct file *data_file,
@@ -210,7 +210,6 @@ struct synaptics_rmi4_fwu_handle {
 	char product_id[SYNAPTICS_RMI4_PRODUCT_ID_SIZE + 1];
 	const unsigned char *firmware_data;
 	const unsigned char *config_data;
-	struct mutex status_mutex;
 	struct f34_flash_status flash_status;
 	struct synaptics_rmi4_fn_desc f01_fd;
 	struct synaptics_rmi4_fn_desc f34_fd;
@@ -404,8 +403,6 @@ static int fwu_read_f34_flash_status(void)
 	unsigned char status;
 	unsigned char command;
 
-	mutex_lock(&(fwu->status_mutex));
-
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
 			fwu->f34_fd.data_base_addr + FLASH_STATUS_OFFSET,
 			&status,
@@ -414,7 +411,7 @@ static int fwu_read_f34_flash_status(void)
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Failed to read flash status\n",
 				__func__);
-		goto exit;
+		return retval;
 	}
 
 	/* Program enabled bit not available - force bit to be set */
@@ -429,17 +426,12 @@ static int fwu_read_f34_flash_status(void)
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Failed to read flash command\n",
 				__func__);
-		goto exit;
+		return retval;
 	}
 
 	fwu->command = command & MASK_4BIT;
 
-	retval = 0;
-
-exit:
-	mutex_unlock(&(fwu->status_mutex));
-
-	return retval;
+	return 0;
 }
 
 static int fwu_write_f34_command(unsigned char cmd)
@@ -466,24 +458,14 @@ static int fwu_write_f34_command(unsigned char cmd)
 static int fwu_wait_for_idle(int timeout_ms)
 {
 	int count = 0;
-	int polling_period = STATUS_POLLING_PERIOD_US / MAX_SLEEP_TIME_US;
 	int timeout_count = ((timeout_ms * 1000) / MAX_SLEEP_TIME_US) + 1;
 
 	do {
 		usleep_range(MIN_SLEEP_TIME_US, MAX_SLEEP_TIME_US);
 
 		count++;
-		if ((timeout_ms == WRITE_WAIT_MS) &&
-				(count >= polling_period) &&
-				((count % polling_period) == 0)) {
+		if (count == timeout_count)
 			fwu_read_f34_flash_status();
-		} else if (count == timeout_count) {
-			dev_err(&fwu->rmi4_data->i2c_client->dev,
-					"%s: wait usleep, in writing block [%d]\n",
-					__func__, count);
-
-			fwu_read_f34_flash_status();
-		}
 
 		if ((fwu->command == 0x00) &&
 				(fwu->flash_status.status == 0x00))
@@ -738,7 +720,6 @@ static int fwu_do_reflash(void)
 			"%s: dvfs failed at fw update.\n",
 			__func__);
 #endif
-
 	retval = fwu_enter_flash_prog();
 	if (retval < 0)
 		return retval;
@@ -968,24 +949,31 @@ static int fwu_start_reflash(bool mode, bool factory_fw)
 			dev_info(&fwu->rmi4_data->i2c_client->dev,
 				"%s: run fw update for FACTORY FIRMWARE\n",
 				__func__);
-			if (FW_NOT_SUPPORT_HYNC(fwu))
+			if (FW_NOT_SUPPORT_HSYNC(fwu))
 				snprintf(fw_path, SYNAPTICS_MAX_FW_PATH,
 					"%s", FW_IMAGE_NAME_B0_NON_HSYNC_FAC);
-			else
+			else if (FW_SUPPORT_HSYNC03(fwu))
 				snprintf(fw_path, SYNAPTICS_MAX_FW_PATH,
 					"%s", FW_IMAGE_NAME_B0_HSYNC_FAC);
+			else // FW_SUPPORT_HSYNC04(fwu)
+				snprintf(fw_path, SYNAPTICS_MAX_FW_PATH,
+					"%s", FW_IMAGE_NAME_B0_HSYNC04_FAC);
 		} else {
 		/* Read firmware according to ic revision */
 			if ((fwu->rmi4_data->ic_revision_of_ic >> 4) == 0xB) {
 				/* Read firmware according to panel ID */
 				switch (fwu->rmi4_data->panel_revision) {
 				case OCTA_PANEL_REVISION_34:
-					if (FW_NOT_SUPPORT_HYNC(fwu))
+					if (FW_NOT_SUPPORT_HSYNC(fwu))
 						snprintf(fw_path, SYNAPTICS_MAX_FW_PATH,
 							"%s", FW_IMAGE_NAME_B0_NON_HSYNC);
-					else
+					else if (FW_SUPPORT_HSYNC03(fwu)){
 						snprintf(fw_path, SYNAPTICS_MAX_FW_PATH,
 							"%s", FW_IMAGE_NAME_B0_HSYNC);
+						}
+					else // FW_SUPPORT_HSYNC04(fwu)
+						snprintf(fw_path, SYNAPTICS_MAX_FW_PATH,
+							"%s", FW_IMAGE_NAME_B0_HSYNC04);
 					break;
 				default:
 					dev_info(&fwu->rmi4_data->i2c_client->dev,
@@ -1114,11 +1102,11 @@ done:
 out:
 #ifdef TSP_BOOSTER
 	retval = set_freq_limit(DVFS_TOUCH_ID, -1);
+#endif
 	if (retval < 0)
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 			"%s: in fw update, failed booster stop.\n",
 			__func__);
-#endif
 
 	dev_info(&fwu->rmi4_data->i2c_client->dev, "%s: End of reflash process\n",
 		 __func__);
@@ -1670,7 +1658,6 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 	if (retval < 0)
 		goto exit_free_mem;
 
-	mutex_init(&(fwu->status_mutex));
 	fwu->initialized = true;
 
 	retval = sysfs_create_bin_file(&rmi4_data->input_dev->dev.kobj,

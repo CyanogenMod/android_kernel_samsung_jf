@@ -509,6 +509,13 @@ config TOUCHSCREEN_SYNAPTICS_RMI4_I2C
 	help
 	  This enables support for Synaptics RMI over I2C based touchscreens(ClearPad 3000).
 
+config TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE
+	bool "Synaptics prevent leakage i2c due to hsync"
+	default n
+	help
+	  There is leakage current on TSP I2C by HW defect. TSP I2C Failed.
+	  So To prevent leakage, hsync off, tsp on, hsync on.
+
 config SYNA_MULTI_TOUCH
 	tristate "Synaptics i2c touchscreen(ClearPad 3000) MutilTouch support"
 	depends on TOUCHSCREEN_SYNAPTICS_RMI4_I2C
@@ -989,47 +996,5 @@ config TOUCH_REG_MAP_TM2000
 	default y
 	help
 	  Synaptics Register map TM2000.
-
-config TOUCHSCREEN_SYNAPTICS_I2C_RMI4
-	tristate "Synaptics DSX I2C touchscreen"
-	depends on I2C
-	help
-	  Say Y here if you have a Synaptics DSX I2C touchscreen
-	  connected to your system.
-
-	  If unsure, say N.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called synaptics_i2c_rmi4.
-
-config TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV
-	tristate "Synaptics I2C touchscreen rmi device"
-	depends on TOUCHSCREEN_SYNAPTICS_I2C_RMI4
-	help
-	  This enables support for character device channel for Synaptics
-	  RMI4 touchscreens.
-
-	  Say Y here if you have a Synaptics DSX I2C touchscreen
-	  connected to your system.
-
-	  If unsure, say N.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called synaptics_dsx_rmi4_dev.
-
-config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE
-	tristate "Synaptics I2C touchscreen firmware update"
-	depends on TOUCHSCREEN_SYNAPTICS_I2C_RMI4
-	help
-	  This enables support for firmware update for Synaptics RMI4
-	  touchscreens.
-
-	  Say Y here if you have a Synaptics DSX I2C touchscreen
-	  connected to your system.
-
-	  If unsure, say N.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called synaptics_dsx_fw_update.
-
 endif
+
