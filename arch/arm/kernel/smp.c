@@ -44,7 +44,7 @@
 #include <asm/smp_plat.h>
 #include <asm/mach/arch.h>
 
-#if defined(CONFIG_SEC_DEBUG)
+#ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
 /*
@@ -573,7 +573,7 @@ static void ipi_cpu_stop(unsigned int cpu, struct pt_regs *regs)
 		raw_spin_lock(&stop_lock);
 		printk(KERN_CRIT "CPU%u: stopping\n", cpu);
 		dump_stack();
-#if defined(CONFIG_SEC_DEBUG)
+#ifdef CONFIG_SEC_DEBUG
 		sec_debug_dump_stack();
 #endif
 		raw_spin_unlock(&stop_lock);
