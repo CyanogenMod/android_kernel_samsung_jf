@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -40,7 +40,7 @@ static unsigned int _dispatcher_inflight = 15;
 static unsigned int _cmdbatch_timeout = 2000;
 
 /* Interval for reading and comparing fault detection registers */
-static unsigned int _fault_timer_interval = 50;
+static unsigned int _fault_timer_interval = 200;
 
 /* Local array for the current set of fault detect registers */
 static unsigned int fault_detect_regs[FT_DETECT_REGS_COUNT];
@@ -78,15 +78,21 @@ static void fault_detect_read(struct kgsl_device *device)
 static inline bool _isidle(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	unsigned int ts;
+	unsigned int ts, i;
 
 	ts = kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED);
 
-	if (adreno_isidle(device) == true &&
-		(ts >= adreno_dev->ringbuffer.global_ts))
-		return true;
+	/* If GPU HW status is idle return true */
+	if (adreno_hw_isidle(device) ||
+			(ts == adreno_dev->ringbuffer.global_ts))
+		goto ret;
 
 	return false;
+
+ret:
+	for (i = 0; i < FT_DETECT_REGS_COUNT; i++)
+		fault_detect_regs[i] = 0;
+	return true;
 }
 
 /**
@@ -186,10 +192,9 @@ static inline int adreno_dispatcher_requeue_cmdbatch(
 		return -EINVAL;
 	}
 
-	prev = drawctxt->cmdqueue_head - 1;
-
-	if (prev < 0)
-		prev = ADRENO_CONTEXT_CMDQUEUE_SIZE - 1;
+	prev = drawctxt->cmdqueue_head == 0 ?
+		(ADRENO_CONTEXT_CMDQUEUE_SIZE - 1) :
+		(drawctxt->cmdqueue_head - 1);
 
 	/*
 	 * The maximum queue size always needs to be one less then the size of
@@ -350,9 +355,6 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 
 		cmdbatch = adreno_dispatcher_get_cmdbatch(drawctxt);
 
-		if (cmdbatch == NULL)
-			break;
-
 		/*
 		 * adreno_context_get_cmdbatch returns -EAGAIN if the current
 		 * cmdbatch has pending sync points so no more to do here.
@@ -360,8 +362,9 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 		 * reqeueued
 		 */
 
-		if (IS_ERR(cmdbatch) && PTR_ERR(cmdbatch) == -EAGAIN) {
-			requeued = 1;
+		if (IS_ERR_OR_NULL(cmdbatch)) {
+			if (IS_ERR(cmdbatch) && PTR_ERR(cmdbatch) == -EAGAIN)
+				requeued = 1;
 			break;
 		}
 
@@ -402,7 +405,7 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 	 */
 
 	if (count)
-		wake_up_interruptible_all(&drawctxt->wq);
+		wake_up_all(&drawctxt->wq);
 
 	/*
 	 * Return positive if the context submitted commands or if we figured
@@ -921,9 +924,6 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 		adreno_readreg(adreno_dev, ADRENO_REG_CP_ME_CNTL, &reg);
 		reg |= (1 << 27) | (1 << 28);
 		adreno_writereg(adreno_dev, ADRENO_REG_CP_ME_CNTL, reg);
-
-		/* Skip the PM dump for a timeout because it confuses people */
-		set_bit(KGSL_FT_SKIP_PMDUMP, &cmdbatch->fault_policy);
 	}
 
 	adreno_readreg(adreno_dev, ADRENO_REG_CP_IB1_BASE, &base);

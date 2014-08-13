@@ -430,7 +430,7 @@ done:
  */
 
 int adreno_perfcounter_read_group(struct adreno_device *adreno_dev,
-	struct kgsl_perfcounter_read_group *reads, unsigned int count)
+	struct kgsl_perfcounter_read_group __user *reads, unsigned int count)
 {
 	struct adreno_perfcounters *counters = adreno_dev->gpudev->perfcounters;
 	struct adreno_perfcount_group *group;
@@ -461,15 +461,16 @@ int adreno_perfcounter_read_group(struct adreno_device *adreno_dev,
 		goto done;
 	}
 
-	/* verify valid inputs group ids and countables */
-	for (i = 0; i < count; i++) {
-		if (list[i].groupid >= counters->group_count)
-			return -EINVAL;
-	}
-
 	/* list iterator */
 	for (j = 0; j < count; j++) {
+
 		list[j].value = 0;
+
+		/* Verify that the group ID is within range */
+		if (list[j].groupid >= counters->group_count) {
+			ret = -EINVAL;
+			goto done;
+		}
 
 		group = &(counters->groups[list[j].groupid]);
 
@@ -1805,7 +1806,8 @@ static int adreno_init(struct kgsl_device *device)
 		goto done;
 
 	/* Certain targets need the fixup.  You know who you are */
-	if (adreno_is_a330v2(adreno_dev))
+	if (adreno_is_a330v2(adreno_dev) ||
+	   (adreno_is_a320(adreno_dev) && !soc_class_is_apq8064()))
 		adreno_a3xx_pwron_fixup_init(adreno_dev);
 
 	set_bit(ADRENO_DEVICE_INITIALIZED, &adreno_dev->priv);
@@ -2483,7 +2485,7 @@ static int adreno_setproperty(struct kgsl_device *device,
  * Return true if the RBBM status register for the GPU type indicates that the
  * hardware is idle
  */
-static bool adreno_hw_isidle(struct kgsl_device *device)
+bool adreno_hw_isidle(struct kgsl_device *device)
 {
 	unsigned int reg_rbbm_status;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
@@ -2588,6 +2590,12 @@ bool adreno_isidle(struct kgsl_device *device)
 		return true;
 
 	rptr = adreno_get_rptr(&adreno_dev->ringbuffer);
+
+	/*
+	 * wptr is updated when we add commands to ringbuffer, add a barrier
+	 * to make sure updated wptr is compared to rptr
+	 */
+	smp_mb();
 
 	if (rptr == adreno_dev->ringbuffer.wptr)
 		return adreno_hw_isidle(device);

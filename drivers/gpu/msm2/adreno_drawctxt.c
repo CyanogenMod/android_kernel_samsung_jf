@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -138,7 +138,7 @@ static void wait_callback(struct kgsl_device *device, void *priv, u32 id,
 		u32 timestamp, u32 type)
 {
 	struct adreno_context *drawctxt = priv;
-	wake_up_interruptible_all(&drawctxt->waiting);
+	wake_up_all(&drawctxt->waiting);
 }
 
 #define adreno_wait_event_interruptible_timeout(wq, condition, timeout, io)   \
@@ -266,7 +266,7 @@ static void global_wait_callback(struct kgsl_device *device, void *priv, u32 id,
 {
 	struct adreno_context *drawctxt = priv;
 
-	wake_up_interruptible_all(&drawctxt->waiting);
+	wake_up_all(&drawctxt->waiting);
 	kgsl_context_put(&drawctxt->base);
 }
 
@@ -384,8 +384,8 @@ void adreno_drawctxt_invalidate(struct kgsl_device *device,
 	mutex_unlock(&drawctxt->mutex);
 
 	/* Give the bad news to everybody waiting around */
-	wake_up_interruptible_all(&drawctxt->waiting);
-	wake_up_interruptible_all(&drawctxt->wq);
+	wake_up_all(&drawctxt->waiting);
+	wake_up_all(&drawctxt->wq);
 }
 
 /**
@@ -570,8 +570,8 @@ int adreno_drawctxt_detach(struct kgsl_context *context)
 		drawctxt->ops->detach(drawctxt);
 
 	/* wake threads waiting to submit commands from this context */
-	wake_up_interruptible_all(&drawctxt->waiting);
-	wake_up_interruptible_all(&drawctxt->wq);
+	wake_up_all(&drawctxt->waiting);
+	wake_up_all(&drawctxt->wq);
 
 	return ret;
 }
