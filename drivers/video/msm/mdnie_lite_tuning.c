@@ -71,7 +71,12 @@
 
 int play_speed_1_5;
 #if defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
+#if defined (CONFIG_MACH_JACTIVE_EUR) || defined (CONFIG_MACH_JACTIVE_ATT)
+static int cabc = -1;
+#else
 static int cabc = 0;
+#endif
+
 extern int mipi_samsung_cabc_onoff ( int enable );
 #endif
 
@@ -1032,7 +1037,12 @@ static ssize_t cabc_store(struct device *dev,
 
 	return size;
 }
-
+#if defined(CONFIG_FB_MSM_MIPI_RENESAS_TFT_VIDEO_FULL_HD_PT_PANEL)
+int is_cabc_on ( void )
+{
+	return cabc;
+}
+#endif
 static DEVICE_ATTR(cabc, 0664,
 			cabc_show,
 			cabc_store);
