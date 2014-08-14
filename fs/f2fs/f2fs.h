@@ -1128,7 +1128,7 @@ static inline struct inode *file_inode(struct file *f)
  */
 int f2fs_sync_file(struct file *, loff_t, loff_t, int);
 void truncate_data_blocks(struct dnode_of_data *);
-int truncate_blocks(struct inode *, u64);
+int truncate_blocks(struct inode *, u64, bool);
 void f2fs_truncate(struct inode *);
 int f2fs_getattr(struct vfsmount *, struct dentry *, struct kstat *);
 int f2fs_setattr(struct dentry *, struct iattr *);
