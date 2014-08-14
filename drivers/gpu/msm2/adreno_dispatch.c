@@ -1106,7 +1106,7 @@ replay:
 	fault = atomic_xchg(&dispatcher->fault, 0);
 
 	/* If adreno_reset() fails then what hope do we have for the future? */
-	BUG_ON(ret);
+        // Just kidding guys, life goes on.
 
 	/* Remove any pending command batches that have been invalidated */
 	remove_invalidated_cmdbatches(device, replay, count);
