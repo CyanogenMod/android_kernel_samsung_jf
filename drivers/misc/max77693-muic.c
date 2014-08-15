@@ -81,6 +81,7 @@ enum {
 	ADC_SMARTDOCK		= 0x10, /* 0x10000 40.2K ohm */
 	ADC_INCOMPATIBLE2_CHG	= 0x11, /* 0x10001 49.9K ohm */
 	ADC_AUDIODOCK		= 0x12, /* 0x10010 64.9K ohm */
+	ADC_CHARGING_CABLE	= 0x14, /* 0x10100 102K ohm */
 	ADC_CEA936ATYPE1_CHG	= 0x17,	/* 0x10111 200K ohm */
 	ADC_JIG_USB_OFF		= 0x18, /* 0x11000 255K ohm */
 	ADC_JIG_USB_ON		= 0x19, /* 0x11001 301K ohm */
@@ -272,6 +273,8 @@ static ssize_t max77693_muic_show_device(struct device *dev,
 		return sprintf(buf, "Audio Dock\n");
 	case CABLE_TYPE_CARDOCK_MUIC:
 		return sprintf(buf, "Car Dock\n");
+	case CABLE_TYPE_CHARGING_CABLE_MUIC:
+		return sprintf(buf, "Charging Cable\n");
 	case CABLE_TYPE_JIG_UART_OFF_MUIC:
 		return sprintf(buf, "JIG UART OFF\n");
 	case CABLE_TYPE_JIG_UART_OFF_VB_MUIC:
@@ -801,8 +804,8 @@ static int max77693_muic_set_charging_type(struct max77693_muic_info *info,
 {
 	struct max77693_muic_data *mdata = info->muic_data;
 	int ret = 0;
-	dev_info(info->dev, "func:%s force_disable:%d\n",
-		 __func__, force_disable);
+	dev_info(info->dev, "func:%s cable_type:%d force_disable:%d\n",
+		 __func__, info->cable_type, force_disable);
 	if (mdata->charger_cb) {
 		if (force_disable)
 			ret = mdata->charger_cb(CABLE_TYPE_NONE_MUIC);
@@ -1739,6 +1742,10 @@ static int max77693_muic_handle_attach(struct max77693_muic_info *info,
 			ret = max77693_muic_set_charging_type(info, !vbvolt);
 		}
 		break;
+	case ADC_CHARGING_CABLE:
+		info->cable_type = CABLE_TYPE_CHARGING_CABLE_MUIC;
+		max77693_muic_set_charging_type(info, false);
+		break;
 	case ADC_SMARTDOCK:
 		max77693_muic_attach_smart_dock(info, adc, vbvolt, chgtyp);
 		break;
@@ -1909,6 +1916,11 @@ static int max77693_muic_handle_detach(struct max77693_muic_info *info, int irq)
 
 		if (mdata->usb_cb && info->is_usb_ready)
 			mdata->usb_cb(USB_OTGHOST_DETACHED);
+		break;
+	case CABLE_TYPE_CHARGING_CABLE_MUIC:
+		dev_info(info->dev, "%s: CHARGING CABLE\n", __func__);
+		info->cable_type = CABLE_TYPE_NONE_MUIC;
+		max77693_muic_set_charging_type(info, true);
 		break;
 	case CABLE_TYPE_USB_MUIC:
 	case CABLE_TYPE_CDP_MUIC:
@@ -2099,6 +2111,7 @@ static void max77693_muic_detect_dev(struct max77693_muic_info *info, int irq)
 			 chgtyp == CHGTYP_DEDICATED_CHGR ||
 			 chgtyp == CHGTYP_500MA || chgtyp == CHGTYP_1A) {
 			if (info->cable_type == CABLE_TYPE_OTG_MUIC ||
+			    info->cable_type == CABLE_TYPE_CHARGING_CABLE_MUIC ||
 			    info->cable_type == CABLE_TYPE_DESKDOCK_MUIC ||
 			    info->cable_type == CABLE_TYPE_CARDOCK_MUIC ||
 			    info->cable_type == CABLE_TYPE_SMARTDOCK_MUIC ||

@@ -16,7 +16,7 @@
 #define _LINUX_WLAN_PLAT_H_
 
 struct wifi_platform_data {
-	int (*set_power)(int val);
+	int (*set_power)(int val,bool b0rev);
 	int (*set_reset)(int val);
 	int (*set_carddetect)(int val);
 	void *(*mem_prealloc)(int section, unsigned long size);

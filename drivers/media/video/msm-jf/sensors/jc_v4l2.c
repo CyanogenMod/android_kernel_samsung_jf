@@ -1992,6 +1992,7 @@ static int jc_set_snapshot_mode(int mode)
 			jc_writeb(JC_CATEGORY_CAPCTRL,
 					JC_CAPCTRL_START_DUALCAP, 0x07);
 		} else {
+		        usleep(10*1000);
 			jc_writeb(JC_CATEGORY_CAPCTRL,
 					JC_CAPCTRL_START_DUALCAP, 0x01);
 		}
@@ -2444,6 +2445,9 @@ static int jc_set_movie_mode(int mode)
 		jc_ctrl->movie_mode = false;
 		jc_writeb(JC_CATEGORY_PARM,
 				JC_PARM_MON_MOVIE_SELECT, 0x00);
+
+		cam_info("Zsl mode\n");
+		jc_writeb(0x02, 0xCF, 0x01); /*zsl mode*/
 	} else if (mode == 1) {
 		cam_info("Movie mode\n");
 		jc_ctrl->movie_mode = true;

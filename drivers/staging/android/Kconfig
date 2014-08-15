@@ -105,6 +105,13 @@ config RUNTIME_COMPCACHE
 	help
 	  This option enables rtcc v3 for android
 
+config KSWAPD_NOSWAP
+	bool "Disable swap in kswapd"
+	depends on RUNTIME_COMPCACHE
+	default n
+	help
+	  This option controls swap action in kswapd
+
 endif # if ANDROID
 
 endmenu

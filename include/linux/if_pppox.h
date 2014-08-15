@@ -205,6 +205,8 @@ struct pppox_sock {
 		struct pppolac_opt lac;
 		struct pppopns_opt pns;
 	} proto;
+	struct timer_list recv_queue_timer;
+	spinlock_t recv_queue_lock;
 	__be16			num;
 };
 #define pppoe_dev	proto.pppoe.dev

@@ -48,6 +48,25 @@ static int sdcardfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	return err;
 }
 
+static ssize_t sdcardfs_direct_IO(int rw, struct kiocb *iocb,
+			      const struct iovec *iov, loff_t offset,
+			      unsigned long nr_segs)
+{
+	/* 
+     * This function returns zero on purpose in order to support direct IO.
+	 * __dentry_open checks a_ops->direct_IO and returns EINVAL if it is null.
+     * 
+	 * However, this function won't be called by certain file operations 
+     * including generic fs functions.  * reads and writes are delivered to 
+     * the lower file systems and the direct IOs will be handled by them. 
+	 * 
+     * NOTE: exceptionally, on the recent kernels (since Linux 3.8.x), 
+     * swap_writepage invokes this function directly. 
+	 */ 
+	printk(KERN_INFO "%s, operation is not supported\n", __func__);
+	return 0;
+}
+
 /*
  * XXX: the default address_space_ops for sdcardfs is empty.  We cannot set
  * our inode->i_mapping->a_ops to NULL because too many code paths expect
@@ -55,6 +74,7 @@ static int sdcardfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
  */
 const struct address_space_operations sdcardfs_aops = {
 	/* empty on purpose */
+	.direct_IO	= sdcardfs_direct_IO,
 };
 
 const struct vm_operations_struct sdcardfs_vm_ops = {
