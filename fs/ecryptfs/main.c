@@ -210,7 +210,7 @@ static const match_table_t tokens = {
 	{ecryptfs_opt_enable_filtering, "ecryptfs_enable_filtering=%s"},
 #endif
 #ifdef CONFIG_CRYPTO_FIPS
-	{ecryptfs_opt_enable_cc, "ecryptfs_enable_cc=%s"},
+	{ecryptfs_opt_enable_cc, "ecryptfs_enable_cc"},
 #endif
 	{ecryptfs_opt_err, NULL}
 };
@@ -349,9 +349,6 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	char *cipher_key_bytes_src;
 	char *fn_cipher_key_bytes_src;
 	u8 cipher_code;
-#ifdef CONFIG_CRYPTO_FIPS
-	char *cc_mode_src;
-#endif
 
 	*check_ruid = 0;
 
@@ -477,9 +474,7 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 #endif
 #ifdef CONFIG_CRYPTO_FIPS
 		case ecryptfs_opt_enable_cc:
-			cc_mode_src = args[0].from;
-			ecryptfs_cc_mode_set((int)simple_strtol(cc_mode_src,
-						   &cc_mode_src, 0));
+            mount_crypt_stat->flags |= ECRYPTFS_ENABLE_CC;
 			break;
 #endif
 		case ecryptfs_opt_err:
@@ -528,9 +523,16 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	mutex_lock(&key_tfm_list_mutex);
 	if (!ecryptfs_tfm_exists(mount_crypt_stat->global_default_cipher_name,
 				 NULL)) {
+#ifdef CONFIG_CRYPTO_FIPS
+		rc = ecryptfs_add_new_key_tfm(
+			NULL, mount_crypt_stat->global_default_cipher_name,
+			mount_crypt_stat->global_default_cipher_key_size,
+			mount_crypt_stat->flags);
+#else
 		rc = ecryptfs_add_new_key_tfm(
 			NULL, mount_crypt_stat->global_default_cipher_name,
 			mount_crypt_stat->global_default_cipher_key_size);
+#endif
 		if (rc) {
 			printk(KERN_ERR "Error attempting to initialize "
 			       "cipher with name = [%s] and key size = [%td]; "
@@ -546,9 +548,16 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	if ((mount_crypt_stat->flags & ECRYPTFS_GLOBAL_ENCRYPT_FILENAMES)
 	    && !ecryptfs_tfm_exists(
 		    mount_crypt_stat->global_default_fn_cipher_name, NULL)) {
+#ifdef CONFIG_CRYPTO_FIPS
+		rc = ecryptfs_add_new_key_tfm(
+			NULL, mount_crypt_stat->global_default_fn_cipher_name,
+			mount_crypt_stat->global_default_fn_cipher_key_bytes,
+			mount_crypt_stat->flags);
+#else
 		rc = ecryptfs_add_new_key_tfm(
 			NULL, mount_crypt_stat->global_default_fn_cipher_name,
 			mount_crypt_stat->global_default_fn_cipher_key_bytes);
+#endif
 		if (rc) {
 			printk(KERN_ERR "Error attempting to initialize "
 			       "cipher with name = [%s] and key size = [%td]; "

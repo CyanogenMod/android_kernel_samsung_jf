@@ -253,6 +253,10 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 	*/
 	if (mdnie_tun_state.blind == COLOR_BLIND)
 		mode = mDNIE_BLINE_MODE;
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+	else if (mdnie_tun_state.blind == DARK_SCREEN)
+		mode = mDNIE_DARK_SCREEN_MODE;
+#endif
 
 	switch (mode) {
 	case mDNIe_UI_MODE:
@@ -541,6 +545,14 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 		INPUT_PAYLOAD1(COLOR_BLIND_1);
 		INPUT_PAYLOAD2(COLOR_BLIND_2);
 		break;
+
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+	case mDNIE_DARK_SCREEN_MODE:
+		DPRINT(" = DARK SCREEN MODE =\n");
+		INPUT_PAYLOAD1(DARK_SCREEN_BLIND_1);
+		INPUT_PAYLOAD2(DARK_SCREEN_BLIND_2);
+		break;
+#endif
 
 	default:
 		DPRINT("[%s] no option (%d)\n", __func__, mode);
@@ -972,7 +984,14 @@ static ssize_t accessibility_store(struct device *dev,
 
 		memcpy(&COLOR_BLIND_2[MDNIE_COLOR_BLINDE_CMD],
 				buffer, MDNIE_COLOR_BLINDE_CMD);
-	} else if (cmd_value == ACCESSIBILITY_OFF) {
+	} 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+	else if  (cmd_value == DARK_SCREEN) {
+		mdnie_tun_state.negative = mDNIe_NEGATIVE_OFF;
+		mdnie_tun_state.blind = DARK_SCREEN;
+	}
+#endif
+	else if (cmd_value == ACCESSIBILITY_OFF) {
 		mdnie_tun_state.blind = ACCESSIBILITY_OFF;
 		mdnie_tun_state.negative = mDNIe_NEGATIVE_OFF;
 	} else 

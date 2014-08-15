@@ -150,6 +150,8 @@ long vm_total_pages;	/* The total number of pages which the VM controls */
 
 #ifdef CONFIG_RUNTIME_COMPCACHE
 extern int get_rtcc_status(void);
+atomic_t kswapd_running = ATOMIC_INIT(1);
+long nr_kswapd_swapped = 0;
 
 static bool rtcc_reclaim(struct scan_control *sc)
 {
@@ -1399,8 +1401,12 @@ shrink_inactive_list(unsigned long nr_to_scan, struct mem_cgroup_zone *mz,
 		wait_iff_congested(zone, BLK_RW_ASYNC, HZ/10);
 
 #ifdef CONFIG_RUNTIME_COMPCACHE
-	if (rtcc_reclaim(sc) && !file)
-		sc->rc->nr_swapped += nr_reclaimed;
+	if (!file) {
+		if (rtcc_reclaim(sc))
+			sc->rc->nr_swapped += nr_reclaimed;
+		else
+			nr_kswapd_swapped += nr_reclaimed;
+	}
 #endif /* CONFIG_RUNTIME_COMPCACHE */
 
 	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
@@ -1895,6 +1901,11 @@ restart:
 	nr_scanned = sc->nr_scanned;
 	get_scan_count(mz, sc, nr);
 
+#ifdef CONFIG_RUNTIME_COMPCACHE
+	if (rtcc_reclaim(sc))
+		nr[LRU_INACTIVE_FILE] = nr[LRU_ACTIVE_FILE] = 0;
+#endif /* CONFIG_RUNTIME_COMPCACHE */
+
 	blk_start_plug(&plug);
 	while (nr[LRU_INACTIVE_ANON] || nr[LRU_ACTIVE_FILE] ||
 					nr[LRU_INACTIVE_FILE]) {
@@ -1902,9 +1913,6 @@ restart:
 		if (rtcc_reclaim(sc)) {
 			if (rc->nr_swapped >= rc->nr_anon)
 				nr[LRU_INACTIVE_ANON] = nr[LRU_ACTIVE_ANON] = 0;
-
-			if ((sc->nr_reclaimed + nr_reclaimed - rc->nr_swapped) >= rc->nr_file)
-				nr[LRU_INACTIVE_FILE] = nr[LRU_ACTIVE_FILE] = 0;
 		}
 #endif /* CONFIG_RUNTIME_COMPCACHE */
 
@@ -2506,11 +2514,11 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 	struct scan_control sc = {
 		.gfp_mask = GFP_KERNEL,
 		.may_unmap = 1,
-#ifdef CONFIG_RUNTIME_COMPCACHE
-		.may_swap = 0,
-#else
+#ifndef CONFIG_KSWAPD_NOSWAP
 		.may_swap = 1,
-#endif /* CONFIG_RUNTIME_COMPCACHE */
+#else
+		.may_swap = 0,
+#endif /* CONFIG_KSWAPD_NOSWAP */
 		/*
 		 * kswapd doesn't want to be bailed out while reclaim. because
 		 * we want to put equal scanning pressure on each zone.
@@ -2811,6 +2819,10 @@ static void kswapd_try_to_sleep(pg_data_t *pgdat, int order, int classzone_idx)
 	if (!sleeping_prematurely(pgdat, order, remaining, classzone_idx)) {
 		trace_mm_vmscan_kswapd_sleep(pgdat->node_id);
 
+#ifdef CONFIG_RUNTIME_COMPCACHE
+		atomic_set(&kswapd_running, 0);
+#endif /* CONFIG_RUNTIME_COMPCACHE */
+
 		/*
 		 * vmstat counters are not perfectly accurate and the estimated
 		 * value for counters such as NR_FREE_PAGES can deviate from the
@@ -2931,6 +2943,10 @@ static int kswapd(void *p)
 		ret = try_to_freeze();
 		if (kthread_should_stop())
 			break;
+
+#ifdef CONFIG_RUNTIME_COMPCACHE
+		atomic_set(&kswapd_running, 1);
+#endif /* CONFIG_RUNTIME_COMPCACHE */
 
 		/*
 		 * We can speed up thawing tasks if we don't call balance_pgdat

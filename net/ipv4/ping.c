@@ -269,7 +269,6 @@ int ping_init_sock(struct sock *sk)
 
 		count -= cp_count;
 	}
-
 	ret = -EACCES;
 
 out_release_group:
@@ -905,7 +904,7 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 			sin6->sin6_family = AF_INET6;
 			sin6->sin6_port = 0;
 			sin6->sin6_addr = ip6->saddr;
-
+			sin6->sin6_flowinfo = 0;
 			if (np->sndflow)
 				sin6->sin6_flowinfo =
 					*(__be32 *)ip6 & IPV6_FLOWINFO_MASK;

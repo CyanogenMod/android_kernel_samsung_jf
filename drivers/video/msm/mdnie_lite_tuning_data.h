@@ -3161,6 +3161,126 @@ char COLOR_BLIND_2[] = {
 	0x36,
 };
 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
+char DARK_SCREEN_BLIND_1[] = {
+	0xEB,
+	0x01, //mdnie_en
+	0x00, //data_width mask 00 000
+	0x30, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
+	0x00, //sharpen cc gamma 00 0 0
+};
+
+char DARK_SCREEN_BLIND_2[] = {
+	0xEC,
+	0x00, //roi ctrl
+	0x00, //roi0 x start
+	0x00,
+	0x00, //roi0 x end
+	0x00,
+	0x00, //roi0 y start
+	0x00,
+	0x00, //roi0 y end
+	0x00,
+	0x00, //roi1 x strat
+	0x00,
+	0x00, //roi1 x end
+	0x00,
+	0x00, //roi1 y start
+	0x00,
+	0x00, //roi1 y end
+	0x00,
+	0x00, //scr Cr Yb
+	0x00, //scr Rr Bb
+	0x00, //scr Cg Yg
+	0x00, //scr Rg Bg
+	0x00, //scr Cb Yr
+	0x00, //scr Rb Br
+	0x00, //scr Mr Mb
+	0x00, //scr Gr Gb
+	0x00, //scr Mg Mg
+	0x00, //scr Gg Gg
+	0x00, //scr Mb Mr
+	0x00, //scr Gb Gr
+	0x00, //scr Yr Cb
+	0x00, //scr Br Rb
+	0x00, //scr Yg Cg
+	0x00, //scr Bg Rg
+	0x00, //scr Yb Cr
+	0x00, //scr Bb Rr
+	0x00, //scr Wr Wb
+	0x00, //scr Kr Kb
+	0x00, //scr Wg Wg
+	0x00, //scr Kg Kg
+	0x00, //scr Wb Wr
+	0x00, //scr Kb Kr
+	0x00, //curve 1 b
+	0x20, //curve 1 a
+	0x00, //curve 2 b
+	0x20, //curve 2 a
+	0x00, //curve 3 b
+	0x20, //curve 3 a
+	0x00, //curve 4 b
+	0x20, //curve 4 a
+	0x02, //curve 5 b
+	0x1b, //curve 5 a
+	0x02, //curve 6 b
+	0x1b, //curve 6 a
+	0x02, //curve 7 b
+	0x1b, //curve 7 a
+	0x02, //curve 8 b
+	0x1b, //curve 8 a
+	0x09, //curve 9 b
+	0xa6, //curve 9 a
+	0x09, //curve10 b
+	0xa6, //curve10 a
+	0x09, //curve11 b
+	0xa6, //curve11 a
+	0x09, //curve12 b
+	0xa6, //curve12 a
+	0x00, //curve13 b
+	0x20, //curve13 a
+	0x00, //curve14 b
+	0x20, //curve14 a
+	0x00, //curve15 b
+	0x20, //curve15 a
+	0x00, //curve16 b
+	0x20, //curve16 a
+	0x00, //curve17 b
+	0x20, //curve17 a
+	0x00, //curve18 b
+	0x20, //curve18 a
+	0x00, //curve19 b
+	0x20, //curve19 a
+	0x00, //curve20 b
+	0x20, //curve20 a
+	0x00, //curve21 b
+	0x20, //curve21 a
+	0x00, //curve22 b
+	0x20, //curve22 a
+	0x00, //curve23 b
+	0x20, //curve23 a
+	0x00, //curve24 b
+	0xFF, //curve24 a
+	0x04, //cc r1
+	0x00,
+	0x00, //cc r2
+	0x00,
+	0x00, //cc r3
+	0x00,
+	0x00, //cc g1
+	0x00,
+	0x04, //cc g2
+	0x00,
+	0x00, //cc g3
+	0x00,
+	0x00, //cc b1
+	0x00,
+	0x00, //cc b2
+	0x00,
+	0x04, //cc b3
+	0x00,
+};
+#endif
 ////////////////// BROWSER /////////////////////
 
 char STANDARD_BROWSER_1[] = {
