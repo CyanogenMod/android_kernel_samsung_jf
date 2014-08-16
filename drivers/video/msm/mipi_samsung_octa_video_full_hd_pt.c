@@ -2028,7 +2028,7 @@ static int __init mipi_video_samsung_octa_full_hd_pt_init(void)
 	pinfo.lcdc.v_pulse_width = 2;
 
 	pinfo.lcdc.border_clr = 0;	/* blk */
-	pinfo.lcdc.underflow_clr = 0x0;	/* black */
+	pinfo.lcdc.underflow_clr = 0xff1493;	/* hot pink */
 	pinfo.lcdc.hsync_skew = 0;
 
 	pinfo.bl_max = 255;
