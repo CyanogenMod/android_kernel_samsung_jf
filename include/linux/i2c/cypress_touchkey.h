@@ -15,17 +15,6 @@ extern struct class *sec_class;
 extern int ISSP_main(void);
 extern int get_lcd_attached(void);
 
-/* DVFS feature : TOUCH BOOSTER */
-#ifdef CONFIG_SEC_DVFS_BOOSTER
-#define TSP_BOOSTER
-#endif
-#ifdef TSP_BOOSTER
-#include <linux/cpufreq.h>
-
-#define TOUCH_BOOSTER_OFF_TIME	300
-#define TOUCH_BOOSTER_CHG_TIME	200
-#endif
-
 #if defined(CONFIG_GLOVE_TOUCH)
 #define TK_BIT_GLOVE 0x40
 #endif
