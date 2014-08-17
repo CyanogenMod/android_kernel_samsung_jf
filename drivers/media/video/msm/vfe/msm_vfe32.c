@@ -6250,16 +6250,6 @@ static const struct v4l2_subdev_ops msm_vfe_subdev_ops = {
 	.core = &msm_vfe_subdev_core_ops,
 };
 
-#if defined(CONFIG_MSM_IOMMU) && defined(VFE_IOMMU_FAULT_HANDLER)
-static int vfe_iommu_fault_handler(struct iommu_domain *domain,
-		struct device *dev, unsigned long iova, int flags)
-{
-	pr_err("iommu page fault has happened\n");
-        atomic_set(&fault_recovery, 1);
-	return -ENOSYS;
-}
-#endif
-
 int msm_axi_subdev_init(struct v4l2_subdev *sd,
 	uint8_t dual_enabled)
 {
@@ -6321,11 +6311,6 @@ int msm_axi_subdev_init(struct v4l2_subdev *sd,
 		rc = -ENODEV;
 		goto device_misc_attach_failed;
 	}
-#ifdef VFE_IOMMU_FAULT_HANDLER
-	iommu_set_fault_handler(mctl->domain,
-                        vfe_iommu_fault_handler);
-#endif
-
 #endif
 
 	msm_camio_bus_scale_cfg(
