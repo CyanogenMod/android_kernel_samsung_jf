@@ -1640,11 +1640,6 @@ static int adreno_start(struct kgsl_device *device)
 	kgsl_pwrctrl_enable(device);
 
 	/* Set up a2xx special case */
-
-	/* Set the bit to indicate that we've just powered on */
-	set_bit(ADRENO_DEVICE_PWRON, &adreno_dev->priv);
-
-	/* Set up the MMU */
 	if (adreno_is_a2xx(adreno_dev)) {
 		/*
 		 * the MH_CLNT_INTF_CTRL_CONFIG registers aren't present
