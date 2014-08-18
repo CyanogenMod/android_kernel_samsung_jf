@@ -1,3 +1,0 @@
-config INSIDESECURE_VPNCLIENT
-       bool "InsideSecure VPNClient Interceptor"
-       default n
