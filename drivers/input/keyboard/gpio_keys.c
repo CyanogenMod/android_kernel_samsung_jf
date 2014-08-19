@@ -385,7 +385,7 @@ static void flip_cover_work(struct work_struct *work)
 			if(delay_count == delay_exit_count) {
 				printk(KERN_DEBUG "[keys] %s : Run input report delay_count = %d\n",__func__, delay_count);
 				input_report_switch(ddata->input,
-					SW_FLIP, ddata->flip_cover);
+					SW_LID, !ddata->flip_cover);
 				input_sync(ddata->input);
 #if defined(CONFIG_MACH_MELIUS)
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)
@@ -404,7 +404,7 @@ static void flip_cover_work(struct work_struct *work)
 #else
 
 	input_report_switch(ddata->input,
-		SW_FLIP, ddata->flip_cover);
+		SW_LID, !ddata->flip_cover);
 	input_sync(ddata->input);
 #endif
 }
@@ -908,7 +908,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	input->dev.parent = &pdev->dev;
 #ifdef CONFIG_SENSORS_HALL
 	input->evbit[0] |= BIT_MASK(EV_SW);
-	input_set_capability(input, EV_SW, SW_FLIP);
+	input_set_capability(input, EV_SW, SW_LID);
 #endif
 	input->open = gpio_keys_open;
 	input->close = gpio_keys_close;
