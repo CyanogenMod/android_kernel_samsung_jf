@@ -298,6 +298,7 @@ static struct pil_reset_ops pil_q6v4_ops = {
 	.proxy_unvote = pil_q6v4_remove_proxy_votes,
 };
 
+#ifndef CONFIG_MSM_INSECURE_PIL_QDSP6V4
 static int pil_q6v4_init_image_trusted(struct pil_desc *pil,
 		const u8 *metadata, size_t size)
 {
@@ -349,6 +350,7 @@ static struct pil_reset_ops pil_q6v4_ops_trusted = {
 	.proxy_vote = pil_q6v4_make_proxy_votes,
 	.proxy_unvote = pil_q6v4_remove_proxy_votes,
 };
+#endif
 
 static int __devinit pil_q6v4_driver_probe(struct platform_device *pdev)
 {
@@ -406,13 +408,17 @@ static int __devinit pil_q6v4_driver_probe(struct platform_device *pdev)
 	desc->owner = THIS_MODULE;
 	desc->proxy_timeout = 10000;
 
+#ifndef CONFIG_MSM_INSECURE_PIL_QDSP6V4
 	if (pas_supported(pdata->pas_id) > 0) {
 		desc->ops = &pil_q6v4_ops_trusted;
 		dev_info(&pdev->dev, "using secure boot\n");
 	} else {
+#endif
 		desc->ops = &pil_q6v4_ops;
 		dev_info(&pdev->dev, "using non-secure boot\n");
+#ifndef CONFIG_MSM_INSECURE_PIL_QDSP6V4
 	}
+#endif
 
 	drv->vreg = devm_regulator_get(&pdev->dev, "core_vdd");
 	if (IS_ERR(drv->vreg))

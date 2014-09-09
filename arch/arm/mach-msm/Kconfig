@@ -2086,6 +2086,12 @@ config MSM_PIL_QDSP6V4
 	  The QDSP6 is a low power DSP used in audio, modem firmware, and modem
 	  software applications.
 
+config MSM_INSECURE_PIL_QDSP6V4
+	bool "Force QDSP6v4 PIL to insecure mode"
+	depends on MSM_PIL_QDSP6V4
+	help
+	  Force QDSP6v4 PIL to use non-secure boot.
+
 config MSM_PIL_LPASS_QDSP6V5
        tristate "LPASS QDSP6v5 (Hexagon) Boot Support"
        depends on MSM_PIL
