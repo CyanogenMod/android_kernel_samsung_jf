@@ -3312,6 +3312,11 @@ static uint8_t spm_power_collapse_without_rpm[] __initdata = {
 	0x24, 0x30, 0x0f,
 };
 
+static uint8_t spm_retention_cmd_sequence[] __initdata = {
+	0x00, 0x05, 0x03, 0x0D,
+	0x0B, 0x00, 0x0f,
+};
+
 static uint8_t spm_retention_with_krait_v3_cmd_sequence[] __initdata = {
 	0x42, 0x1B, 0x00,
 	0x05, 0x03, 0x0D, 0x0B,
