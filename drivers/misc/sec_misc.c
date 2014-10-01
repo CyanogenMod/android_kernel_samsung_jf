@@ -62,7 +62,7 @@ static struct miscdevice sec_misc_device = {
 static ssize_t emmc_checksum_done_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, sizeof(buf), "%d\n", emmc_checksum_done);
+	return snprintf(buf, (int)sizeof(buf), "%d\n", emmc_checksum_done);
 }
 
 static ssize_t emmc_checksum_done_store(struct device *dev,
@@ -83,7 +83,7 @@ static DEVICE_ATTR(emmc_checksum_done, S_IRUGO | S_IWUSR ,
 static ssize_t emmc_checksum_pass_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, sizeof(buf), "%d\n", emmc_checksum_pass);
+	return snprintf(buf, (int)sizeof(buf), "%d\n", emmc_checksum_pass);
 }
 
 static ssize_t emmc_checksum_pass_store(struct device *dev,
@@ -111,7 +111,7 @@ static ssize_t rory_control_show(struct device *dev,
 
 	sec_get_param(param_rory_control, &rory_control);
 
-	return snprintf(buf, sizeof(buf), "%d\n", rory_control);
+	return snprintf(buf, (int)sizeof(buf), "%d\n", rory_control);
 }
 
 static ssize_t rory_control_store(struct device *dev,

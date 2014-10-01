@@ -53,7 +53,7 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 		struct page *page = bvec->bv_page;
 
 		if (unlikely(err)) {
-			SetPageError(page);
+			set_page_dirty(page);
 			set_bit(AS_EIO, &page->mapping->flags);
 			set_ckpt_flags(sbi->ckpt, CP_ERROR_FLAG);
 			sbi->sb->s_flags |= MS_RDONLY;
@@ -692,7 +692,7 @@ get_next:
 			allocated = true;
 			blkaddr = dn.data_blkaddr;
 		}
-		/* Give more consecutive addresses for the read ahead */
+		/* Give more consecutive addresses for the readahead */
 		if (blkaddr == (bh_result->b_blocknr + ofs)) {
 			ofs++;
 			dn.ofs_in_node++;
@@ -740,7 +740,7 @@ static int f2fs_read_data_page(struct file *file, struct page *page)
 
 	trace_f2fs_readpage(page, DATA);
 
-	/* If the file has inline data, try to read it directlly */
+	/* If the file has inline data, try to read it directly */
 	if (f2fs_has_inline_data(inode))
 		ret = f2fs_read_inline_data(inode, page);
 	else
@@ -837,8 +837,17 @@ write:
 
 	/* Dentry blocks are controlled by checkpoint */
 	if (S_ISDIR(inode->i_mode)) {
+		if (unlikely(f2fs_cp_error(sbi)))
+			goto redirty_out;
 		err = do_write_data_page(page, &fio);
 		goto done;
+	}
+
+	/* we should bypass data pages to proceed the kworkder jobs */
+	if (unlikely(f2fs_cp_error(sbi))) {
+		SetPageError(page);
+		unlock_page(page);
+		return 0;
 	}
 
 	if (!wbc->for_reclaim)
@@ -928,7 +937,7 @@ static void f2fs_write_failed(struct address_space *mapping, loff_t to)
 
 	if (to > inode->i_size) {
 		truncate_pagecache(inode, 0, inode->i_size);
-		truncate_blocks(inode, inode->i_size);
+		truncate_blocks(inode, inode->i_size, true);
 	}
 }
 
@@ -947,7 +956,7 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 
 	f2fs_balance_fs(sbi);
 repeat:
-	err = f2fs_convert_inline_data(inode, pos + len);
+	err = f2fs_convert_inline_data(inode, pos + len, NULL);
 	if (err)
 		goto fail;
 

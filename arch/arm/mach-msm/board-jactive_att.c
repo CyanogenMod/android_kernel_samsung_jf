@@ -1009,23 +1009,8 @@ static void __init reserve_ion_memory(void)
 }
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
-static char bootreason[128] = {0,};
-int __init device_boot_reason(char *s)
-{
-	int n;
-
-	if (*s == '=')
-		s++;
-	n = snprintf(bootreason, sizeof(bootreason),
-		 "Boot info:\n"
-		 "Last boot reason: %s\n", s);
-	bootreason[n] = '\0';
-	return 1;
-}
-__setup("bootreason", device_boot_reason);
-
 static struct ram_console_platform_data ram_console_pdata = {
-	.bootinfo = bootreason,
+	.bootinfo = NULL,
 };
 
 static struct platform_device ram_console_device = {
@@ -1239,6 +1224,7 @@ static void __init apq8064_reserve(void)
 static void __init apq8064_early_reserve(void)
 {
 	reserve_info = &apq8064_reserve_info;
+
 }
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 /* Bandwidth requests (zero) if no vote placed */
@@ -3460,6 +3446,7 @@ static uint8_t spm_power_collapse_with_rpm_krait_v3[] __initdata = {
 	0x24, 0x30, 0x0f,
 };
 
+
 static struct msm_spm_seq_entry msm_spm_boot_cpu_seq_list[] __initdata = {
 	[0] = {
 		.mode = MSM_SPM_MODE_CLOCK_GATING,
@@ -4009,8 +3996,9 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_device_hsusb_host,
 	&android_usb_device,
 	&msm_device_wcnss_wlan,
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
-	&apq8064_device_qup_spi_gsbi5,
+	&apq8064_device_qup_spi_gsbi5, // Fortius AF
+#if 0 
+    &msm8930_device_qup_spi_gsbi1,
 #endif
 	&msm_device_iris_fm,
 	&apq8064_fmem_device,
@@ -4164,6 +4152,7 @@ static struct platform_device *cdp_devices[] __initdata = {
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif
+	&msm8064_pc_cntr,
 	&msm8064_cpu_slp_status,
 	&sec_device_jack,
 #ifdef CONFIG_SENSORS_SSP_C12SD
@@ -5066,7 +5055,6 @@ static void __init register_i2c_devices(void)
 		apq8064_camera_board_info.board_info,
 		apq8064_camera_board_info.num_i2c_board_info,
 	};
-
 	struct i2c_registry apq8064_front_camera_i2c_devices = {
 		I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_RUMI,
 		APQ_8064_GSBI7_QUP_I2C_BUS_ID,
@@ -5113,6 +5101,7 @@ static void __init register_i2c_devices(void)
 					mpq8064_i2c_devices[i].len);
 	}
 }
+
 
 static void enable_avc_i2c_bus(void)
 {
@@ -5318,12 +5307,11 @@ static void __init apq8064_common_init(void)
 	if (cpu_is_apq8064ab())
 		apq8064ab_update_krait_spm();
 	if (cpu_is_krait_v3()) {
-		struct msm_pm_init_data_type *pdata =
-				msm8064_pm_8x60.dev.platform_data;
-		pdata->retention_calls_tz = false;
+		msm_pm_set_tz_retention_flag(0);
 		apq8064ab_update_retention_spm();
+	} else {
+		msm_pm_set_tz_retention_flag(1);
 	}
-	platform_device_register(&msm8064_pm_8x60);
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
 	msm_spm_l2_init(msm_spm_l2_data);
 	msm_tsens_early_init(&apq_tsens_pdata);
@@ -5381,13 +5369,8 @@ static void __init apq8064_common_init(void)
 		}
 	}
 
-	rpmrs_level =
-		msm_rpmrs_levels[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT];
-	msm_hsic_pdata.swfi_latency = rpmrs_level.latency_us;
-	rpmrs_level =
-		msm_rpmrs_levels[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE];
-	msm_hsic_pdata.standalone_latency = rpmrs_level.latency_us;
-
+	msm_hsic_pdata.swfi_latency =
+		msm_rpmrs_levels[0].latency_us;
 	if (machine_is_apq8064_mtp() || machine_is_JF()) {
 		msm_hsic_pdata.log2_irq_thresh = 5,
 		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
@@ -5573,17 +5556,6 @@ static void __init samsung_jf_init(void)
 #if defined(CONFIG_BATTERY_SAMSUNG)
 	msm8960_init_battery();
 #endif
-
-	if (machine_is_mpq8064_hrd() || machine_is_mpq8064_dtv()) {
-#ifdef CONFIG_SERIAL_MSM_HS
-		/* GSBI6(2) - UARTDM_RX */
-		mpq8064_gsbi6_uartdm_pdata.wakeup_irq = gpio_to_irq(15);
-		mpq8064_device_uartdm_gsbi6.dev.platform_data =
-					&mpq8064_gsbi6_uartdm_pdata;
-#endif
-		platform_device_register(&mpq8064_device_uartdm_gsbi6);
-	}
-
 #ifdef CONFIG_SENSORS_SSP
 	clear_ssp_gpio();
 	sensor_power_on_vdd(SNS_PWR_ON, SNS_PWR_ON);

@@ -26,7 +26,7 @@ static char STANDARD_UI_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x02, //sharpen cc gamma 00 0 0
+	0x03, //sharpen cc gamma 00 0 0
 };
 
 static char STANDARD_UI_2[] = {
@@ -73,71 +73,71 @@ static char STANDARD_UI_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
-	0x04, //cc r1 0.2
-	0x8f,
+	0x04, //cc r1 0.1
+	0x48,
 	0x1f, //cc r2
-	0x88,
+	0xc4,
 	0x1f, //cc r3
-	0xe9,
+	0xf4,
 	0x1f, //cc g1
-	0xc3,
+	0xe1,
 	0x04, //cc g2
-	0x54,
+	0x2b,
 	0x1f, //cc g3
-	0xe9,
+	0xf4,
 	0x1f, //cc b1
-	0xc3,
+	0xe1,
 	0x1f, //cc b2
-	0x88,
+	0xc4,
 	0x04, //cc b3
-	0xb5,
+	0x5b,
 };
 
 static char DYNAMIC_UI_1[] = {
@@ -239,24 +239,24 @@ static char DYNAMIC_UI_2[] = {
 	0x17, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
-	0x04, //cc r1 0.28
-	0xc9,
+	0x04, //cc r1 0.18
+	0x81,
 	0x1f, //cc r2
-	0x58,
+	0x94,
 	0x1f, //cc r3
-	0xdf,
+	0xeb,
 	0x1f, //cc g1
-	0xaa,
+	0xc9,
 	0x04, //cc g2
-	0x77,
+	0x4c,
 	0x1f, //cc g3
-	0xdf,
+	0xeb,
 	0x1f, //cc b1
-	0xaa,
+	0xc9,
 	0x1f, //cc b2
-	0x58,
+	0x94,
 	0x04, //cc b3
-	0xfe,
+	0xa3,
 };
 
 static char MOVIE_UI_1[] = {
@@ -383,7 +383,7 @@ char AUTO_UI_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x02, //sharpen cc gamma 00 0 0
+	0x03, //sharpen cc gamma 00 0 0
 };
 
 char AUTO_UI_2[] = {
@@ -430,71 +430,71 @@ char AUTO_UI_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
-	0x04, //cc r1 0.2
-	0x8f,
+	0x04, //cc r1 0.1
+	0x48,
 	0x1f, //cc r2
-	0x88,
+	0xc4,
 	0x1f, //cc r3
-	0xe9,
+	0xf4,
 	0x1f, //cc g1
-	0xc3,
+	0xe1,
 	0x04, //cc g2
-	0x54,
+	0x2b,
 	0x1f, //cc g3
-	0xe9,
+	0xf4,
 	0x1f, //cc b1
-	0xc3,
+	0xe1,
 	0x1f, //cc b2
-	0x88,
+	0xc4,
 	0x04, //cc b3
-	0xb5,
+	0x5b,
 };
 
 ////////////////// GALLERY /////////////////////
@@ -503,7 +503,7 @@ static char STANDARD_GALLERY_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x0a, //sharpen cc gamma 00 0 0
+	0x0b, //sharpen cc gamma 00 0 0
 };
 
 static char STANDARD_GALLERY_2[] = {
@@ -550,51 +550,51 @@ static char STANDARD_GALLERY_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -860,7 +860,7 @@ char AUTO_GALLERY_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x0a, //sharpen cc gamma 00 0 0
+	0x0b, //sharpen cc gamma 00 0 0
 };
 
 char AUTO_GALLERY_2[] = {
@@ -907,51 +907,51 @@ char AUTO_GALLERY_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -981,7 +981,7 @@ static char STANDARD_VIDEO_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x0e, //sharpen cc gamma 00 0 0
+	0x07, //sharpen cc gamma 00 0 0
 };
 
 static char STANDARD_VIDEO_2[] = {
@@ -1028,51 +1028,51 @@ static char STANDARD_VIDEO_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -1100,7 +1100,7 @@ static char DYNAMIC_VIDEO_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x0f, //sharpen cc gamma 00 0 0
+	0x0b, //sharpen cc gamma 00 0 0
 };
 
 static char DYNAMIC_VIDEO_2[] = {
@@ -1338,7 +1338,7 @@ char AUTO_VIDEO_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x0e, //sharpen cc gamma 00 0 0
+	0x07, //sharpen cc gamma 00 0 0
 };
 
 char AUTO_VIDEO_2[] = {
@@ -1385,51 +1385,51 @@ char AUTO_VIDEO_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -1459,7 +1459,7 @@ static char STANDARD_VT_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x0e, //sharpen cc gamma 00 0 0
+	0x0b, //sharpen cc gamma 00 0 0
 };
 
 static char STANDARD_VT_2[] = {
@@ -1506,51 +1506,51 @@ static char STANDARD_VT_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -1578,7 +1578,7 @@ static char DYNAMIC_VT_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x0f, //sharpen cc gamma 00 0 0
+	0x0b, //sharpen cc gamma 00 0 0
 };
 
 static char DYNAMIC_VT_2[] = {
@@ -1816,7 +1816,7 @@ char AUTO_VT_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x0e, //sharpen cc gamma 00 0 0
+	0x0b, //sharpen cc gamma 00 0 0
 };
 
 char AUTO_VT_2[] = {
@@ -1863,51 +1863,51 @@ char AUTO_VT_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -1937,7 +1937,7 @@ static char CAMERA_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x00, //sharpen cc gamma 00 0 0
+	0x03, //sharpen cc gamma 00 0 0
 };
 
 static char CAMERA_2[] = {
@@ -1984,71 +1984,71 @@ static char CAMERA_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
-	0x04, //cc r1 0.06
-	0x2b,
+	0x04, //cc r1 0.1
+	0x48,
 	0x1f, //cc r2
-	0xdc,
+	0xc4,
 	0x1f, //cc r3
-	0xf9,
+	0xf4,
 	0x1f, //cc g1
-	0xee,
+	0xe1,
 	0x04, //cc g2
-	0x19,
+	0x2b,
 	0x1f, //cc g3
-	0xf9,
+	0xf4,
 	0x1f, //cc b1
-	0xee,
+	0xe1,
 	0x1f, //cc b2
-	0xdc,
+	0xc4,
 	0x04, //cc b3
-	0x36,
+	0x5b,
 };
 
 char AUTO_CAMERA_1[] = {
@@ -2692,7 +2692,7 @@ char STANDARD_BROWSER_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x02, //sharpen cc gamma 00 0 0
+	0x03, //sharpen cc gamma 00 0 0
 };
 
 char STANDARD_BROWSER_2[] = {
@@ -2739,51 +2739,51 @@ char STANDARD_BROWSER_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -3049,7 +3049,7 @@ char AUTO_BROWSER_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x02, //sharpen cc gamma 00 0 0
+	0x03, //sharpen cc gamma 00 0 0
 };
 
 char AUTO_BROWSER_2[] = {
@@ -3096,51 +3096,51 @@ char AUTO_BROWSER_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -3170,7 +3170,7 @@ char AUTO_EBOOK_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x02, //sharpen cc gamma 00 0 0
+	0x03, //sharpen cc gamma 00 0 0
 };
 
 char AUTO_EBOOK_2[] = {
@@ -3217,51 +3217,51 @@ char AUTO_EBOOK_2[] = {
 	0xec, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1
@@ -3289,7 +3289,7 @@ char STANDARD_EBOOK_1[] = {
 	0x01, //mdnie_en
 	0x00, //data_width mask 00 000
 	0x33, //scr_roi 1 scr algo_roi 1 algo 00 1 0 00 1 0
-	0x02, //sharpen cc gamma 00 0 0
+	0x03, //sharpen cc gamma 00 0 0
 };
 
 char STANDARD_EBOOK_2[] = {
@@ -3336,51 +3336,51 @@ char STANDARD_EBOOK_2[] = {
 	0xff, //scr Wb Wr
 	0x00, //scr Kb Kr
 	0x00, //curve 1 b
-	0x20, //curve 1 a
+	0x1b, //curve 1 a
 	0x00, //curve 2 b
-	0x20, //curve 2 a
+	0x1b, //curve 2 a
 	0x00, //curve 3 b
-	0x20, //curve 3 a
+	0x1b, //curve 3 a
 	0x00, //curve 4 b
-	0x20, //curve 4 a
-	0x02, //curve 5 b
+	0x1b, //curve 4 a
+	0x00, //curve 5 b
 	0x1b, //curve 5 a
-	0x02, //curve 6 b
+	0x00, //curve 6 b
 	0x1b, //curve 6 a
-	0x02, //curve 7 b
+	0x00, //curve 7 b
 	0x1b, //curve 7 a
-	0x02, //curve 8 b
+	0x00, //curve 8 b
 	0x1b, //curve 8 a
-	0x09, //curve 9 b
-	0xa6, //curve 9 a
-	0x09, //curve10 b
-	0xa6, //curve10 a
-	0x09, //curve11 b
-	0xa6, //curve11 a
-	0x09, //curve12 b
-	0xa6, //curve12 a
-	0x00, //curve13 b
-	0x20, //curve13 a
-	0x00, //curve14 b
-	0x20, //curve14 a
-	0x00, //curve15 b
-	0x20, //curve15 a
-	0x00, //curve16 b
-	0x20, //curve16 a
-	0x00, //curve17 b
-	0x20, //curve17 a
-	0x00, //curve18 b
-	0x20, //curve18 a
-	0x00, //curve19 b
-	0x20, //curve19 a
-	0x00, //curve20 b
-	0x20, //curve20 a
-	0x00, //curve21 b
-	0x20, //curve21 a
-	0x00, //curve22 b
-	0x20, //curve22 a
-	0x00, //curve23 b
-	0x20, //curve23 a
+	0x00, //curve 9 b
+	0x1b, //curve 9 a
+	0x00, //curve10 b
+	0x1b, //curve10 a
+	0x05, //curve11 b
+	0x9f, //curve11 a
+	0x05, //curve12 b
+	0x9f, //curve12 a
+	0x05, //curve13 b
+	0x9f, //curve13 a
+	0x05, //curve14 b
+	0x9f, //curve14 a
+	0x05, //curve15 b
+	0x9f, //curve15 a
+	0x05, //curve16 b
+	0x9f, //curve16 a
+	0x05, //curve17 b
+	0x9f, //curve17 a
+	0x05, //curve18 b
+	0x9f, //curve18 a
+	0x08, //curve19 b
+	0xa0, //curve19 a
+	0x10, //curve20 b
+	0xa2, //curve20 a
+	0x10, //curve21 b
+	0xa2, //curve21 a
+	0x10, //curve22 b
+	0xa2, //curve22 a
+	0x10, //curve23 b
+	0xa2, //curve23 a
 	0x00, //curve24 b
 	0xFF, //curve24 a
 	0x04, //cc r1 0.1

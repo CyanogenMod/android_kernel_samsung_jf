@@ -22,7 +22,11 @@ static struct mipi_panel_data mipi_pd;
 enum {
 	GAMMA_0CD	=	1,
 	GAMMA_5CD	=	2,
+#if defined (CONFIG_MACH_JACTIVE_EUR) || defined (CONFIG_MACH_JACTIVE_ATT)
+	GAMMA_10CD	=	3, // MIN 10 from platform
+#else
 	GAMMA_10CD	=	4, // MIN 10 from platform
+#endif
 	GAMMA_15CD	=	7,
 	GAMMA_20CD	=	10,
 	GAMMA_25CD	=	13,
@@ -121,16 +125,23 @@ static char renesas_backlight_control[] = {
 	0x2C,
 };
 
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
 static char renesas_teon_control[] = {
 	0x35,
 	0x01,
 };
 
+static char renesas_teoff_control[] = {
+	0x35,
+	0x00,
+};
+#endif
+
 static char renesas_memory_access_control[] = {
 	0x36,
 	0xC0,
 };
-
+#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 static char renesas_F0_control[] = {
 	0xF0,
 	0x5A,0x5A,
@@ -157,12 +168,25 @@ static char renesas_FB_control[] = {
 	0x19,0x1D,0x20,0x22,0x24,0x23,0x22,0x1C,0x14,0x10,
 	0x12,0x15,0x1B,0x1A,0x18,0x15,0x10,0x05,0x06,
 };
-
+#endif
 static char renesas_display_on[] = { 0x29, /* no param */ };
 static char renesas_display_off[] = { 0x28, /* no param */ };
 static char renesas_sleep_in[] = { 0x10, /* no param */ };
 static char renesas_sleep_out[] = { 0x11, /* no param */ };
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+static char renesas_cabc_off_test[] = {
+	0xCE,
+	0x80, 0x19, 0x19, 0x19, 0x19,
+	0x19, 0x19, 0x19, 0x19, 0x19,
+	0x19, 0x19, 0x19, 0x19, 
+};
+
+static char renesas_cabc_on_test[] = {
+	0xCE,
+	0x00,
+};
+#endif
 static struct dsi_cmd_desc renesas_ready_to_on_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_brightness_setting), renesas_brightness_setting},
@@ -173,24 +197,34 @@ static struct dsi_cmd_desc renesas_ready_to_on_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_backlight_control), renesas_backlight_control},
 
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_teon_control), renesas_teon_control},
+#endif
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 120,
 		sizeof(renesas_sleep_out), renesas_sleep_out},
-
+#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(renesas_F0_control), renesas_F0_control},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(renesas_FA_control), renesas_FA_control},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(renesas_FB_control), renesas_FB_control},
-
+#endif
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_display_on), renesas_display_on},
 };
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+static struct dsi_cmd_desc panel_off_cmds[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 40,  sizeof(renesas_display_off), renesas_display_off},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 120, sizeof(renesas_sleep_in), renesas_sleep_in},
+};
+#else
 static struct dsi_cmd_desc panel_off_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_display_off), renesas_display_off},
 };
+#endif
+
 
 static struct dsi_cmd_desc panel_late_on_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 5,
@@ -231,16 +265,35 @@ static struct dsi_cmd_desc brightness_packet[] = {
 
 #if defined(AUTO_BRIGHTNESS_CABC_FUNCTION)
 static struct dsi_cmd_desc panel_cabc_enable_cmds[] = {
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(renesas_cabc_on_test), renesas_cabc_on_test},
+#endif
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_cabc_enable_control), renesas_cabc_enable_control},
 };
 
 static struct dsi_cmd_desc panel_cabc_disable_cmds[] = {
+#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(renesas_cabc_off_test), renesas_cabc_off_test},
+#endif
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
 		sizeof(renesas_cabc_disable_control), renesas_cabc_disable_control},
 };
 #endif
 
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
+static struct dsi_cmd_desc panel_hsync_on_cmds[] = {
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(renesas_teon_control), renesas_teon_control},
+};
+
+static struct dsi_cmd_desc panel_hsync_off_cmds[] = {
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(renesas_teoff_control), renesas_teoff_control},
+};
+#endif
 static int get_candela_index(int bl_level)
 {
 	int backlightlevel;
@@ -462,6 +515,12 @@ static struct mipi_panel_data mipi_pd = {
 	.cabc_disable	= {panel_cabc_disable_cmds
 				, ARRAY_SIZE(panel_cabc_disable_cmds)},
 #endif
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_PREVENT_HSYNC_LEAKAGE)
+	.hsync_on = {panel_hsync_on_cmds
+				, ARRAY_SIZE(panel_hsync_on_cmds)},
+	.hsync_off	= {panel_hsync_off_cmds
+				, ARRAY_SIZE(panel_hsync_off_cmds)},
+#endif
 };
 
 static struct mipi_dsi_phy_ctrl dsi_video_mode_phy_db = {
@@ -469,8 +528,13 @@ static struct mipi_dsi_phy_ctrl dsi_video_mode_phy_db = {
 	/* regulator */
 	.regulator = {0x03, 0x0a, 0x04, 0x00, 0x20},
 	/* timing */
+#if defined (CONFIG_MACH_JACTIVE_EUR) || defined (CONFIG_MACH_JACTIVE_ATT)
+	.timing = {0x5C, 0x37, 0x39, 0x00, 0x62, 0x57, 0x3B, 0x3B,
+	0x44, 0x03, 0x04, 0xa0},
+#else
 	.timing = {0xD9, 0x40, 0x3C, 0x00, 0x52, 0x5E, 0x32, 0x40,
 	0x3C, 0x03, 0x04, 0xa0},
+#endif
 	/* phy ctrl */
 	.ctrl = {0x5f, 0x00, 0x00, 0x10},
 	/* strength */
@@ -526,9 +590,11 @@ static int __init mipi_cmd_samsung_tft_full_hd_pt_init(void)
 	pinfo.bl_max = 255;
 	pinfo.bl_min = 1;
 	pinfo.fb_num = 2;
-
+#if defined (CONFIG_MACH_JACTIVE_EUR) || defined (CONFIG_MACH_JACTIVE_ATT)
+	pinfo.clk_rate = 906000000;
+#else
 	pinfo.clk_rate = 898000000;
-
+#endif
 	pinfo.mipi.mode = DSI_VIDEO_MODE;
 	pinfo.mipi.pulse_mode_hsa_he = FALSE;
 	pinfo.mipi.hfp_power_stop = TRUE;

@@ -493,7 +493,7 @@ static ssize_t brightness_level_show(struct device *dev,
 {
 	int count;
 
-	count = snprintf(buf, sizeof(buf), "%d\n", vol_mv_level);
+	count = snprintf(buf, (int)sizeof(buf), "%d\n", vol_mv_level);
 
 	printk(KERN_DEBUG "[TouchKey] Touch LED voltage = %d\n", vol_mv_level);
 	return count;
@@ -1506,7 +1506,7 @@ static int __devinit cypress_touchkey_probe(struct i2c_client *client,
 	info->power_onoff = pdata->power_onoff;
 	info->touchkey_update_status = 0;
 	memcpy(info->keycode, pdata->touchkey_keycode,
-			sizeof(pdata->touchkey_keycode));
+			(int)sizeof(pdata->touchkey_keycode));
 	snprintf(info->phys, sizeof(info->phys),
 			"%s/input0", dev_name(&client->dev));
 	input_dev->name = "sec_touchkey";
