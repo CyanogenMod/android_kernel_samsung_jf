@@ -10,14 +10,6 @@
  * GNU General Public License for more details.
  *
  */
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
-#include <media/msm_camera_jactive.h>
-#else
-
-#ifdef CONFIG_MACH_JF
-#include <media/msm_camera_jf.h>
-#else
-
 #ifndef __LINUX_MSM_CAMERA_H
 #define __LINUX_MSM_CAMERA_H
 
@@ -254,13 +246,13 @@
 #define MSM_CAM_IOCTL_AXI_LOW_POWER_MODE \
 	_IOWR(MSM_CAM_IOCTL_MAGIC, 70, uint8_t *)
 
+#ifndef QCT_TEMP /* QCT 10112012 - IOCTL call*/
 #define MSM_CAM_IOCTL_INTF_MCTL_MAPPING_CFG \
 	_IOR(MSM_CAM_IOCTL_MAGIC, 71, struct intf_mctl_mapping_cfg *)
+#endif
 
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #define MSM_CAM_IOCTL_VFE_STATS_VERSION\
 	_IOWR(MSM_CAM_IOCTL_MAGIC, 72, uint32_t *)
-#endif
 
 struct ioctl_native_cmd {
 	unsigned short mode;
@@ -317,19 +309,16 @@ struct msm_mctl_post_proc_cmd {
 #define MAX_ACTUATOR_INIT_SET 12
 #define MAX_ACTUATOR_TYPE_SIZE 32
 #define MAX_ACTUATOR_REG_TBL_SIZE 8
-#define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
+
 
 #define MSM_MAX_CAMERA_CONFIGS 2
 
-#define MSM_ACTUATOR_MOVE_SIGNED_FAR -1
-#define MSM_ACTUATOR_MOVE_SIGNED_NEAR  1
-
-#define PP_SNAP  BIT(0)
-#define PP_RAW_SNAP BIT(1)
-#define PP_PREV  BIT(2)
-#define PP_THUMB BIT(3)
-#define PP_RDI   BIT(4)
+#define PP_SNAP  0x01
+#define PP_RAW_SNAP ((0x01)<<1)
+#define PP_PREV  ((0x01)<<2)
+#define PP_THUMB ((0x01)<<3)
 #if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+#define PP_RDI_PREV ((0x01)<<4) //Kim
 #define PP_MASK		(PP_SNAP|PP_RAW_SNAP|PP_PREV|PP_THUMB|PP_RDI_PREV)
 #else
 #define PP_MASK		(PP_SNAP|PP_RAW_SNAP|PP_PREV|PP_THUMB)
@@ -590,7 +579,6 @@ struct msm_camera_cfg_cmd {
 #define CMD_AXI_STOP   0xE2
 #define CMD_AXI_RESET  0xE3
 #define CMD_AXI_ABORT  0xE4
-#define CMD_AXI_STOP_RECOVERY  0xE5
 
 
 
@@ -928,13 +916,8 @@ struct msm_stats_buf {
 #define MSM_V4L2_PID_INST_HANDLE            (V4L2_CID_PRIVATE_BASE+16)
 #define MSM_V4L2_PID_MMAP_INST              (V4L2_CID_PRIVATE_BASE+17)
 #define MSM_V4L2_PID_PP_PLANE_INFO          (V4L2_CID_PRIVATE_BASE+18)
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #define MSM_V4L2_PID_PREVIEW_SIZE           (V4L2_CID_PRIVATE_BASE+19)
 #define MSM_V4L2_PID_MAX                    MSM_V4L2_PID_PREVIEW_SIZE
-#else
-#define MSM_V4L2_PID_AVTIMER                (V4L2_CID_PRIVATE_BASE+19)
-#define MSM_V4L2_PID_MAX                     MSM_V4L2_PID_AVTIMER
-#endif
 
 /* camera operation mode for video recording - two frame output queues */
 #define MSM_V4L2_CAM_OP_DEFAULT         0
@@ -1042,7 +1025,6 @@ struct msm_snapshot_pp_status {
 #define CFG_CONFIG_VREG_ARRAY         52
 #define CFG_CONFIG_CLK_ARRAY          53
 #define CFG_GPIO_OP                   54
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #define CFG_EEPROM_DIRECT_DATA_READ	  55
 #define CFG_EEPROM_DIRECT_DATA_WRITE  56
 #define CFG_EEPROM_DIRECT_DATA_ERASE  57
@@ -1050,20 +1032,13 @@ struct msm_snapshot_pp_status {
 #define CFG_SET_VISION_AE             59
 #define CFG_FINAL_AF				  60 	//SEMCO Request by Lizk
 #define CFG_MAX                       61
-#else
-#define CFG_SET_VISION_MODE           55
-#define CFG_SET_VISION_AE             56
-#define CFG_HDR_UPDATE                57
-#define CFG_ACTUAOTOR_REG_INIT        58
-#define CFG_MAX                       59
-#endif
+
 
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
 
 
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #define CAMERA_MODE_INIT		0
 #define CAMERA_MODE_PREVIEW		1
 #define CAMERA_MODE_CAPTURE		2
@@ -1077,21 +1052,12 @@ struct msm_snapshot_pp_status {
 #define SENSOR_HFR_90FPS_MODE		5
 #define SENSOR_HFR_120FPS_MODE		6
 #define SENSOR_INVALID_MODE		7
-#else
-#define SENSOR_PREVIEW_MODE		0
-#define SENSOR_SNAPSHOT_MODE		1
-#define SENSOR_RAW_SNAPSHOT_MODE	2
-#define SENSOR_HFR_60FPS_MODE 3
-#define SENSOR_HFR_90FPS_MODE 4
-#define SENSOR_HFR_120FPS_MODE 5
-#endif
 
 #define SENSOR_QTR_SIZE			0
 #define SENSOR_FULL_SIZE		1
 #define SENSOR_QVGA_SIZE		2
 #define SENSOR_INVALID_SIZE		3
 
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #define CAMERA_EFFECT_OFF		0
 #define CAMERA_EFFECT_MONO		1
 #define CAMERA_EFFECT_NEGATIVE		2
@@ -1170,7 +1136,8 @@ struct msm_snapshot_pp_status {
 #define CAMERA_AF_MACRO		1
 #define CAMERA_AF_AUTO		2
 
-#endif
+
+
 
 /* QRD */
 #define CAMERA_EFFECT_BW		10
@@ -1342,7 +1309,6 @@ enum msm_v4l2_power_line_frequency {
 	MSM_V4L2_POWER_LINE_AUTO,
 };
 
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 enum msm_v4l2_fw_control_mode {
 	CAM_FW_MODE_NONE = 0,
 	CAM_FW_MODE_VERSION,
@@ -1350,7 +1316,6 @@ enum msm_v4l2_fw_control_mode {
 	CAM_FW_MODE_DUMP,
 	CAM_FW_MODE_MAX,
 };
-#endif
 
 #define CAMERA_ISO_TYPE_AUTO           0
 #define CAMEAR_ISO_TYPE_HJR            1
@@ -1365,20 +1330,11 @@ struct sensor_pict_fps {
 	uint16_t pictfps;
 };
 
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 struct exp_gain_cfg {
 /*	uint16_t gain;*/
 	uint32_t gain;
 	uint32_t line;
 };
-#else
-struct exp_gain_cfg {
-	uint16_t gain;
-	uint32_t line;
-	int32_t luma_avg;
-	uint16_t fgain;
-};
-#endif
 
 struct focus_cfg {
 	int32_t steps;
@@ -1487,19 +1443,6 @@ struct msm_sensor_output_reg_addr_t {
 	uint16_t line_length_pclk;
 	uint16_t frame_length_lines;
 };
-
-#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
-enum sensor_hdr_update_t {
-	SENSOR_HDR_UPDATE_AWB,
-	SENSOR_HDR_UPDATE_LSC,
-};
-
-struct sensor_hdr_update_parm_t {
-	enum sensor_hdr_update_t type;
-	uint16_t awb_gain_r, awb_gain_b;
-	uint8_t lsc_table[504];
-};
-#endif
 
 struct sensor_driver_params_type {
 	struct msm_camera_i2c_reg_setting *init_settings;
@@ -1817,9 +1760,8 @@ struct sensor_cfg_data {
 		struct sensor_output_info_t output_info;
 		struct msm_eeprom_data_t eeprom_data;
 		struct csi_lane_params_t csi_lane_params;
-#if !defined(CONFIG_MACH_JACTIVE_ATT) && !defined(CONFIG_MACH_JACTIVE_EUR)
-		struct sensor_hdr_update_parm_t hdr_update_parm;
-#endif
+		int32_t vision_mode_enable;
+		int vision_ae;
 		/* QRD */
 		uint16_t antibanding;
 		uint8_t contrast;
@@ -1834,8 +1776,6 @@ struct sensor_cfg_data {
 		int is_autoflash;
 		struct mirror_flip mirror_flip;
 		void *setting;
-		int32_t vision_mode_enable;
-		int32_t vision_ae;
 	} cfg;
 };
 
@@ -1864,10 +1804,8 @@ struct damping_params_t {
 enum actuator_type {
 	ACTUATOR_VCM,
 	ACTUATOR_PIEZO,
-	ACTUATOR_HALL_EFFECT,
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
-	ACTUATOR_HVCA,
-#endif
+	ACTUATOR_HALL_EFFECT,	
+	ACTUATOR_HVCA,	
 };
 
 enum msm_actuator_data_type {
@@ -1993,15 +1931,14 @@ struct msm_calib_wb {
 struct msm_calib_af {
 	uint16_t macro_dac;
 	uint16_t inf_dac;
-	uint16_t start_dac;
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+
 	uint16_t macro_dac1;	/*Mechanical MACRO*/
 	uint16_t macro_dac2;	/*10cm*/	
 	uint16_t inf_dac1;		/*Mechanical INFINITY*/
-	uint16_t inf_dac2;		/*1.05M*/
+	uint16_t inf_dac2;		/*1.05M*/	
+	uint16_t start_dac;
 	uint16_t pid_dac;		/* Randy PID */
 	uint16_t cal_offset_dac ;		/* SEMCO by Liz 05112013 */
-#endif
 };
 
 struct msm_calib_lsc {
@@ -2027,23 +1964,20 @@ struct msm_calib_raw {
 	uint8_t *data;
 	uint32_t size;
 };
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
+
 struct eeprom_data_access_t {
 	uint8_t *data;
 	uint32_t addr;
 	uint32_t num_bytes;
 };
-#endif
 struct msm_camera_eeprom_info_t {
 	struct msm_eeprom_support af;
 	struct msm_eeprom_support wb;
 	struct msm_eeprom_support lsc;
 	struct msm_eeprom_support dpc;
 	struct msm_eeprom_support raw;
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 	struct msm_eeprom_support gld_wb;
 	struct msm_eeprom_support gld_lsc;
-#endif
 };
 
 struct msm_eeprom_cfg_data {
@@ -2052,9 +1986,7 @@ struct msm_eeprom_cfg_data {
 	union {
 		struct msm_eeprom_data_t get_data;
 		struct msm_camera_eeprom_info_t get_info;
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 		struct eeprom_data_access_t direct_access;
-#endif
 	} cfg;
 };
 
@@ -2479,7 +2411,6 @@ struct intf_mctl_mapping_cfg {
 #define SET_VIDEO_INST_IDX(handle, data)	\
 	(handle |= (0x1 << 7) | (data & 0x7F))
 
-#if defined(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 /* Samsung native cmd code */
 #define EXT_CAM_SNAPSHOT_MODE	1
 #define EXT_CAM_AF	2
@@ -2526,9 +2457,5 @@ struct intf_mctl_mapping_cfg {
 #define EXT_CAM_SET_FACTORY_BIN 46
 #define EXT_CAM_START_GOLF_SHOT 47
 #define EXT_CAM_STOP_GOLF_SHOT 48
-#endif
 
 #endif /* __LINUX_MSM_CAMERA_H */
-#endif
-#endif
-
