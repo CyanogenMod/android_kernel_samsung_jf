@@ -10,8 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+#ifndef(CONFIG_MACH_JACTIVE_ATT) || defined(CONFIG_MACH_JACTIVE_EUR)
 #ifdef CONFIG_MACH_JF
 #include <media/msm_camera_jf.h>
+#endif
 #else
 
 #ifndef __LINUX_MSM_CAMERA_H
@@ -2526,3 +2528,4 @@ struct intf_mctl_mapping_cfg {
 
 #endif /* __LINUX_MSM_CAMERA_H */
 #endif
+
