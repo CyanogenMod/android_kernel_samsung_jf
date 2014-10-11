@@ -3,7 +3,7 @@
  * Linux cfg80211 driver
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -10443,7 +10443,7 @@ s32 wl_cfg80211_attach(struct net_device *ndev, void *data)
 	err = wl_cfg80211_btcoex_init(wl);
 	if (err)
 		goto cfg80211_attach_out;
-#endif
+#endif 
 
 	wlcfg_drv_priv = wl;
 
@@ -10472,7 +10472,7 @@ void wl_cfg80211_detach(void *para)
 
 #if defined(COEX_DHCP)
 	wl_cfg80211_btcoex_deinit(wl);
-#endif
+#endif 
 
 	wl_setup_rfkill(wl, FALSE);
 #ifdef DEBUGFS_CFG80211

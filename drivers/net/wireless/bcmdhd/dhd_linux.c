@@ -3,7 +3,7 @@
  * Basically selected code segments from usb-cdc.c and usb-rndis.c
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -55,6 +55,7 @@
 #include <bcmutils.h>
 #include <bcmendian.h>
 #include <bcmdevs.h>
+#include <bcmsdbus.h>
 
 #include <proto/ethernet.h>
 #include <proto/bcmip.h>
@@ -174,7 +175,7 @@ extern void dhd_enable_oob_intr(struct dhd_bus *bus, bool enable);
 #endif /* defined(OOB_INTR_ONLY) || defined(BCMSPI_ANDROID) */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (1)
 static void dhd_hang_process(struct work_struct *work);
-#endif
+#endif 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
 MODULE_LICENSE("GPL v2");
 #endif /* LinuxVer */
@@ -632,6 +633,7 @@ static char dhd_version[] = "Dongle Host Driver, version " EPI_VERSION_STR
 "\nCompiled in " SRCBASE " on " __DATE__ " at " __TIME__
 #endif
 ;
+int dhd_dev_reset(struct net_device *dev, uint8 flag);
 static void dhd_net_if_lock_local(dhd_info_t *dhd);
 static void dhd_net_if_unlock_local(dhd_info_t *dhd);
 static void dhd_suspend_lock(dhd_pub_t *dhdp);
@@ -2223,7 +2225,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 				PKTFREE(dhdp->osh, pktbuf, TRUE);
 				continue;
 			}
-#endif
+#endif 
 		} else {
 			tout_rx = DHD_PACKET_TIMEOUT_MS;
 		}
@@ -3320,7 +3322,7 @@ exit:
 		}
 	}
 #endif /* SUPPORT_DEEP_SLEEP */
-#endif
+#endif 
 	dhd->pub.rxcnt_timeout = 0;
 	dhd->pub.txcnt_timeout = 0;
 
@@ -3391,18 +3393,6 @@ dhd_open(struct net_device *net)
 	}
 #endif /* CUSTOMER_HW4 */
 
-#if defined(SUPPORT_MULTIPLE_REVISION)
-	/* dhd_open() can be call several times when loading failed */
-	if (strlen(firmware_path) != 0) {
-		ret = concate_revision(dhd->pub.bus, fw_path, MOD_PARAM_PATHLEN,
-			nv_path, MOD_PARAM_PATHLEN);
-		if (ret != 0) {
-			DHD_ERROR(("%s: fail to concatnate revison \n", __FUNCTION__));
-			goto exit;
-		}
-	}
-#endif /* SUPPORT_MULTIPLE_REVISION */
-
 #ifdef CUSTOMER_HW4
 #ifdef FIX_CPU_MIN_CLOCK
 	if (strstr(fw_path, "_apsta")) {
@@ -3427,7 +3417,7 @@ dhd_open(struct net_device *net)
 		goto exit;
 	}
 
-#endif
+#endif 
 
 	ifidx = dhd_net2idx(dhd, net);
 	DHD_TRACE(("%s: ifidx %d\n", __FUNCTION__, ifidx));
@@ -3449,6 +3439,8 @@ dhd_open(struct net_device *net)
 #if defined(WL_CFG80211)
 		DHD_ERROR(("\n%s\n", dhd_version));
 		if (!dhd_download_fw_on_driverload) {
+			/* update firmware and nvram path to SDIO bus */
+			dhd_bus_update_fw_nv_path(dhd->pub.bus, fw_path, nv_path);
 			ret = wl_android_wifi_on(net);
 			if (ret != 0) {
 				DHD_ERROR(("%s : wl_android_wifi_on failed (%d)\n",
@@ -3479,7 +3471,7 @@ dhd_open(struct net_device *net)
 			}
 		}
 #endif /* SUPPORT_DEEP_SLEEP */
-#endif
+#endif 
 
 		if (dhd->pub.busstate != DHD_BUS_DATA) {
 
@@ -3710,14 +3702,6 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 		bzero(nv_path, MOD_PARAM_PATHLEN);
 		strncpy(nv_path, nvram_path, sizeof(nv_path) -1);
 	}
-#if defined(SUPPORT_MULTIPLE_REVISION)
-	if (strlen(fw_path) != 0 &&
-		concate_revision(bus, fw_path, MOD_PARAM_PATHLEN,
-		nv_path, MOD_PARAM_PATHLEN) != 0) {
-		DHD_ERROR(("%s: fail to concatnate revison \n", __FUNCTION__));
-		goto fail;
-	}
-#endif /* SUPPORT_MULTIPLE_REVISION */
 
 	/* Allocate etherdev, including space for private structure */
 	if (!(net = alloc_etherdev(sizeof(dhd)))) {
@@ -4472,7 +4456,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		}
 #else
 	(void)concurrent_mode;
-#endif
+#endif 
 	}
 
 	DHD_ERROR(("Firmware up: op_mode=0x%04x, "
@@ -4598,7 +4582,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 
 #if defined(SOFTAP)
 	if (ap_fw_loaded == FALSE)
-#endif
+#endif 
 		if (!(dhd->op_mode & DHD_FLAG_HOSTAP_MODE)) {
 			if ((res = dhd_keep_alive_onoff(dhd)) < 0)
 				DHD_ERROR(("%s set keeplive failed %d\n",
@@ -4835,7 +4819,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #if defined(PROP_TXSTATUS) && defined(PROP_TXSTATUS_VSDB)
 	bcm_mkiovar("ampdu_hostreorder", (char *)&hostreorder, 4, buf, sizeof(buf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, sizeof(buf), TRUE, 0);
-#endif
+#endif 
 #endif /* DISABLE_11N */
 
 #if defined(VSDB) && defined(CUSTOMER_HW4)
@@ -5259,10 +5243,14 @@ dhd_net_attach(dhd_pub_t *dhdp, int ifidx)
 
 #if 1 && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	if (ifidx == 0) {
+		if (!dhd_download_fw_on_driverload) {
+			dhd_dev_reset(net, TRUE);
+			sdioh_stop(NULL);
+		}
 		dhd_registration_check = TRUE;
 		up(&dhd_registration_sem);
 	}
-#endif
+#endif 
 	return 0;
 
 fail:
@@ -5550,7 +5538,7 @@ dhd_module_init(void)
 		DHD_ERROR(("Invalid module parameters.\n"));
 		error = -EINVAL;
 	} while (0);
-#endif
+#endif 
 	if (error)
 		goto fail_0;
 
@@ -5596,7 +5584,7 @@ dhd_module_init(void)
 		goto fail_1;
 #endif /* defined(CONFIG_WIFI_CONTROL_FUNC) */
 
-#endif
+#endif 
 
 #if defined(CONFIG_WIFI_CONTROL_FUNC) && defined(BCMLXSDMMC)
 	/* If the wifi_set_power() is failed,
@@ -5611,7 +5599,7 @@ dhd_module_init(void)
 
 #if 1 && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	sema_init(&dhd_registration_sem, 0);
-#endif
+#endif 
 
 
 	error = dhd_bus_register();
@@ -6165,7 +6153,7 @@ void dhd_wait_for_event(dhd_pub_t *dhd, bool *lockvar)
 	dhd_os_sdunlock(dhd);
 	wait_event_timeout(dhdinfo->ctrl_wait, (*lockvar == FALSE), timeout);
 	dhd_os_sdlock(dhd);
-#endif
+#endif 
 	return;
 }
 
@@ -6347,7 +6335,7 @@ dhd_dev_init_ioctl(struct net_device *dev)
 
 	dhd_process_cid_mac(&dhd->pub, TRUE);
 
-	if ((ret = dhd_preinit_ioctls(&dhd->pub)) < 0)
+	if ((ret = dhd_prot_init(&dhd->pub)) < 0)
 		goto done;
 
 	dhd_process_cid_mac(&dhd->pub, FALSE);

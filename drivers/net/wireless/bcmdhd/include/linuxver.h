@@ -3,7 +3,7 @@
  * Pave over some 2.2 versus 2.4 versus 2.6 kernel differences.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -97,7 +97,7 @@
 #ifndef flush_scheduled_work
 #define flush_scheduled_work() flush_scheduled_tasks()
 #endif
-#endif
+#endif	
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #define DAEMONIZE(a)
@@ -106,14 +106,14 @@
 #define DAEMONIZE(a) daemonize(a); \
 	allow_signal(SIGKILL); \
 	allow_signal(SIGTERM);
-#else
+#else 
 #define RAISE_RX_SOFTIRQ() \
 	cpu_raise_softirq(smp_processor_id(), NET_RX_SOFTIRQ)
 #define DAEMONIZE(a) daemonize(); \
 	do { if (a) \
 		strncpy(current->comm, a, MIN(sizeof(current->comm), (strlen(a)))); \
 	} while (0);
-#endif
+#endif 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
 #define	MY_INIT_WORK(_work, _func)	INIT_WORK(_work, _func)
@@ -155,11 +155,11 @@ typedef irqreturn_t(*FN_ISR) (int irq, void *dev_id, struct pt_regs *ptregs);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 #include <linux/sched.h>
-#endif
+#endif 
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
 #include <linux/sched/rt.h>
-#endif
+#endif 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
 #include <net/lib80211.h>
@@ -474,7 +474,7 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #ifndef HAVE_FREE_NETDEV
 #define free_netdev(dev)		kfree(dev)
 #endif
-#endif
+#endif 
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 
@@ -493,11 +493,11 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #endif
 
 typedef struct {
-	void	*parent;
+	void	*parent;  
 	char	*proc_name;
 	struct	task_struct *p_task;
 	long	thr_pid;
-	int		prio;
+	int		prio; 
 	struct	semaphore sema;
 	int	terminated;
 	struct	completion completed;
@@ -540,7 +540,7 @@ static inline bool binary_sema_up(tsk_ctl_t *tsk)
 		tsk->up_cnt++;
 		sem_up = TRUE;
 	} else if (tsk->up_cnt == 1) {
-
+		
 	} else
 		DBG_THR(("dhd_sched_dpc: unexpected up cnt %d!\n", tsk->up_cnt));
 
@@ -665,18 +665,18 @@ do {									\
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #define netdev_priv(dev) dev->priv
-#endif
+#endif 
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #define RANDOM32	prandom_u32
 #else
 #define RANDOM32	random32
-#endif
+#endif 
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #define SRANDOM32(entropy)	prandom_seed(entropy)
 #else
 #define SRANDOM32(entropy)	srandom32(entropy)
-#endif
+#endif 
 
-#endif
+#endif 
