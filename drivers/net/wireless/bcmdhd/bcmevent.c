@@ -2,7 +2,7 @@
  * bcmevent read-only data shared by kernel or app layers
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -110,7 +110,7 @@ const bcmevent_name_t bcmevent_names[] = {
 	{ WLC_E_ACTION_FRAME_RX_NDIS, "WLC_E_ACTION_FRAME_RX_NDIS" },
 	{ WLC_E_AUTH_REQ, "WLC_E_AUTH_REQ" },
 	{ WLC_E_IBSS_COALESCE, "IBSS COALESCE" },
-#endif
+#endif 
 #ifdef BCMWAPI_WAI
 	{ WLC_E_WAI_STA_EVENT, "WAI_STA_EVENT" },
 	{ WLC_E_WAI_MSG, "WAI_MSG" },

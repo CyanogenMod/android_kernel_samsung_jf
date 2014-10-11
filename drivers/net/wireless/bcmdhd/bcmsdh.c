@@ -3,7 +3,7 @@
  *  implement bcmsdh API for SDIOH driver
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -636,7 +636,7 @@ bcmsdh_waitlockfree(void *sdh)
 }
 
 
-#ifdef BCMSPI /* 4329 gSPI won't have CIS reads. */
+#ifdef BCMSPI     /* 4329 gSPI won't have CIS reads. */
 int
 bcmsdh_query_device(void *sdh)
 {

@@ -3,7 +3,7 @@
  * of Broadcom HNBU chips.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -364,4 +364,4 @@ si_update_masks(si_t *sih);
 void
 si_force_islanding(si_t *sih, bool enable);
 
-#endif
+#endif	

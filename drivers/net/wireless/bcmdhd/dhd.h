@@ -5,7 +5,7 @@
  * DHD OS, bus, and protocol modules.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -301,7 +301,7 @@ typedef struct dhd_pub {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
 	struct mutex 	wl_start_stop_lock; /* lock/unlock for Android start/stop */
 	struct mutex 	wl_softap_lock;		 /* lock/unlock for any SoftAP/STA settings */
-#endif
+#endif 
 
 #ifdef WLBTAMP
 	uint16	maxdatablks;
@@ -1077,6 +1077,7 @@ concate_revision(struct dhd_bus *bus, char *fwpath, int fw_path_len, char *nvpat
 extern int wifi_get_fw_nv_path(char *fw, char *nv);
 #endif
 #endif /* SUPPORT_MULTIPLE_REVISION */
+void dhd_bus_update_fw_nv_path(struct dhd_bus *bus, char *pfw_path, char *pnv_path);
 void dhd_set_bus_state(void *bus, uint32 state);
 
 /* Remove proper pkts(either one no-frag pkt or whole fragmented pkts) */

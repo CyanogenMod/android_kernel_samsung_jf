@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -52,20 +52,20 @@
 #define IP_PROT_ICMP6		0x3a	
 
 
-#define IPV4_VER_HL_OFFSET      0
-#define IPV4_TOS_OFFSET         1
-#define IPV4_PKTLEN_OFFSET      2
-#define IPV4_PKTFLAG_OFFSET     6
-#define IPV4_PROT_OFFSET        9
-#define IPV4_CHKSUM_OFFSET      10
-#define IPV4_SRC_IP_OFFSET      12
-#define IPV4_DEST_IP_OFFSET     16
-#define IPV4_OPTIONS_OFFSET     20
-#define IPV4_MIN_HEADER_LEN     20
+#define IPV4_VER_HL_OFFSET      0       
+#define IPV4_TOS_OFFSET         1       
+#define IPV4_PKTLEN_OFFSET      2       
+#define IPV4_PKTFLAG_OFFSET     6       
+#define IPV4_PROT_OFFSET        9       
+#define IPV4_CHKSUM_OFFSET      10      
+#define IPV4_SRC_IP_OFFSET      12      
+#define IPV4_DEST_IP_OFFSET     16      
+#define IPV4_OPTIONS_OFFSET     20      
+#define IPV4_MIN_HEADER_LEN     20      
 
 
-#define IPV4_VER_MASK		0xf0
-#define IPV4_VER_SHIFT		4
+#define IPV4_VER_MASK		0xf0	
+#define IPV4_VER_SHIFT		4	
 
 #define IPV4_HLEN_MASK		0x0f	
 #define IPV4_HLEN(ipv4_body)	(4 * (((uint8 *)(ipv4_body))[IPV4_VER_HL_OFFSET] & IPV4_HLEN_MASK))
@@ -210,4 +210,4 @@ ipv6_exthdr_len(uint8 *h, uint8 *proto)
 
 #include <packed_section_end.h>
 
-#endif
+#endif	
