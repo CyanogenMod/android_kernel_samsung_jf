@@ -2,7 +2,7 @@
  * Linux Wireless Extensions support
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -70,7 +70,7 @@ typedef const struct si_pub	si_t;
 #ifndef IW_AUTH_KEY_MGMT_WAPI_CERT
 #define IW_AUTH_KEY_MGMT_WAPI_CERT 8
 #endif
-#endif
+#endif 
 
 
 #ifndef IW_AUTH_KEY_MGMT_FT_802_1X
@@ -134,7 +134,7 @@ extern int dhd_wait_pend8021x(struct net_device *dev);
 #define DAEMONIZE(a) daemonize(a); \
 	allow_signal(SIGKILL); \
 	allow_signal(SIGTERM);
-#else
+#else 
 #define RAISE_RX_SOFTIRQ() \
 	cpu_raise_softirq(smp_processor_id(), NET_RX_SOFTIRQ)
 #define DAEMONIZE(a) daemonize(); \
@@ -446,8 +446,8 @@ wl_iw_set_pm(
 }
 
 #if WIRELESS_EXT > 17
-#endif
-#endif
+#endif 
+#endif 
 
 int
 wl_iw_send_priv_event(
@@ -752,7 +752,7 @@ wl_iw_get_range(
 	rateset.count = dtoh32(rateset.count);
 	range->num_bitrates = rateset.count;
 	for (i = 0; i < rateset.count && i < IW_MAX_BITRATES; i++)
-		range->bitrate[i] = (rateset.rates[i] & 0x7f) * 500000;
+		range->bitrate[i] = (rateset.rates[i] & 0x7f) * 500000; 
 	if ((error = dev_wlc_intvar_get(dev, "nmode", &nmode)))
 		return error;
 	if ((error = dev_wlc_ioctl(dev, WLC_GET_PHYTYPE, &phytype, sizeof(phytype))))
@@ -784,7 +784,7 @@ wl_iw_get_range(
 		range->num_bitrates += 8;
 		ASSERT(range->num_bitrates < IW_MAX_BITRATES);
 		for (k = 0; i < range->num_bitrates; k++, i++) {
-
+			
 			range->bitrate[i] = (nrate_list[nrate_list2copy][k]) * 500000;
 		}
 	}
@@ -851,20 +851,20 @@ wl_iw_get_range(
 	range->enc_capa |= IW_ENC_CAPA_CIPHER_CCMP;
 	range->enc_capa |= IW_ENC_CAPA_WPA2;
 
-
+	
 	if (dev_wlc_intvar_get(dev, "fbt_cap", &fbt_cap) == 0) {
 		if (fbt_cap == WLC_FBT_CAP_DRV_4WAY_AND_REASSOC) {
-
+			
 			range->enc_capa |= IW_ENC_CAPA_4WAY_HANDSHAKE;
 		}
 	}
 
 #ifdef BCMFW_ROAM_ENABLE_WEXT
-
+	
 	range->enc_capa |= IW_ENC_CAPA_FW_ROAM_ENABLE;
-#endif
+#endif 
 
-
+	
 	IW_EVENT_CAPA_SET_KERNEL(range->event_capa);
 	
 	IW_EVENT_CAPA_SET(range->event_capa, SIOCGIWAP);
@@ -1387,7 +1387,7 @@ wl_iw_handle_scanresults_ies(char **event_p, char *end,
 		ptr = ((uint8 *)bi) + sizeof(wl_bss_info_t);
 
 		while ((ie = bcm_parse_tlvs(ptr, ptr_len, DOT11_MNG_WPA_ID))) {
-
+			
 			if (ie_is_wps_ie(((uint8 **)&ie), &ptr, &ptr_len)) {
 				iwe.cmd = IWEVGENIE;
 				iwe.u.data.length = ie->len + 2;
@@ -1435,10 +1435,10 @@ wl_iw_handle_scanresults_ies(char **event_p, char *end,
 			wpa_snprintf_hex(buf + 12, 2*ie->len+1, ie->data, ie->len);
 			event = IWE_STREAM_ADD_POINT(info, event, end, &iwe, buf);
 			kfree(buf);
-#endif
+#endif 
 			break;
 		}
-#endif
+#endif 
 	*event_p = event;
 	}
 
@@ -1666,7 +1666,7 @@ wl_iw_iscan_get_scan(
 		iwe.u.data.length = 0;
 		event = IWE_STREAM_ADD_POINT(info, event, end, &iwe, (char *)event);
 
-
+		
 		if (bi->rateset.count <= sizeof(bi->rateset.rates)) {
 			if (event + IW_MAX_BITRATES*IW_EV_PARAM_LEN >= end)
 				return -E2BIG;
@@ -2429,7 +2429,7 @@ wl_iw_set_encodeext(
 				return error;
 		}
 	}
-
+	
 	else if (iwe->alg == IW_ENCODE_ALG_PMK) {
 		int j;
 		wsec_pmk_t pmk;
@@ -2708,7 +2708,7 @@ wl_iw_set_wpaauth(
 		if ((error = dev_wlc_intvar_set(dev, "wsec", val)))
 			return error;
 
-
+		
 		if (dev_wlc_intvar_get(dev, "fbt_cap", &fbt_cap) == 0) {
 			if (fbt_cap == WLC_FBT_CAP_DRV_4WAY_AND_REASSOC) {
 				if ((paramid == IW_AUTH_CIPHER_PAIRWISE) && (val & AES_ENABLED)) {
@@ -3036,7 +3036,7 @@ enum {
 	WL_IW_SET_VLANMODE,
 	WL_IW_SET_PM,
 #if WIRELESS_EXT > 17
-#endif
+#endif 
 	WL_IW_SET_LAST
 };
 
@@ -3045,7 +3045,7 @@ static iw_handler wl_iw_priv_handler[] = {
 	wl_iw_set_vlanmode,
 	wl_iw_set_pm,
 #if WIRELESS_EXT > 17
-#endif
+#endif 
 	NULL
 };
 
@@ -3069,7 +3069,7 @@ static struct iw_priv_args wl_iw_priv_args[] = {
 		"set_pm"
 	},
 #if WIRELESS_EXT > 17
-#endif
+#endif 
 	{ 0, 0, 0, { 0 } }
 };
 
@@ -3672,7 +3672,7 @@ static void wl_iw_send_scan_complete(iscan_info_t *iscan)
 
 	memset(&wrqu, 0, sizeof(wrqu));
 
-
+	
 	wireless_send_event(iscan->dev, SIOCGIWSCAN, &wrqu, NULL);
 }
 
@@ -3710,7 +3710,7 @@ _iscan_sysioc_thread(void *data)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 				rtnl_unlock();
 #endif
-
+				
 				iscan->timer.expires = jiffies + msecs_to_jiffies(iscan->timer_ms);
 				add_timer(&iscan->timer);
 				iscan->timer_on = 1;
@@ -3722,7 +3722,7 @@ _iscan_sysioc_thread(void *data)
 				break;
 			case WL_SCAN_RESULTS_PENDING:
 				WL_TRACE(("iscanresults pending\n"));
-
+				
 				iscan->timer.expires = jiffies + msecs_to_jiffies(iscan->timer_ms);
 				add_timer(&iscan->timer);
 				iscan->timer_on = 1;

@@ -2,7 +2,7 @@
  * Broadcom Event  protocol definitions
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -41,7 +41,7 @@
 
 #include <packed_section_start.h>
 
-#define BCM_EVENT_MSG_VERSION		2
+#define BCM_EVENT_MSG_VERSION		2	
 #define BCM_MSG_IFNAME_MAX		16	
 
 
@@ -141,23 +141,23 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_PSK_SUP		46	
 #define WLC_E_COUNTRY_CODE_CHANGED	47
 #define	WLC_E_EXCEEDED_MEDIUM_TIME	48	
-#define WLC_E_ICV_ERROR		49
-#define WLC_E_UNICAST_DECODE_ERROR	50
-#define WLC_E_MULTICAST_DECODE_ERROR	51
+#define WLC_E_ICV_ERROR		49	
+#define WLC_E_UNICAST_DECODE_ERROR	50	
+#define WLC_E_MULTICAST_DECODE_ERROR	51	
 #define WLC_E_TRACE		52
 #ifdef WLBTAMP
-#define WLC_E_BTA_HCI_EVENT	53
+#define WLC_E_BTA_HCI_EVENT	53	
 #endif
 #define WLC_E_IF		54	
 #define WLC_E_P2P_DISC_LISTEN_COMPLETE	55	
-#define WLC_E_RSSI		56
-#define WLC_E_PFN_SCAN_COMPLETE	57
+#define WLC_E_RSSI		56	
+#define WLC_E_PFN_SCAN_COMPLETE	57	
 
 #define WLC_E_PFN_BEST_BATCHING	57
 #define WLC_E_EXTLOG_MSG	58
-#define WLC_E_ACTION_FRAME      59
-#define WLC_E_ACTION_FRAME_COMPLETE	60
-#define WLC_E_PRE_ASSOC_IND	61
+#define WLC_E_ACTION_FRAME      59 	
+#define WLC_E_ACTION_FRAME_COMPLETE	60	
+#define WLC_E_PRE_ASSOC_IND	61	
 #define WLC_E_PRE_REASSOC_IND	62	
 #define WLC_E_CHANNEL_ADOPTED	63
 #define WLC_E_AP_STARTED	64	
@@ -168,68 +168,68 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_ESCAN_RESULT 	69	
 #define WLC_E_ACTION_FRAME_OFF_CHAN_COMPLETE 	70	
 #define WLC_E_PROBRESP_MSG	71	
-#define WLC_E_P2P_PROBREQ_MSG	72
+#define WLC_E_P2P_PROBREQ_MSG	72	
 #define WLC_E_DCS_REQUEST	73
-#define WLC_E_FIFO_CREDIT_MAP	74
-#define WLC_E_ACTION_FRAME_RX	75
-#define WLC_E_WAKE_EVENT	76
-#define WLC_E_RM_COMPLETE	77
-#define WLC_E_HTSFSYNC		78
+#define WLC_E_FIFO_CREDIT_MAP	74	
+#define WLC_E_ACTION_FRAME_RX	75	
+#define WLC_E_WAKE_EVENT	76	
+#define WLC_E_RM_COMPLETE	77	
+#define WLC_E_HTSFSYNC		78	
 #define WLC_E_OVERLAY_REQ	79	
 #define WLC_E_CSA_COMPLETE_IND		80	
-#define WLC_E_EXCESS_PM_WAKE_EVENT	81
-#define WLC_E_PFN_SCAN_NONE		82
+#define WLC_E_EXCESS_PM_WAKE_EVENT	81	
+#define WLC_E_PFN_SCAN_NONE		82	
 
 #define WLC_E_PFN_BSSID_NET_FOUND	82
-#define WLC_E_PFN_SCAN_ALLGONE		83
+#define WLC_E_PFN_SCAN_ALLGONE		83	
 
 #define WLC_E_PFN_BSSID_NET_LOST	83
 #define WLC_E_GTK_PLUMBED		84
-#define WLC_E_ASSOC_IND_NDIS		85
-#define WLC_E_REASSOC_IND_NDIS		86
+#define WLC_E_ASSOC_IND_NDIS		85	
+#define WLC_E_REASSOC_IND_NDIS		86	
 #define WLC_E_ASSOC_REQ_IE		87
 #define WLC_E_ASSOC_RESP_IE		88
-#define WLC_E_ASSOC_RECREATED		89
-#define WLC_E_ACTION_FRAME_RX_NDIS	90
-#define WLC_E_AUTH_REQ			91
-#define WLC_E_TDLS_PEER_EVENT		92
-#define WLC_E_SPEEDY_RECREATE_FAIL	93
-#define WLC_E_NATIVE			94
-#define WLC_E_PKTDELAY_IND		95
-#define WLC_E_AWDL_AW			96
-#define WLC_E_AWDL_ROLE			97
-#define WLC_E_AWDL_EVENT		98
+#define WLC_E_ASSOC_RECREATED		89	
+#define WLC_E_ACTION_FRAME_RX_NDIS	90	
+#define WLC_E_AUTH_REQ			91	
+#define WLC_E_TDLS_PEER_EVENT		92	
+#define WLC_E_SPEEDY_RECREATE_FAIL	93	
+#define WLC_E_NATIVE			94	
+#define WLC_E_PKTDELAY_IND		95	
+#define WLC_E_AWDL_AW			96	
+#define WLC_E_AWDL_ROLE			97	
+#define WLC_E_AWDL_EVENT		98	
 #ifdef WLNIC
-#define WLC_E_NIC_AF_TXS		99
-#define WLC_E_NIC_NIC_REPORT		100
+#define WLC_E_NIC_AF_TXS		99	
+#define WLC_E_NIC_NIC_REPORT		100	
 #endif
 #define WLC_E_BEACON_FRAME_RX		101
-#define WLC_E_SERVICE_FOUND		102
-#define WLC_E_GAS_FRAGMENT_RX		103
-#define WLC_E_GAS_COMPLETE		104
-#define WLC_E_P2PO_ADD_DEVICE		105
-#define WLC_E_P2PO_DEL_DEVICE		106
-#define WLC_E_WNM_STA_SLEEP		107
-#define WLC_E_NONE			108
-#define WLC_E_PROXD			109
-#define WLC_E_IBSS_COALESCE		110
-#define WLC_E_AIBSS_TXFAIL		110
-#define WLC_E_AWDL_AW_EXT_END		111
-#define WLC_E_AWDL_AW_EXT_START		112
-#define WLC_E_AWDL_AW_START		113
-#define WLC_E_AWDL_RADIO_OFF		114
-#define WLC_E_AWDL_PEER_STATE		115
-#define WLC_E_AWDL_SYNC_STATE_CHANGED	116
-#define WLC_E_AWDL_CHIP_RESET		117
+#define WLC_E_SERVICE_FOUND		102	
+#define WLC_E_GAS_FRAGMENT_RX		103	
+#define WLC_E_GAS_COMPLETE		104	
+#define WLC_E_P2PO_ADD_DEVICE		105	
+#define WLC_E_P2PO_DEL_DEVICE		106	
+#define WLC_E_WNM_STA_SLEEP		107	
+#define WLC_E_NONE			108	
+#define WLC_E_PROXD			109	
+#define WLC_E_IBSS_COALESCE		110	
+#define WLC_E_AIBSS_TXFAIL		110	
+#define WLC_E_AWDL_AW_EXT_END		111	
+#define WLC_E_AWDL_AW_EXT_START		112	
+#define WLC_E_AWDL_AW_START		113	
+#define WLC_E_AWDL_RADIO_OFF		114	
+#define WLC_E_AWDL_PEER_STATE		115	
+#define WLC_E_AWDL_SYNC_STATE_CHANGED	116	
+#define WLC_E_AWDL_CHIP_RESET		117	
 #define WLC_E_AWDL_INTERLEAVED_SCAN_START		118
 #define WLC_E_AWDL_INTERLEAVED_SCAN_STOP		119
 #define WLC_E_AWDL_PEER_CACHE_CONTROL			120
 #define WLC_E_CSA_START_IND		121
 #define WLC_E_CSA_DONE_IND		122
 #define WLC_E_CSA_FAILURE_IND		123
-#define WLC_E_CCA_CHAN_QUAL		124
+#define WLC_E_CCA_CHAN_QUAL		124	
 #define WLC_E_CCX_S69_RESP_RX	129
-#define WLC_E_LAST			130
+#define WLC_E_LAST			130	
 
 
 
@@ -254,62 +254,62 @@ extern const int		bcmevent_names_size;
 #define WLC_E_STATUS_NEWSCAN		9	
 #define WLC_E_STATUS_NEWASSOC		10	
 #define WLC_E_STATUS_11HQUIET		11	
-#define WLC_E_STATUS_SUPPRESS		12
-#define WLC_E_STATUS_NOCHANS		13
+#define WLC_E_STATUS_SUPPRESS		12	
+#define WLC_E_STATUS_NOCHANS		13	
 #ifdef BCMCCX
-#define WLC_E_STATUS_CCXFASTRM		14
-#endif
-#define WLC_E_STATUS_CS_ABORT		15
-#define WLC_E_STATUS_ERROR		16
+#define WLC_E_STATUS_CCXFASTRM		14	
+#endif 
+#define WLC_E_STATUS_CS_ABORT		15	
+#define WLC_E_STATUS_ERROR		16	
 
 
 #define WLC_E_REASON_INITIAL_ASSOC	0	
 #define WLC_E_REASON_LOW_RSSI		1	
 #define WLC_E_REASON_DEAUTH		2	
-#define WLC_E_REASON_DISASSOC		3
-#define WLC_E_REASON_BCNS_LOST		4
+#define WLC_E_REASON_DISASSOC		3	
+#define WLC_E_REASON_BCNS_LOST		4	
 
 
-#define WLC_E_REASON_FAST_ROAM_FAILED	5
-#define WLC_E_REASON_DIRECTED_ROAM	6
-#define WLC_E_REASON_TSPEC_REJECTED	7
-#define WLC_E_REASON_BETTER_AP		8
-#define WLC_E_REASON_MINTXRATE		9
-#define WLC_E_REASON_TXFAIL		10
+#define WLC_E_REASON_FAST_ROAM_FAILED	5	
+#define WLC_E_REASON_DIRECTED_ROAM	6	
+#define WLC_E_REASON_TSPEC_REJECTED	7	
+#define WLC_E_REASON_BETTER_AP		8	
+#define WLC_E_REASON_MINTXRATE		9	
+#define WLC_E_REASON_TXFAIL		10	
 
-#define WLC_E_REASON_REQUESTED_ROAM 11
+#define WLC_E_REASON_REQUESTED_ROAM 11	
 
 
 
-#define WLC_E_PRUNE_ENCR_MISMATCH	1
-#define WLC_E_PRUNE_BCAST_BSSID		2
-#define WLC_E_PRUNE_MAC_DENY		3
-#define WLC_E_PRUNE_MAC_NA		4
+#define WLC_E_PRUNE_ENCR_MISMATCH	1	
+#define WLC_E_PRUNE_BCAST_BSSID		2	
+#define WLC_E_PRUNE_MAC_DENY		3	
+#define WLC_E_PRUNE_MAC_NA		4	
 #define WLC_E_PRUNE_REG_PASSV		5	
 #define WLC_E_PRUNE_SPCT_MGMT		6	
 #define WLC_E_PRUNE_RADAR		7	
 #define WLC_E_RSN_MISMATCH		8	
-#define WLC_E_PRUNE_NO_COMMON_RATES	9
-#define WLC_E_PRUNE_BASIC_RATES		10
+#define WLC_E_PRUNE_NO_COMMON_RATES	9	
+#define WLC_E_PRUNE_BASIC_RATES		10	
 #ifdef BCMCCX
-#define WLC_E_PRUNE_CCXFAST_PREVAP	11
-#endif
-#define WLC_E_PRUNE_CIPHER_NA		12
-#define WLC_E_PRUNE_KNOWN_STA		13
+#define WLC_E_PRUNE_CCXFAST_PREVAP	11	
+#endif 
+#define WLC_E_PRUNE_CIPHER_NA		12	
+#define WLC_E_PRUNE_KNOWN_STA		13	
 #ifdef BCMCCX
-#define WLC_E_PRUNE_CCXFAST_DROAM	14
-#endif
-#define WLC_E_PRUNE_WDS_PEER		15
-#define WLC_E_PRUNE_QBSS_LOAD		16
-#define WLC_E_PRUNE_HOME_AP		17
+#define WLC_E_PRUNE_CCXFAST_DROAM	14	
+#endif 
+#define WLC_E_PRUNE_WDS_PEER		15	
+#define WLC_E_PRUNE_QBSS_LOAD		16	
+#define WLC_E_PRUNE_HOME_AP		17	
 #ifdef BCMCCX
-#define WLC_E_PRUNE_AP_BLOCKED		18
-#define WLC_E_PRUNE_NO_DIAG_SUPPORT	19
-#endif
+#define WLC_E_PRUNE_AP_BLOCKED		18	
+#define WLC_E_PRUNE_NO_DIAG_SUPPORT	19	
+#endif 
 
 
-#define WLC_E_SUP_OTHER			0
-#define WLC_E_SUP_DECRYPT_KEY_DATA	1
+#define WLC_E_SUP_OTHER			0	
+#define WLC_E_SUP_DECRYPT_KEY_DATA	1	
 #define WLC_E_SUP_BAD_UCAST_WEP128	2	
 #define WLC_E_SUP_BAD_UCAST_WEP40	3	
 #define WLC_E_SUP_UNSUP_KEY_LEN		4	
@@ -328,8 +328,8 @@ extern const int		bcmevent_names_size;
 
 
 #ifdef WLAWDL
-#define WLC_E_AWDL_SCAN_START		1
-#define WLC_E_AWDL_SCAN_DONE		0
+#define WLC_E_AWDL_SCAN_START		1	
+#define WLC_E_AWDL_SCAN_DONE		0	
 
 #define WLC_E_AWDL_RX_ACT_FRAME					1
 #define WLC_E_AWDL_RX_PRB_RESP					2
@@ -337,7 +337,7 @@ extern const int		bcmevent_names_size;
 #endif
 typedef BWL_PRE_PACKED_STRUCT struct wl_event_rx_frame_data {
 	uint16	version;
-	uint16	channel;
+	uint16	channel;	
 	int32	rssi;
 	uint32	mactime;
 	uint32	rate;
@@ -347,11 +347,11 @@ typedef BWL_PRE_PACKED_STRUCT struct wl_event_rx_frame_data {
 
 
 typedef struct wl_event_data_if {
-	uint8 ifidx;
-	uint8 opcode;
-	uint8 reserved;
-	uint8 bssidx;
-	uint8 role;
+	uint8 ifidx;		
+	uint8 opcode;		
+	uint8 reserved;		
+	uint8 bssidx;		
+	uint8 role;		
 } wl_event_data_if_t;
 
 
@@ -378,13 +378,13 @@ typedef struct wl_event_data_rssi {
 } wl_event_data_rssi_t;
 
 
-#define WLC_E_IF_FLAGS_BSSCFG_NOIF	0x1
+#define WLC_E_IF_FLAGS_BSSCFG_NOIF	0x1	
 
 
-#define WLC_E_LINK_BCN_LOSS	1
-#define WLC_E_LINK_DISASSOC	2
-#define WLC_E_LINK_ASSOC_REC	3
-#define WLC_E_LINK_BSSCFG_DIS	4
+#define WLC_E_LINK_BCN_LOSS	1	
+#define WLC_E_LINK_DISASSOC	2	
+#define WLC_E_LINK_ASSOC_REC	3	
+#define WLC_E_LINK_BSSCFG_DIS	4	
 
 
 #define WLC_E_OVL_DOWNLOAD		0	
@@ -405,50 +405,50 @@ typedef struct wl_event_data_rssi {
 #define WLC_E_AWDL_OOB_AF_STATUS	5
 
 
-#define WLC_E_AWDL_SCAN_START		1
-#define WLC_E_AWDL_SCAN_DONE		0
-#define WLC_E_AWDL_PHYCAL_START		1
-#define WLC_E_AWDL_PHYCAL_DONE		0
+#define WLC_E_AWDL_SCAN_START		1	
+#define WLC_E_AWDL_SCAN_DONE		0	
+#define WLC_E_AWDL_PHYCAL_START		1	
+#define WLC_E_AWDL_PHYCAL_DONE		0	
 #endif
 
 
 typedef BWL_PRE_PACKED_STRUCT struct wl_event_gas {
-	uint16	channel;
-	uint8	dialog_token;
-	uint8	fragment_id;
-	uint16	status_code;
-	uint16 	data_len;
-	uint8	data[1];
+	uint16	channel;		
+	uint8	dialog_token;	
+	uint8	fragment_id;	
+	uint16	status_code;	
+	uint16 	data_len;		
+	uint8	data[1];		
 } BWL_POST_PACKED_STRUCT wl_event_gas_t;
 
 
 typedef BWL_PRE_PACKED_STRUCT struct wl_sd_tlv {
-	uint16	length;
-	uint8	protocol;
-	uint8	transaction_id;
-	uint8	status_code;
-	uint8	data[1];
+	uint16	length;			
+	uint8	protocol;		
+	uint8	transaction_id;		
+	uint8	status_code;		
+	uint8	data[1];		
 } BWL_POST_PACKED_STRUCT wl_sd_tlv_t;
 
 
 typedef BWL_PRE_PACKED_STRUCT struct wl_event_sd {
-	uint16	channel;
-	uint8	count;
-	wl_sd_tlv_t	tlv[1];
+	uint16	channel;		
+	uint8	count;			
+	wl_sd_tlv_t	tlv[1];		
 } BWL_POST_PACKED_STRUCT wl_event_sd_t;
 
 
-#define WLC_E_PROXD_FOUND	1
-#define WLC_E_PROXD_GONE	2
+#define WLC_E_PROXD_FOUND	1	
+#define WLC_E_PROXD_GONE	2	
 
 
 typedef BWL_PRE_PACKED_STRUCT struct awdl_aws_event_data {
-	uint32	fw_time;
-	struct	ether_addr current_master;
-	uint16	aw_counter;
-	uint8	aw_ext_count;
-	uint8	aw_role;
-	uint8	flags;
+	uint32	fw_time;			
+	struct	ether_addr current_master;	
+	uint16	aw_counter;			
+	uint8	aw_ext_count;			
+	uint8	aw_role;			
+	uint8	flags;				
 	uint16	aw_chan;
 } BWL_POST_PACKED_STRUCT awdl_aws_event_data_t;
 
@@ -458,4 +458,4 @@ typedef BWL_PRE_PACKED_STRUCT struct awdl_aws_event_data {
 
 #include <packed_section_end.h>
 
-#endif
+#endif 

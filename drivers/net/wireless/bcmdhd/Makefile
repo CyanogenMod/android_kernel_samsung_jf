@@ -62,6 +62,7 @@ DHDCFLAGS += -DDISABLE_11H_SOFTAP
 DHDCFLAGS += -DSUPPORT_PM2_ONLY
 DHDCFLAGS += -DSUPPORT_DEEP_SLEEP
 DHDCFLAGS += -DSUPPORT_AMPDU_MPDU_CMD
+DHDCFLAGS += -DBLOCK_IPV6_PACKET -DPASS_IPV4_SUSPEND
 
 # For special PNO Event keep wake lock for 10sec
 DHDCFLAGS += -DCUSTOM_PNO_EVENT_LOCK_xTIME=10
@@ -134,11 +135,7 @@ DHDCFLAGS :=$(filter-out -DMULTIPLE_SUPPLICANT,$(DHDCFLAGS))
 # m: module type driver
 # y: built-in type driver
 ##########################
-ifeq ($(CONFIG_MODULES),y)
 DRIVER_TYPE ?= m
-else
-DRIVER_TYPE ?= y
-endif
 
 #########################
 # Chip dependent feature

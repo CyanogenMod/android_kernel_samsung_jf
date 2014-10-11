@@ -3,7 +3,7 @@
  * of the SiliconBackplane-based Broadcom chips.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -233,7 +233,7 @@ ai_scan(si_t *sih, void *regs, uint devid)
 		asd = get_asd(sih, &eromptr, 0, 0, AD_ST_SLAVE, &addrl, &addrh, &sizel, &sizeh);
 		if (asd == 0) {
 			do {
-
+			
 			asd = get_asd(sih, &eromptr, 0, 0, AD_ST_BRIDGE, &addrl, &addrh,
 			              &sizel, &sizeh);
 			if (asd != 0)
@@ -256,7 +256,7 @@ ai_scan(si_t *sih, void *regs, uint devid)
 		}
 		sii->coresba[idx] = addrl;
 		sii->coresba_size[idx] = sizel;
-
+		
 		j = 1;
 		do {
 			asd = get_asd(sih, &eromptr, 0, j, AD_ST_SLAVE, &addrl, &addrh,

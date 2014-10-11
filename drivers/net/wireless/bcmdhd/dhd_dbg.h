@@ -2,7 +2,7 @@
  * Debug/trace/assert driver definitions for Dongle Host Driver.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -120,7 +120,7 @@
 #define DHD_NOCHECKDIED_ON()	0
 #define DHD_PNO_ON()		0
 
-#endif
+#endif 
 
 #define DHD_LOG(args)
 

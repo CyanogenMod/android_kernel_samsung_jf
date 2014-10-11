@@ -2,7 +2,7 @@
  * pcicfg.h: PCI configuration constants and structures.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -56,10 +56,10 @@
 #define	PCI_CFG_MINGNT		0x3e
 #define	PCI_CFG_MAXLAT		0x3f
 #define	PCI_CFG_DEVCTRL		0xd8
-#define	PCI_BAR0_WIN		0x80
-#define	PCI_BAR1_WIN		0x84
-#define	PCI_SPROM_CONTROL	0x88
-#define	PCI_BAR1_CONTROL	0x8c
+#define	PCI_BAR0_WIN		0x80	
+#define	PCI_BAR1_WIN		0x84	
+#define	PCI_SPROM_CONTROL	0x88	
+#define	PCI_BAR1_CONTROL	0x8c	
 #define	PCI_INT_STATUS		0x90	
 #define	PCI_INT_MASK		0x94	
 #define PCI_TO_SB_MB		0x98	
