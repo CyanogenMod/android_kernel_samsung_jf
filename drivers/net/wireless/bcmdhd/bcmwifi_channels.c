@@ -4,7 +4,7 @@
  * software that might want wifi things as it grows.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -439,12 +439,12 @@ wf_chspec_aton(const char *a)
 	if (!read_uint(&a, &num))
 		return 0;
 
-
+	
 	c = tolower((int)a[0]);
 	if (c == 'g') {
-		a ++;
+		a ++; 
 
-
+		
 		if (num == 2)
 			chspec_band = WL_CHANSPEC_BAND_2G;
 		else if (num == 5)
@@ -459,7 +459,7 @@ wf_chspec_aton(const char *a)
 		c = tolower((int)a[0]);
 	}
 	else {
-
+		
 		ctl_ch = num;
 		chspec_band = ((ctl_ch <= CH_MAX_2G_CHANNEL) ?
 		               WL_CHANSPEC_BAND_2G : WL_CHANSPEC_BAND_5G);
@@ -501,11 +501,11 @@ wf_chspec_aton(const char *a)
 		return 0;
 	}
 
-
+	
 
 	c = tolower((int)a[0]);
 
-
+	
 	if (chspec_band == WL_CHANSPEC_BAND_2G && bw == 40) {
 		if (c == 'u' || c == 'l') {
 			a ++; 
@@ -762,7 +762,7 @@ wf_chspec_valid(chanspec_t chanspec)
 				}
 
 				if (i == num_ch) {
-
+					
 					if (chspec_ch == 165)
 						i = 0;
 
@@ -887,7 +887,7 @@ wf_channel2chspec(uint ctl_ch, uint bw)
 		}
 	}
 
-
+	
 	if (sb < 0) {
 		return 0;
 	}
@@ -895,7 +895,7 @@ wf_channel2chspec(uint ctl_ch, uint bw)
 	return chspec;
 }
 
-#endif
+#endif 
 
 
 extern chanspec_t wf_chspec_primary40_chspec(chanspec_t chspec)
@@ -990,10 +990,10 @@ wf_channel2mhz(uint ch, uint start_factor)
 
 
 static const struct chan_info {
-	uint16	chan;
-	uint16	freq;
+	uint16	chan;	
+	uint16	freq;	
 } chan_info[] = {
-
+	
 		{1,	2412},
 		{2,	2417},
 		{3,	2422},
@@ -1056,7 +1056,7 @@ static const struct chan_info {
 	{208,	5040},
 	{212,	5060},
 	{216,	5080}
-#endif
+#endif 
 };
 
 

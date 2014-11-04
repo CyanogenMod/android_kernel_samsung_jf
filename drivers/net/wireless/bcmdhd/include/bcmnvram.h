@@ -2,7 +2,7 @@
  * NVRAM variable manipulation
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -115,7 +115,7 @@ uint8 nvram_calc_crc(struct nvram_header * nvh);
 
 extern int nvram_space;
 
-#endif
+#endif 
 
 
 #define NVRAM_SOFTWARE_VERSION	"1"
@@ -132,7 +132,7 @@ extern int nvram_space;
 #endif
 #define MAX_NVRAM_SPACE		NVRAM_SPACE
 #define ROM_ENVRAM_SPACE	0x1000
-#define NVRAM_LZMA_MAGIC	0x4c5a4d41
+#define NVRAM_LZMA_MAGIC	0x4c5a4d41	
 
 #define NVRAM_MAX_VALUE_LEN 255
 #define NVRAM_MAX_PARAM_LEN 64

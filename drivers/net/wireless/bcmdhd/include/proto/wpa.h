@@ -2,7 +2,7 @@
  * Fundamental types and constants relating to WPA
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -113,12 +113,12 @@ typedef BWL_PRE_PACKED_STRUCT struct
 #define WPA_CIPHER_AES_OCB	3	
 #define WPA_CIPHER_AES_CCM	4	
 #define WPA_CIPHER_WEP_104	5	
-#define WPA_CIPHER_BIP		6
-#define WPA_CIPHER_TPK		7
+#define WPA_CIPHER_BIP		6	
+#define WPA_CIPHER_TPK		7	
 #ifdef BCMCCX
-#define WPA_CIPHER_CKIP		8
-#define WPA_CIPHER_CKIP_MMH	9
-#define WPA_CIPHER_WEP_MMH	10
+#define WPA_CIPHER_CKIP		8	
+#define WPA_CIPHER_CKIP_MMH	9	
+#define WPA_CIPHER_WEP_MMH	10	
 
 #define IS_CCX_CIPHER(cipher)	((cipher) == WPA_CIPHER_CKIP || \
 				 (cipher) == WPA_CIPHER_CKIP_MMH || \

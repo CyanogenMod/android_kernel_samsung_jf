@@ -2,7 +2,7 @@
  * DHD Protocol Module for CDC and BDC.
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -582,10 +582,7 @@ dhd_prot_init(dhd_pub_t *dhd)
 		goto done;
 
 
-#if defined(WL_CFG80211)
-	if (dhd_download_fw_on_driverload)
-#endif /* defined(WL_CFG80211) */
-		ret = dhd_preinit_ioctls(dhd);
+	ret = dhd_preinit_ioctls(dhd);
 	/* Always assumes wl for now */
 	dhd->iswl = TRUE;
 
