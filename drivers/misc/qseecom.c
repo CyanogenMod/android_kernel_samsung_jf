@@ -1516,10 +1516,10 @@ static int __qseecom_load_fw(struct qseecom_dev_handle *data, char *appname)
 	ret = scm_call(SCM_SVC_TZSCHEDULER, 1,	&load_req,
 			sizeof(struct qseecom_load_app_ireq),
 			&resp, sizeof(resp));
-	kzfree(img_data);
 	if (ret) {
 		pr_err("scm_call to load failed : ret %d\n", ret);
 		qsee_disable_clock_vote(CLK_SFPB);
+		kzfree(img_data);
 		return -EIO;
 	}
 
@@ -1543,6 +1543,7 @@ static int __qseecom_load_fw(struct qseecom_dev_handle *data, char *appname)
 		break;
 	}
 	qsee_disable_clock_vote(CLK_SFPB);
+	kzfree(img_data);
 
 	return ret;
 }
