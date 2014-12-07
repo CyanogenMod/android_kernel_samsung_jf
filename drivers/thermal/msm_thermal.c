@@ -111,7 +111,7 @@ static void check_temp(struct work_struct *work)
 	uint32_t freq = 0;
 	long temp = 0;
 
-	tsens_dev.sensor_num = msm_thermal_info.sensor_id;
+	tsens_dev.sensor_num = 0;
 	tsens_get_temp(&tsens_dev, &temp);
 
 	if (info.throttling)
