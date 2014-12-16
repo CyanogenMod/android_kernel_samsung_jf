@@ -736,6 +736,12 @@ int adreno_dump(struct kgsl_device *device, int manual)
 		return 0;
 	}
 
+	KGSL_LOG_DUMP(device,
+		"[hlog] STATUS %08X | IB1:%08X/%08X | IB2: %08X/%08X"
+		" | RPTR: %04X | WPTR: %04X\n",
+		rbbm_status,  cp_ib1_base, cp_ib1_bufsz, cp_ib2_base,
+		cp_ib2_bufsz, cp_rb_rptr, cp_rb_wptr);
+
 	kgsl_sharedmem_readl(&device->memstore,
 			(unsigned int *) &context_id,
 			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,

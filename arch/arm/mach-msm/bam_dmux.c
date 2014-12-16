@@ -2535,8 +2535,9 @@ static int bam_dmux_probe(struct platform_device *pdev)
 	return 0;
 
 exit_smsm_deregister:
-	smsm_state_cb_deregister(SMSM_MODEM_STATE, SMSM_A2_POWER_CONTROL,
-					bam_dmux_smsm_cb, NULL);
+	bam_ops->smsm_state_cb_deregister_ptr(SMSM_MODEM_STATE,
+				SMSM_A2_POWER_CONTROL,
+				bam_dmux_smsm_cb, NULL);
 exit_device_put:
 	for (rc = 0; rc < BAM_DMUX_NUM_CHANNELS; ++rc)
 		platform_device_put(bam_ch[rc].pdev);

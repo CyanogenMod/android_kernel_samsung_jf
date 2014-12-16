@@ -805,11 +805,13 @@ static bool fwu_check_skip_reflash(bool mode, bool factory_fw,
 		/* UMS case */
 		int ic_revision_of_bin =
 			(int)fwu->ext_data_source[IC_REVISION_BIN_OFFSET];
+#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 		int fw_version_of_bin =
 			(int)fwu->ext_data_source[FW_VERSION_BIN_OFFSET];
 		int fw_release_date_of_bin =
 			(int)(fwu->ext_data_source[DATE_OF_FIRMWARE_BIN_OFFSET] << 8
 				| fwu->ext_data_source[DATE_OF_FIRMWARE_BIN_OFFSET + 1]);
+#endif
 
 		/* A1 revision does not have revision info in firmware */
 		if ((ic_revision_of_bin >> 4) != 0xB) {

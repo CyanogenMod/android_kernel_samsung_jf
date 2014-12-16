@@ -83,7 +83,6 @@ struct mmc_platform_data;
 int __init apq8064_add_sdcc(unsigned int controller,
 		struct mmc_platform_data *plat);
 int __init apq8064_add_uio(void);
-
 extern int msm_otg_power_cb(int active);
 extern void msm_otg_set_vbus_state(int online);
 extern void msm_otg_set_id_state(int online);
