@@ -236,7 +236,10 @@ static ssize_t firmware_loading_store(struct device *dev,
 
 	if (!fw_priv->fw)
 		goto out;
-
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(dev))==0)
+		dev_err(dev, "%s: loading (%d)\n", __func__, loading);
+#endif
 	switch (loading) {
 	case 1:
 		firmware_free_data(fw_priv->fw);
@@ -388,7 +391,10 @@ static ssize_t firmware_data_write(struct file *filp, struct kobject *kobj,
 	struct firmware_priv *fw_priv = to_firmware_priv(dev);
 	struct firmware *fw;
 	ssize_t retval;
-
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(dev))==0)
+		dev_err(dev, "%s: ++\n", __func__);
+#endif
 	if (!capable(CAP_SYS_RAWIO))
 		return -EPERM;
 
@@ -421,6 +427,10 @@ static ssize_t firmware_data_write(struct file *filp, struct kobject *kobj,
 	}
 
 	fw->size = max_t(size_t, offset, fw->size);
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(dev))==0)
+		dev_err(dev, "%s: --\n", __func__);
+#endif
 out:
 	mutex_unlock(&fw_lock);
 	return retval;
@@ -516,7 +526,10 @@ static int _request_firmware_load(struct firmware_priv *fw_priv, bool uevent,
 
 	/* Need to pin this module until class device is destroyed */
 	__module_get(THIS_MODULE);
-
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(f_dev))==0)
+		dev_err(f_dev, "%s: ++\n", __func__);
+#endif
 	retval = device_add(f_dev);
 	if (retval) {
 		dev_err(f_dev, "%s: device_register failed\n", __func__);
@@ -534,8 +547,15 @@ static int _request_firmware_load(struct firmware_priv *fw_priv, bool uevent,
 		dev_err(f_dev, "%s: device_create_file failed\n", __func__);
 		goto err_del_bin_attr;
 	}
-
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(f_dev))==0)
+		dev_err(f_dev, "%s: sysfs generation completed; uevent = %d\n", __func__, uevent);
+#endif
 	if (uevent) {
+#if defined(CONFIG_GED_BUILD)
+		if (strcmp("kgsl-3d0",dev_name(f_dev))==0)
+			dev_err(f_dev, "%s: opting for uevent scheme\n", __func__);
+#endif
 		dev_set_uevent_suppress(f_dev, false);
 		dev_dbg(f_dev, "firmware: requesting %s\n", fw_priv->fw_id);
 		if (timeout != MAX_SCHEDULE_TIMEOUT)
@@ -553,6 +573,10 @@ static int _request_firmware_load(struct firmware_priv *fw_priv, bool uevent,
 	mutex_lock(&fw_lock);
 	if (!fw_priv->fw->size || test_bit(FW_STATUS_ABORT, &fw_priv->status))
 		retval = -ENOENT;
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(f_dev))==0)
+		dev_err(f_dev, "%s: retval = %d\n", __func__, retval);
+#endif
 	fw_priv->fw = NULL;
 	mutex_unlock(&fw_lock);
 
@@ -588,6 +612,10 @@ request_firmware(const struct firmware **firmware_p, const char *name,
 	struct firmware_priv *fw_priv;
 	int ret;
 
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(device))==0)
+		dev_err(device, "firmware: %s \n", name);
+#endif
 	fw_priv = _request_firmware_prepare(firmware_p, name, device, true,
 					    false);
 	if (IS_ERR_OR_NULL(fw_priv))
@@ -597,6 +625,10 @@ request_firmware(const struct firmware **firmware_p, const char *name,
 	if (WARN_ON(ret)) {
 		dev_err(device, "firmware: %s will not be loaded\n", name);
 	} else {
+#if defined(CONFIG_GED_BUILD)
+		if (strcmp("kgsl-3d0",dev_name(device))==0)
+			dev_err(device, "firmware: %s loading firmware _request_firmware_load\n", name);
+#endif
 		ret = _request_firmware_load(fw_priv, true,
 					firmware_loading_timeout());
 		usermodehelper_read_unlock();
@@ -642,6 +674,10 @@ static void request_firmware_work_func(struct work_struct *work)
 	fw_work = container_of(work, struct firmware_work, work);
 	fw_priv = _request_firmware_prepare(&fw, fw_work->name, fw_work->device,
 			fw_work->uevent, true);
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(fw_work->device))==0)
+		dev_err(fw_work->device, "%s: ++\n", __func__);
+#endif
 	if (IS_ERR_OR_NULL(fw_priv)) {
 		ret = PTR_RET(fw_priv);
 		goto out;
@@ -659,6 +695,10 @@ static void request_firmware_work_func(struct work_struct *work)
 	if (ret)
 		_request_firmware_cleanup(&fw);
 
+#if defined(CONFIG_GED_BUILD)
+	if (strcmp("kgsl-3d0",dev_name(fw_work->device))==0)
+		dev_err(fw_work->device, "%s: --\n", __func__);
+#endif
  out:
 	fw_work->cont(fw, fw_work->context);
 

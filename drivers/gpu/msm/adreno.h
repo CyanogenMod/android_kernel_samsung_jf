@@ -65,7 +65,7 @@
  * amount of time to wait for the core to go idle
  */
 
-#define ADRENO_IDLE_TIMEOUT (20 * 1000)
+#define ADRENO_IDLE_TIMEOUT (30 * 1000)
 
 enum adreno_gpurev {
 	ADRENO_REV_UNKNOWN = 0,
