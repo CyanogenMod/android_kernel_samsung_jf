@@ -777,6 +777,7 @@ void mdp_dma3_update(struct msm_fb_data_type *mfd);
 int mdp_lcdc_on(struct platform_device *pdev);
 int mdp_lcdc_off(struct platform_device *pdev);
 void mdp_lcdc_update(struct msm_fb_data_type *mfd);
+void mdp_free_splash_buffer(struct msm_fb_data_type *mfd);
 void mdp4_overlay_dsi_video_start(void);
 #ifdef CONFIG_FB_MSM_MDP303
 int mdp_dsi_video_on(struct platform_device *pdev);
@@ -834,7 +835,6 @@ unsigned long mdp_get_core_clk(void);
 
 #ifdef CONFIG_MSM_BUS_SCALING
 int mdp_bus_scale_update_request(u64 ab_p0, u64 ib_p0, u64 ab_p1, u64 ib_p1);
-
 int mdp_bus_scale_restore_request(void);
 #else
 static inline int mdp_bus_scale_update_request(u64 ab_p0,
