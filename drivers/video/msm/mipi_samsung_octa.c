@@ -1560,7 +1560,7 @@ static struct platform_driver this_driver = {
 static struct msm_fb_panel_data samsung_panel_data = {
 	.late_init = mipi_samsung_disp_on_in_video_engine,
 	.on		= mipi_samsung_disp_on,
-	.off		= mipi_samsung_disp_off,
+	.early_off		= mipi_samsung_disp_off,
 	.set_backlight	= mipi_samsung_disp_backlight,
 };
 

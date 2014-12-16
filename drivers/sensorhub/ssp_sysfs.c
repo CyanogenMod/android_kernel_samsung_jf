@@ -20,45 +20,40 @@
 
 unsigned int get_msdelay(int64_t dDelayRate)
 {
-	if (dDelayRate <= SENSOR_NS_DELAY_FASTEST)
-		return SENSOR_MS_DELAY_FASTEST;
-	else if (dDelayRate <= SENSOR_NS_DELAY_GAME)
-		return SENSOR_MS_DELAY_GAME;
-	else if (dDelayRate <= SENSOR_NS_DELAY_UI)
-		return SENSOR_MS_DELAY_UI;
-	else
+	if (dDelayRate >= SENSOR_NS_DELAY_NORMAL)
 		return SENSOR_MS_DELAY_NORMAL;
+	else if (dDelayRate >= SENSOR_NS_DELAY_UI)
+		return SENSOR_MS_DELAY_UI;
+	else if (dDelayRate >= SENSOR_NS_DELAY_GAME)
+		return SENSOR_MS_DELAY_GAME;
+	else
+		return SENSOR_MS_DELAY_FASTEST;
 }
 
 unsigned int get_delay_cmd(u8 uDelayRate)
 {
-	if (uDelayRate <= SENSOR_MS_DELAY_FASTEST)
-		return SENSOR_CMD_DELAY_FASTEST;
-	else if (uDelayRate <= SENSOR_MS_DELAY_GAME)
-		return SENSOR_CMD_DELAY_GAME;
-	else if (uDelayRate <= SENSOR_MS_DELAY_UI)
-		return SENSOR_CMD_DELAY_UI;
-	else
+	if (uDelayRate >= SENSOR_MS_DELAY_NORMAL)
 		return SENSOR_CMD_DELAY_NORMAL;
+	else if (uDelayRate >= SENSOR_MS_DELAY_UI)
+		return SENSOR_CMD_DELAY_UI;
+	else if (uDelayRate >= SENSOR_MS_DELAY_GAME)
+		return SENSOR_CMD_DELAY_GAME;
+	else
+		return SENSOR_CMD_DELAY_FASTEST;
 }
 
-static void change_sensor_delay(struct ssp_data *data,
+static void enable_sensor(struct ssp_data *data,
 	int iSensorType, int64_t dNewDelay)
 {
 	u8 uBuf[2];
 	unsigned int uNewEnable = 0;
 	int64_t dTempDelay = data->adDelayBuf[iSensorType];
 
-	if (!(atomic_read(&data->aSensorEnable) & (1 << iSensorType))) {
-		data->aiCheckStatus[iSensorType] = NO_SENSOR_STATE;
-		return;
-	}
-
 	data->adDelayBuf[iSensorType] = dNewDelay;
 
 	switch (data->aiCheckStatus[iSensorType]) {
 	case ADD_SENSOR_STATE:
-		ssp_dbg("[SSP]: %s - add %u, New = %lldns\n",
+		pr_info("[SSP]: %s - add %u, New = %lldns\n",
 			 __func__, 1 << iSensorType, dNewDelay);
 
 		uBuf[1] = (u8)get_msdelay(dNewDelay);
@@ -91,7 +86,7 @@ static void change_sensor_delay(struct ssp_data *data,
 			== get_msdelay(data->adDelayBuf[iSensorType]))
 			break;
 
-		ssp_dbg("[SSP]: %s - Change %u, New = %lldns\n",
+		pr_info("[SSP]: %s - Change %u, New = %lldns\n",
 			__func__, 1 << iSensorType, dNewDelay);
 
 		uBuf[1] = (u8)get_msdelay(dNewDelay);
@@ -104,6 +99,31 @@ static void change_sensor_delay(struct ssp_data *data,
 	}
 }
 
+static void change_sensor_delay(struct ssp_data *data,
+	int iSensorType, int64_t dNewDelay)
+{
+	u8 uBuf[2];
+	int64_t dTempDelay = data->adDelayBuf[iSensorType];
+
+	data->adDelayBuf[iSensorType] = dNewDelay;
+
+	switch (data->aiCheckStatus[iSensorType]) {
+	case RUNNING_SENSOR_STATE:
+		if (get_msdelay(dTempDelay)
+			== get_msdelay(data->adDelayBuf[iSensorType]))
+			break;
+
+		pr_info("[SSP]: %s - Change %u, New = %lldns\n",
+			__func__, 1 << iSensorType, dNewDelay);
+
+		uBuf[1] = (u8)get_msdelay(dNewDelay);
+		uBuf[0] = (u8)get_delay_cmd(uBuf[1]);
+		send_instruction(data, CHANGE_DELAY, iSensorType, uBuf, 2);
+		break;
+	default:
+		break;
+	}
+}
 /*************************************************************************/
 /* SSP data enable function                                              */
 /*************************************************************************/
@@ -247,12 +267,33 @@ static ssize_t set_sensors_enable(struct device *dev,
 					}
 				}
 				data->aiCheckStatus[uChangedSensor] = ADD_SENSOR_STATE;
+				enable_sensor(data, uChangedSensor, data->adDelayBuf[uChangedSensor]);
 			}
 			break;
 		}
 
 	atomic_set(&data->aSensorEnable, uNewEnable);
 
+	return size;
+}
+
+static ssize_t set_flush(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	int64_t dTemp;
+	u8 sensor_type = 0;
+	struct ssp_data *data = dev_get_drvdata(dev);
+
+	if (kstrtoll(buf, 10, &dTemp) < 0)
+		return -EINVAL;
+
+	sensor_type = (u8)dTemp;
+
+	input_report_rel(data->meta_input_dev, REL_DIAL, META_DATA_FLUSH_COMPLETE);
+	input_report_rel(data->meta_input_dev, REL_HWHEEL, sensor_type + 1);
+	input_sync(data->meta_input_dev);
+
+	pr_info("[SSP] flush %d", sensor_type);
 	return size;
 }
 
@@ -281,38 +322,7 @@ static ssize_t set_acc_delay(struct device *dev,
 
 	return size;
 }
-/*
-static ssize_t show_ori_delay(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct ssp_data *data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%lld\n", data->adDelayBuf[ORIENTATION_SENSOR]);
-}
-
-static ssize_t set_ori_delay(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t size)
-{
-	int64_t dNewDelay;
-	struct ssp_data *data = dev_get_drvdata(dev);
-
-	if (kstrtoll(buf, 10, &dNewDelay) < 0)
-		return -1;
-
-	if (data->aiCheckStatus[ACCELEROMETER_SENSOR] == NO_SENSOR_STATE) {
-		data->aiCheckStatus[ACCELEROMETER_SENSOR] = ADD_SENSOR_STATE;
-		change_sensor_delay(data, ORIENTATION_SENSOR, dNewDelay);
-	} else if (data->aiCheckStatus[ACCELEROMETER_SENSOR] ==
-			RUNNING_SENSOR_STATE) {
-		if (dNewDelay < data->adDelayBuf[ACCELEROMETER_SENSOR])
-			change_sensor_delay(data,
-				ORIENTATION_SENSOR, dNewDelay);
-		else
-			data->adDelayBuf[ORIENTATION_SENSOR] = dNewDelay;
-	}
-	return size;
-}
-*/
 static ssize_t show_gyro_delay(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -545,6 +555,7 @@ static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_sensors_enable, set_sensors_enable);
 static DEVICE_ATTR(enable_irq, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_enable_irq, set_enable_irq);
+static DEVICE_ATTR(ssp_flush, S_IWUSR | S_IWGRP, NULL, set_flush);
 
 static struct device_attribute dev_attr_accel_poll_delay
 	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
@@ -591,6 +602,7 @@ static struct device_attribute *mcu_attrs[] = {
 	&dev_attr_mcu_update_ums,
 	&dev_attr_mcu_sleep_test,
 	&dev_attr_enable_irq,
+	&dev_attr_ssp_flush,
 	NULL,
 };
 

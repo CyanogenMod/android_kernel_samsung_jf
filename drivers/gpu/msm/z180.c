@@ -158,7 +158,7 @@ static struct z180_device device_2d0 = {
 		.mem_log = KGSL_LOG_LEVEL_DEFAULT,
 		.pwr_log = KGSL_LOG_LEVEL_DEFAULT,
 		.ft_log = KGSL_LOG_LEVEL_DEFAULT,
-		.pm_dump_enable = 0,
+		.pm_dump_enable = 1,
 	},
 	.cmdwin_lock = __SPIN_LOCK_INITIALIZER(device_2d1.cmdwin_lock),
 };
@@ -192,7 +192,7 @@ static struct z180_device device_2d1 = {
 		.mem_log = KGSL_LOG_LEVEL_DEFAULT,
 		.pwr_log = KGSL_LOG_LEVEL_DEFAULT,
 		.ft_log = KGSL_LOG_LEVEL_DEFAULT,
-		.pm_dump_enable = 0,
+		.pm_dump_enable = 1,
 	},
 	.cmdwin_lock = __SPIN_LOCK_INITIALIZER(device_2d1.cmdwin_lock),
 };

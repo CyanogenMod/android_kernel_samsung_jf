@@ -647,7 +647,7 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 	if (isr & INTR_PRIMARY_INTF_UDERRUN) {
 		pr_info("%s: UNDERRUN -- primary\n", __func__);
 		mdp4_stat.intr_underrun_p++;
-//		dump_underrun_pipe_info();
+		dump_underrun_pipe_info();
 		/* When underun occurs mdp clear the histogram registers
 		that are set before in hw_init so restore them back so
 		that histogram works.*/

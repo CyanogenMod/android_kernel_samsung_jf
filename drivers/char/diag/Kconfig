@@ -3,6 +3,7 @@ menu "Diag Support"
 config DIAG_CHAR
 	tristate "char driver interface and diag forwarding to/from modem"
 	default m
+	depends on !SAMSUNG_PRODUCT_SHIP
 	depends on USB_G_ANDROID || USB_FUNCTION_DIAG || USB_QCOM_MAEMO
 	depends on ARCH_MSM
 	help
