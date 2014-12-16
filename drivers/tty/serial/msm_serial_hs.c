@@ -1617,6 +1617,20 @@ static void msm_hs_flush_buffer_locked(struct uart_port *uport)
 		msm_uport->tty_flush_receive = true;
 }
 
+static void msm_hs_power(struct uart_port *port, unsigned int state,
+			  unsigned int oldstate)
+{
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(port);
+
+	switch (state) {
+	case 1:
+		msm_hs_request_clock_on(&msm_uport->uport);
+		break;
+	default:
+		pr_err("Unknown PM state %d\n", state);
+	}
+}
+
 /*
  *  Standard API, Break Signal
  *
@@ -1753,7 +1767,6 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	clk_disable_unprepare(msm_uport->clk);
 	if (msm_uport->pclk)
 		clk_disable_unprepare(msm_uport->pclk);
-
 	msm_uport->clk_state = MSM_HS_CLK_OFF;
 
 	spin_lock_irqsave(&uport->lock, flags);
@@ -1920,11 +1933,6 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 void msm_hs_request_clock_off(struct uart_port *uport) {
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-
-	if(msm_uport->is_shutdown) {
-		printk(KERN_INFO "(msm_serial_hs) msm_hs_request_clock_off - uart shutdown, so return..\n");
-		return;
-	}
 
 	spin_lock_irqsave(&uport->lock, flags);
 	if (msm_uport->clk_state == MSM_HS_CLK_ON) {
@@ -2457,7 +2465,6 @@ static int __devinit msm_hs_probe(struct platform_device *pdev)
 	uport->flags = UPF_BOOT_AUTOCONF;
 	uport->uartclk = 7372800;
 	msm_uport->imr_reg = 0x0;
-	msm_uport->is_shutdown = true;
 
 	msm_uport->clk = clk_get(&pdev->dev, "core_clk");
 	if (IS_ERR(msm_uport->clk))
@@ -2773,6 +2780,7 @@ static struct uart_ops msm_hs_ops = {
 	.release_port = msm_hs_release_port,
 	.request_port = msm_hs_request_port,
 	.flush_buffer = msm_hs_flush_buffer_locked,
+	.pm = msm_hs_power,
 };
 
 module_init(msm_serial_hs_init);

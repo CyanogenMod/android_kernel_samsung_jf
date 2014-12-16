@@ -982,6 +982,7 @@ struct sii8240_data {
 	struct completion                       cbus_complete;
 	struct work_struct                      cbus_work;
 	struct workqueue_struct			*cbus_cmd_wqs;
+	struct workqueue_struct			*mhl_link_monitor_wq;
 	struct list_head                        cbus_data_list;
 
 	/*mhl tx configuration*/
@@ -1027,8 +1028,10 @@ struct sii8240_data {
 #endif
 	struct switch_dev		mhl_event_switch;
 	struct timer_list		mhl_timer;
+	bool				tmds_enable;
 #ifdef SII8240_CHECK_MONITOR
 	struct work_struct		mhl_link_monitor_work;
+	bool ckdt_stable;
 #endif
 };
 uint8_t *sii8240_get_mhl_edid(void);
