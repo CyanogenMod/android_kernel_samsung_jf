@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -326,7 +326,10 @@ void mipi_dsi_phy_rdy_poll(void)
 }
 
 #define PREF_DIV_RATIO 27
+#define VCO_MINIMUM 600
 struct dsiphy_pll_divider_config pll_divider_config;
+u32 vco_level_100;
+u32 vco_min_allowed;
 
 int mipi_dsi_phy_pll_config(u32 clk_rate)
 {
@@ -452,10 +455,35 @@ void mipi_dsi_configure_dividers(int fps)
 	}
 }
 
+void mipi_dsi_configure_fb_divider(u32 fps_level)
+{
+	u32 fb_div_req, fb_div_req_by_2;
+	u32 vco_required;
+
+	vco_required = vco_level_100 * fps_level/100;
+	if (vco_required < vco_min_allowed) {
+		printk(KERN_WARNING "Can not change fps. Min level allowed is \
+	%d \n", (vco_min_allowed * 100 / vco_level_100) + 1);
+		return;
+	}
+
+	fb_div_req = vco_required * PREF_DIV_RATIO / 27;
+	fb_div_req_by_2 = (fb_div_req / 2) - 1;
+
+	pll_divider_config.fb_divider = fb_div_req;
+
+	/* DSIPHY_PLL_CTRL_1 */
+	MIPI_OUTP(MIPI_DSI_BASE + 0x204, fb_div_req_by_2 & 0xff);
+	wmb();
+}
+
 int mipi_dsi_clk_div_config(uint8 bpp, uint8 lanes,
 			    uint32 *expected_dsi_pclk)
 {
 	u32 fb_divider, rate, vco;
+	u32 fb_div_min, fb_div_by_2_min,
+			 fb_div_by_2;
+	u32 vco_level_75;
 	u32 div_ratio = 0;
 	struct dsi_clk_mnd_table const *mnd_entry = mnd_table;
 	if (pll_divider_config.clk_rate == 0)
@@ -497,6 +525,17 @@ int mipi_dsi_clk_div_config(uint8 bpp, uint8 lanes,
 			pll_divider_config.bit_clk_divider * 8;
 	pll_divider_config.dsi_clk_divider =
 			(mnd_entry->dsiclk_div) * div_ratio;
+
+	vco_level_100 = vco;
+	fb_div_by_2 = (fb_divider / 2) - 1;
+	fb_div_by_2_min = (fb_div_by_2 / 256) * 256;
+	fb_div_min = (fb_div_by_2_min + 1) * 2;
+	vco_min_allowed = (fb_div_min * 27 / PREF_DIV_RATIO);
+	vco_level_75 = vco_level_100 * 75 / 100;
+	if (vco_min_allowed < VCO_MINIMUM)
+		vco_min_allowed = VCO_MINIMUM;
+	if (vco_min_allowed < vco_level_75)
+		vco_min_allowed = vco_level_75;
 
 	if (mnd_entry->dsiclk_d == 0) {
 		dsicore_clk.mnd_mode = 0;
@@ -851,11 +890,20 @@ void hdmi_msm_reset_core(void)
 void hdmi_msm_init_phy(int video_format)
 {
 	uint32 offset;
+
 	pr_err("Video format is : %u\n", video_format);
 
 	HDMI_OUTP(HDMI_PHY_REG_0, 0x1B);
-	HDMI_OUTP(HDMI_PHY_REG_1, 0xf2);
+	HDMI_OUTP(HDMI_PHY_REG_1, 0xF2);
 
+	/* Set HDMI_PHY_REG1 based on chip source id[30:28] and PTE_HDMI[31] bit
+	 * of QFPROM_RAW_PTE_ROW1_LSB */
+	 if (hdmi_msm_state->pd->source) {
+		if ((hdmi_msm_state->pd->source()) &&
+			(((inpdw(QFPROM_BASE + 0x00c0) & 0xF0000000) >> 28) ==
+									0x1))
+			HDMI_OUTP(HDMI_PHY_REG_1, 0xF1);
+	}
 	offset = HDMI_PHY_REG_4;
 	while (offset <= HDMI_PHY_REG_11) {
 		HDMI_OUTP(offset, 0x0);

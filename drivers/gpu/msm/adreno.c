@@ -121,7 +121,7 @@ static struct adreno_device device_3d0 = {
 		.mem_log = KGSL_LOG_LEVEL_DEFAULT,
 		.pwr_log = KGSL_LOG_LEVEL_DEFAULT,
 		.ft_log = KGSL_LOG_LEVEL_DEFAULT,
-		.pm_dump_enable = 0,
+		.pm_dump_enable = 1,
 	},
 	.gmem_base = 0,
 	.gmem_size = SZ_256K,
