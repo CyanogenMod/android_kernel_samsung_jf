@@ -586,6 +586,7 @@ void icmp_send(struct sk_buff *skb_in, int type, int code, __be32 info)
 	tos = icmp_pointers[type].error ? ((iph->tos & IPTOS_TOS_MASK) |
 					   IPTOS_PREC_INTERNETCONTROL) :
 					  iph->tos;
+	mark = IP4_REPLY_MARK(net, skb_in->mark);
 
 	mark = IP4_REPLY_MARK(net, skb_in->mark);
 
