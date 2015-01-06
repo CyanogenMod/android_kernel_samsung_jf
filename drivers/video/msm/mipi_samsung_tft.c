@@ -522,7 +522,7 @@ static ssize_t mipi_samsung_disp_get_power(struct device *dev,
 	if (unlikely(mfd->key != MFD_KEY))
 		return -EINVAL;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", mfd->panel_power_on);
+	rc = snprintf((char *)buf, sizeof(*buf), "%d\n", mfd->panel_power_on);
 	pr_info("mipi_samsung_disp_get_power(%d)\n", mfd->panel_power_on);
 
 	return rc;
@@ -621,7 +621,7 @@ static ssize_t mipi_samsung_auto_brightness_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n",
+	rc = snprintf((char *)buf, sizeof(*buf), "%d\n",
 			msd.dstat.auto_brightness);
 	pr_info("auot_brightness: %d\n", *buf);
 
@@ -695,7 +695,7 @@ static ssize_t mipi_samsung_disp_backlight_show(struct device *dev,
 	if (unlikely(mfd->key != MFD_KEY))
 		return -EINVAL;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", mfd->bl_level);
+	rc = snprintf((char *)buf, sizeof(*buf), "%d\n", mfd->bl_level);
 
 	return rc;
 }
@@ -795,7 +795,7 @@ static ssize_t mipi_samsung_disp_siop_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", msd.mpd->siop_status);
+	rc = snprintf((char *)buf, sizeof(*buf), "%d\n", msd.mpd->siop_status);
 	pr_info("siop status: %d\n", *buf);
 
 	return rc;
@@ -1062,7 +1062,7 @@ static ssize_t tuning_store(struct device *dev,
 			    size_t size)
 {
 	char *pt;
-	memset(tuning_file, 0, sizeof(tuning_file));
+	memset(tuning_file, 0, sizeof(*tuning_file));
 	snprintf(tuning_file, MAX_FILE_NAME, "%s%s", TUNING_FILE_PATH, buf);
 
 	pt = tuning_file;
