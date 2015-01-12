@@ -54,13 +54,6 @@ static char magna_test_key_on3[] = {
 	0x5A, 0x5A,
 };
 
-static char magna_ready_on_revF_first[] = {
-	0xD2,
-	0xDD, 0x21, 0x24, 0xFF, 0x11,
-	0x0B, 0x73, 0x00, 0x00, 0x26,
-	0x20,
-};
-
 static char magna_test_key_off1[] = {
 	0xF0,
 	0xA5, 0xA5,
@@ -89,7 +82,7 @@ static char mgana_aid_control[] = {
 
 static char magna_source_control[] = {
 	0xB9,
-	0x32, 0x15,
+	0x31, 0x15,
 };
 
 static char magna_pentile[] = {
@@ -580,27 +573,11 @@ static struct dsi_cmd_desc magna_on_cmds_revB[] = {
 		sizeof(magna_display_on), magna_display_on},
 };
 
-static struct dsi_cmd_desc magna_ready_to_on_cmds_revF[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(magna_test_key_on1), magna_test_key_on1},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(magna_test_key_on3), magna_test_key_on3},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(magna_ready_on_revF_first), magna_ready_on_revF_first},
-};
-
 static struct dsi_cmd_desc magna_on_cmds_revF[] = {
-	/*
-		At magna_boosting_cmds_revF, level key released
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(magna_test_key_on1), magna_test_key_on1},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(magna_test_key_on3), magna_test_key_on3},
-	*/
-
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(magna_nop), magna_nop},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(magna_nop), magna_nop},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(magna_nop), magna_nop},
 
 	/* initial condition set */	
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
@@ -617,8 +594,6 @@ static struct dsi_cmd_desc magna_on_cmds_revF[] = {
 		sizeof(magna_ACL_control), magna_ACL_control},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(magna_temperature_compensation), magna_temperature_compensation},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(magna_gamma_update), magna_gamma_update},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 120,
 		sizeof(magna_sleep_out), magna_sleep_out},
@@ -680,8 +655,6 @@ static struct dsi_cmd_desc panel_mtp_enable_cmds[] = {
 		sizeof(magna_test_key_on1), magna_test_key_on1},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(magna_test_key_on3), magna_test_key_on3},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(magna_ready_on_revF_first), magna_ready_on_revF_first},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(magna_manual_bootsing), magna_manual_bootsing},
 
@@ -1598,7 +1571,7 @@ static int cmd_set_change(int cmd_set, int panel_id)
 
 	switch (cmd_set) {
 	case PANEL_ON:
-		if (id3 == MAGNA_C_FIRST_ID) {
+		if (id3 == MAGNA_C_FIRST_ID || id3 == MAGNA_C_SECOND_ID) {
 			mipi_pd.on.cmd = magna_on_cmds_revB;
 			mipi_pd.on.size =
 				ARRAY_SIZE(magna_on_cmds_revB);
@@ -1691,8 +1664,6 @@ static int lpts_set_change(int fps)
 
 static struct mipi_panel_data mipi_pd = {
 	.panel_name	= "AMS499QP01-0\n",
-	.ready_to_on 	= {magna_ready_to_on_cmds_revF
-				, ARRAY_SIZE(magna_ready_to_on_cmds_revF)},
 	.on		= {magna_on_cmds_revB
 				, ARRAY_SIZE(magna_on_cmds_revB)},
 	.off		= {panel_off_cmds
@@ -1734,12 +1705,8 @@ static struct mipi_dsi_phy_ctrl dsi_video_mode_phy_db = {
 	/* regulator */
 	.regulator = {0x03, 0x0a, 0x04, 0x00, 0x20},
 	/* timing */
-	.timing = {0xFA, 0x4B, 0x34, /* panel specific for CLK_LANE*/
-		0x00, 
-		0x66, 0x77, 0x26, 0x4B, 0x41, /* panel specific for DATA_LANE*/
-		0x03, 0x04, /* panel specific for BTA*/
-		0xa0/* panel specific */
-	},
+	.timing = {0xE0, 0x48, 0x25, 0x00, 0x66, 0x6D, 0x2A, 0x4B,
+	0x3F, 0x03, 0x04, 0xa0},
 	/* phy ctrl */
 	.ctrl = {0x5f, 0x00, 0x00, 0x10},
 	/* strength */
@@ -1819,8 +1786,8 @@ static int __init mipi_video_magna_octa_full_hd_pt_init(void)
 	pinfo.mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo.mipi.frame_rate = 60;
 	pinfo.mipi.dsi_phy_db = &dsi_video_mode_phy_db;
-	pinfo.mipi.force_clk_lane_hs = 0;
-	pinfo.mipi.esc_byte_ratio = 6;
+	pinfo.mipi.force_clk_lane_hs = 1;
+	pinfo.mipi.esc_byte_ratio = 2;
 	pinfo.lcd.blt_ctrl = 1; //OVERLAY_BLT_SWITCH_TG_OFF;
 
 	ret = mipi_samsung_octa_device_register(&pinfo, MIPI_DSI_PRIM,
