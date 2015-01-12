@@ -203,15 +203,12 @@ int mdp4_overlay_writeback_off(struct platform_device *pdev)
 	complete(&vctrl->ov_comp);
 	msleep(20);
 	mdp_clk_ctrl(1);
-
 	/* sanity check, free pipes besides base layer */
 	mdp4_overlay_unset_mixer(pipe->mixer_num);
 	mdp4_mixer_stage_down(pipe, 1);
 	mdp4_overlay_pipe_free(pipe, 1);
 	vctrl->base_pipe = NULL;
-
 	mdp_clk_ctrl(0);
-
 	undx =  vctrl->update_ndx;
 	vp = &vctrl->vlist[undx];
 	if (vp->update_cnt) {
@@ -376,11 +373,11 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	pipe = vctrl->base_pipe;
 	mixer = pipe->mixer_num;
 
-/*
-* allow stage_commit without pipes queued
-* (vp->update_cnt == 0) to unstage pipes after
-* overlay_unset
-*/
+	/*
+	 * allow stage_commit without pipes queued
+	 * (vp->update_cnt == 0) to unstage pipes after
+	 * overlay_unset
+	 */
 
 	vctrl->update_ndx++;
 	vctrl->update_ndx &= 0x01;
@@ -404,7 +401,6 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	mdp4_overlay_iommu_unmap_freelist(mixer);
 
 	mdp_clk_ctrl(1);
-
 	pipe = vp->plist;
 	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
 		if (pipe->pipe_used) {
@@ -541,7 +537,6 @@ void mdp4_writeback_overlay(struct msm_fb_data_type *mfd)
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
 
 	mutex_unlock(&mfd->dma->ov_mutex);
-
 }
 
 static int mdp4_overlay_writeback_register_buffer(
@@ -890,7 +885,7 @@ static int mdp4_wfd_dequeue_update(struct msm_fb_data_type *mfd,
 	*wfdnode = node;
 
 	mutex_unlock(&mfd->unregister_mutex);
-    return 0;
+	return 0;
 }
 
 static void mdp4_wfd_queue_wakeup(struct msm_fb_data_type *mfd,
