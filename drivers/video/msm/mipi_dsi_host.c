@@ -936,14 +936,9 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo)
 	if (pinfo->data_lane0)
 		dsi_ctrl |= BIT(4);
 
-#if defined(CONFIG_MIPI_DSI_LP_CMD_SEND)
-		/* from frame buffer, low power mode */
-		/* DSI_COMMAND_MODE_DMA_CTRL */
-		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
-#else
-		/* send commands in High Speed Mode */
-		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
-#endif
+	/* from frame buffer, low power mode */
+	/* DSI_COMMAND_MODE_DMA_CTRL */
+	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
 
 	data = 0;
 	if (pinfo->te_sel)
