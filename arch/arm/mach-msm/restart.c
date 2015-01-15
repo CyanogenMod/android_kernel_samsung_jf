@@ -402,9 +402,10 @@ static int __init msm_pmic_restart_init(void)
 {
 	int rc;
 
-#if defined(CONFIG_MACH_JF_VZW) || defined(CONFIG_MACH_MELIUS)
-	return 0;
-#elif defined(CONFIG_SEC_DEBUG)
+	if (system_rev == 11)
+		return 0;
+
+#if defined(CONFIG_SEC_DEBUG)
 	if (kernel_sec_get_debug_level() != KERNEL_SEC_DEBUG_LEVEL_LOW)
 		return 0;
 #endif
