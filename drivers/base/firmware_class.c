@@ -612,10 +612,14 @@ request_firmware(const struct firmware **firmware_p, const char *name,
 	struct firmware_priv *fw_priv;
 	int ret;
 
+	if (!name || name[0] == '\0')
+		return -EINVAL;
+
 #if defined(CONFIG_GED_BUILD)
 	if (strcmp("kgsl-3d0",dev_name(device))==0)
 		dev_err(device, "firmware: %s \n", name);
 #endif
+
 	fw_priv = _request_firmware_prepare(firmware_p, name, device, true,
 					    false);
 	if (IS_ERR_OR_NULL(fw_priv))
