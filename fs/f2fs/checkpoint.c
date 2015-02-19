@@ -191,7 +191,7 @@ static int f2fs_write_meta_page(struct page *page,
 
 	trace_f2fs_writepage(page, META);
 
-	if (unlikely(sbi->por_doing))
+	if (unlikely(is_sbi_flag_set(sbi, SBI_POR_DOING)))
 		goto redirty_out;
 	if (wbc->for_reclaim && page->index < GET_SUM_BLOCK(sbi, 0))
 		goto redirty_out;
@@ -303,6 +303,7 @@ static int f2fs_set_meta_page_dirty(struct page *page)
 	if (!PageDirty(page)) {
 		__set_page_dirty_nobuffers(page);
 		inc_page_count(F2FS_P_SB(page), F2FS_DIRTY_META);
+		SetPagePrivate(page);
 		f2fs_trace_pid(page);
 		return 1;
 	}
@@ -313,6 +314,8 @@ const struct address_space_operations f2fs_meta_aops = {
 	.writepage	= f2fs_write_meta_page,
 	.writepages	= f2fs_write_meta_pages,
 	.set_page_dirty	= f2fs_set_meta_page_dirty,
+	.invalidatepage = f2fs_invalidate_page,
+	.releasepage	= f2fs_release_page,
 };
 
 static void __add_ino_entry(struct f2fs_sb_info *sbi, nid_t ino, int type)
@@ -467,7 +470,7 @@ void recover_orphan_inodes(struct f2fs_sb_info *sbi)
 	if (!is_set_ckpt_flags(F2FS_CKPT(sbi), CP_ORPHAN_PRESENT_FLAG))
 		return;
 
-	sbi->por_doing = true;
+	set_sbi_flag(sbi, SBI_POR_DOING);
 
 	start_blk = __start_cp_addr(sbi) + 1 +
 		le32_to_cpu(F2FS_RAW_SUPER(sbi)->cp_payload);
@@ -488,7 +491,7 @@ void recover_orphan_inodes(struct f2fs_sb_info *sbi)
 	}
 	/* clear Orphan Flag */
 	clear_ckpt_flags(F2FS_CKPT(sbi), CP_ORPHAN_PRESENT_FLAG);
-	sbi->por_doing = false;
+	clear_sbi_flag(sbi, SBI_POR_DOING);
 	return;
 }
 
@@ -572,7 +575,7 @@ static struct page *validate_checkpoint(struct f2fs_sb_info *sbi,
 	if (crc_offset >= blk_size)
 		goto invalid_cp1;
 
-	crc = le32_to_cpu(*((__u32 *)((unsigned char *)cp_block + crc_offset)));
+	crc = le32_to_cpu(*((__le32 *)((unsigned char *)cp_block + crc_offset)));
 	if (!f2fs_crc_valid(crc, cp_block, crc_offset))
 		goto invalid_cp1;
 
@@ -587,7 +590,7 @@ static struct page *validate_checkpoint(struct f2fs_sb_info *sbi,
 	if (crc_offset >= blk_size)
 		goto invalid_cp2;
 
-	crc = le32_to_cpu(*((__u32 *)((unsigned char *)cp_block + crc_offset)));
+	crc = le32_to_cpu(*((__le32 *)((unsigned char *)cp_block + crc_offset)));
 	if (!f2fs_crc_valid(crc, cp_block, crc_offset))
 		goto invalid_cp2;
 
@@ -938,24 +941,31 @@ static void do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	ckpt->cp_pack_start_sum = cpu_to_le32(1 + cp_payload_blks +
 			orphan_blocks);
 
-	if (cpc->reason == CP_UMOUNT) {
-		set_ckpt_flags(ckpt, CP_UMOUNT_FLAG);
+	if (__remain_node_summaries(cpc->reason))
 		ckpt->cp_pack_total_block_count = cpu_to_le32(F2FS_CP_PACKS+
 				cp_payload_blks + data_sum_blocks +
 				orphan_blocks + NR_CURSEG_NODE_TYPE);
-	} else {
-		clear_ckpt_flags(ckpt, CP_UMOUNT_FLAG);
+	else
 		ckpt->cp_pack_total_block_count = cpu_to_le32(F2FS_CP_PACKS +
 				cp_payload_blks + data_sum_blocks +
 				orphan_blocks);
-	}
+
+	if (cpc->reason == CP_UMOUNT)
+		set_ckpt_flags(ckpt, CP_UMOUNT_FLAG);
+	else
+		clear_ckpt_flags(ckpt, CP_UMOUNT_FLAG);
+
+	if (cpc->reason == CP_FASTBOOT)
+		set_ckpt_flags(ckpt, CP_FASTBOOT_FLAG);
+	else
+		clear_ckpt_flags(ckpt, CP_FASTBOOT_FLAG);
 
 	if (orphan_num)
 		set_ckpt_flags(ckpt, CP_ORPHAN_PRESENT_FLAG);
 	else
 		clear_ckpt_flags(ckpt, CP_ORPHAN_PRESENT_FLAG);
 
-	if (sbi->need_fsck)
+	if (is_sbi_flag_set(sbi, SBI_NEED_FSCK))
 		set_ckpt_flags(ckpt, CP_FSCK_FLAG);
 
 	/* update SIT/NAT bitmap */
@@ -972,15 +982,14 @@ static void do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	/* write out checkpoint buffer at block 0 */
 	cp_page = grab_meta_page(sbi, start_blk++);
 	kaddr = page_address(cp_page);
-	memcpy(kaddr, ckpt, (1 << sbi->log_blocksize));
+	memcpy(kaddr, ckpt, F2FS_BLKSIZE);
 	set_page_dirty(cp_page);
 	f2fs_put_page(cp_page, 1);
 
 	for (i = 1; i < 1 + cp_payload_blks; i++) {
 		cp_page = grab_meta_page(sbi, start_blk++);
 		kaddr = page_address(cp_page);
-		memcpy(kaddr, (char *)ckpt + i * F2FS_BLKSIZE,
-				(1 << sbi->log_blocksize));
+		memcpy(kaddr, (char *)ckpt + i * F2FS_BLKSIZE, F2FS_BLKSIZE);
 		set_page_dirty(cp_page);
 		f2fs_put_page(cp_page, 1);
 	}
@@ -992,7 +1001,7 @@ static void do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 
 	write_data_summaries(sbi, start_blk);
 	start_blk += data_sum_blocks;
-	if (cpc->reason == CP_UMOUNT) {
+	if (__remain_node_summaries(cpc->reason)) {
 		write_node_summaries(sbi, start_blk);
 		start_blk += NR_CURSEG_NODE_TYPE;
 	}
@@ -1000,7 +1009,7 @@ static void do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	/* writeout checkpoint block */
 	cp_page = grab_meta_page(sbi, start_blk);
 	kaddr = page_address(cp_page);
-	memcpy(kaddr, ckpt, (1 << sbi->log_blocksize));
+	memcpy(kaddr, ckpt, F2FS_BLKSIZE);
 	set_page_dirty(cp_page);
 	f2fs_put_page(cp_page, 1);
 
@@ -1029,7 +1038,7 @@ static void do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 		return;
 
 	clear_prefree_segments(sbi);
-	F2FS_RESET_SB_DIRT(sbi);
+	clear_sbi_flag(sbi, SBI_IS_DIRTY);
 }
 
 /*
@@ -1044,9 +1053,12 @@ void write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 
 	mutex_lock(&sbi->cp_mutex);
 
-	if (!sbi->s_dirty && cpc->reason != CP_DISCARD)
+	if (!is_sbi_flag_set(sbi, SBI_IS_DIRTY) &&
+			cpc->reason != CP_DISCARD && cpc->reason != CP_UMOUNT)
 		goto out;
 	if (unlikely(f2fs_cp_error(sbi)))
+		goto out;
+	if (f2fs_readonly(sbi->sb))
 		goto out;
 	if (block_operations(sbi))
 		goto out;
