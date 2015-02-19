@@ -44,7 +44,7 @@ static int gc_thread_func(void *data)
 			break;
 
 		if (sbi->sb->s_frozen >= SB_FREEZE_WRITE) {
-			wait_ms = increase_sleep_time(gc_th, wait_ms);
+			increase_sleep_time(gc_th, &wait_ms);
 			continue;
 		}
 
@@ -65,15 +65,15 @@ static int gc_thread_func(void *data)
 			continue;
 
 		if (!is_idle(sbi)) {
-			wait_ms = increase_sleep_time(gc_th, wait_ms);
+			increase_sleep_time(gc_th, &wait_ms);
 			mutex_unlock(&sbi->gc_mutex);
 			continue;
 		}
 
 		if (has_enough_invalid_blocks(sbi))
-			wait_ms = decrease_sleep_time(gc_th, wait_ms);
+			decrease_sleep_time(gc_th, &wait_ms);
 		else
-			wait_ms = increase_sleep_time(gc_th, wait_ms);
+			increase_sleep_time(gc_th, &wait_ms);
 
 		stat_inc_bggc_count(sbi);
 
@@ -356,11 +356,8 @@ static void add_gc_inode(struct gc_inode_list *gc_list, struct inode *inode)
 	}
 	new_ie = f2fs_kmem_cache_alloc(inode_entry_slab, GFP_NOFS);
 	new_ie->inode = inode;
-retry:
-	if (radix_tree_insert(&gc_list->iroot, inode->i_ino, new_ie)) {
-		cond_resched();
-		goto retry;
-	}
+
+	f2fs_radix_tree_insert(&gc_list->iroot, inode->i_ino, new_ie);
 	list_add_tail(&new_ie->list, &gc_list->ilist);
 }
 
@@ -701,8 +698,7 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 		.iroot = RADIX_TREE_INIT(GFP_NOFS),
 	};
 
-	cpc.reason = test_opt(sbi, FASTBOOT) ? CP_UMOUNT : CP_SYNC;
-
+	cpc.reason = __get_cp_reason(sbi);
 gc_more:
 	if (unlikely(!(sbi->sb->s_flags & MS_ACTIVE)))
 		goto stop;
