@@ -88,4 +88,3 @@ obj-$(CONFIG_SLIMPORT_ANX7808)	+= slimport_anx7808/
 obj-$(CONFIG_2MIC_ES305)		+= a2220.o
 obj-$(CONFIG_SEC_TORCH_FLASH)	+= sec_torch.o
 obj-$(CONFIG_TIMA_LOG)		+= tima_debug_log.o
-obj-$(CONFIG_GAMMA_CONTROL)	+= gamma_control.o
