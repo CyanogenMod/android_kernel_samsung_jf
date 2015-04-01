@@ -6,8 +6,8 @@ menuconfig INPUT_YAS_SENSORS
 	  Sensors.
 
 if INPUT_YAS_SENSORS
-source "drivers/sensors/geomagnetic/Kconfig"
-source "drivers/sensors/optical/Kconfig"
+source "drivers/sensors_samsung/geomagnetic/Kconfig"
+source "drivers/sensors_samsung/optical/Kconfig"
 endif # INPUT_YAS_SENSORS
 
 config SENSORS_CORE

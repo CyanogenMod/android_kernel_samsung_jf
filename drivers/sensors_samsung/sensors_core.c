@@ -1,5 +1,5 @@
 /*
- *  /driver/sensors/sensors_core.c
+ *  /driver/sensors_samsung/sensors_core.c
  *
  *  Copyright (C) 2011 Samsung Electronics Co.Ltd
  *
