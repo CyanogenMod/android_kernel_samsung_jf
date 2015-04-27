@@ -219,20 +219,7 @@ static void print_active_locks(int type)
 	bool print_expired = true;
 
 	BUG_ON(type >= WAKE_LOCK_TYPE_COUNT);
-	list_for_each_entry(lock, &active_wake_locks[type], link) {
-		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
-			long timeout = lock->expires - jiffies;
-			if (timeout > 0)
-				pr_info("active wake lock %s, time left %ld\n",
-					lock->name, timeout);
-			else if (print_expired)
-				pr_info("wake lock %s, expired\n", lock->name);
-		} else {
-			pr_info("active wake lock %s\n", lock->name);
-			if (!(debug_mask & DEBUG_EXPIRE))
-				print_expired = false;
-		}
-	}
+	list_for_each_entry(lock, &active_wake_locks[type], link);
 }
 
 static void debug_wake_locks(unsigned long notuse)
@@ -243,15 +230,8 @@ static void debug_wake_locks(unsigned long notuse)
 
 	spin_lock_irqsave(&list_lock, irqflags);
 	list_for_each_entry(lock, &active_wake_locks[WAKE_LOCK_SUSPEND], link) {
-		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
+		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE)
 			long timeout = lock->expires - jiffies;
-			if (timeout > 0)
-				pr_info("[%s]active wake lock %s, time left %ld\n",
-					__func__, lock->name, timeout);
-		} else
-			pr_info("[%s]active wake lock %s\n",
-					__func__, lock->name);
-	}
 	spin_unlock_irqrestore(&list_lock, irqflags);
 
 	/* Restart debug timer with 3seconds timeout */
