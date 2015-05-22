@@ -347,6 +347,8 @@ static int sec_bat_get_cable_from_extended_cable_type(
 				charge_current_max = USB_CHARGE_1000;
 				charge_current     = USB_CHARGE_1000;
 				break;
+			default:		/* Don't do anything for any other kind of connections and don't touch when type is unknown */
+				break;
 
 		}
 	/* We are in advanced Fast Charge mode, so we apply custom charging
@@ -368,9 +370,10 @@ static int sec_bat_get_cable_from_extended_cable_type(
 			   for all of them */
 			case POWER_SUPPLY_TYPE_MAINS:
 				charge_current_max = ac_charge_level;
-				/* but never go above 1.9A */
+				/* but never go above 2.1A */
 				charge_current     =
-					min(ac_charge_level, MAX_CHARGE_LEVEL);
+				/* Keep the 300mA/h delta, but never go above 2.1A/h */
+					min(ac_charge_level+300, MAX_CHARGE_LEVEL);
 				break;
 			/* Don't do anything for any other kind of connections
 			   and don't touch when type is unknown */

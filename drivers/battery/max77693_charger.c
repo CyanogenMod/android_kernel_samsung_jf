@@ -22,13 +22,12 @@
 #define ENABLE 1
 #define DISABLE 0
 
-
 #define RECOVERY_DELAY		3000
 #define RECOVERY_CNT		5
 #define REDUCE_CURRENT_STEP	100
 #define MINIMUM_INPUT_CURRENT	300
 #define SIOP_INPUT_LIMIT_CURRENT 1200
-#define SIOP_CHARGING_LIMIT_CURRENT 1000
+#define SIOP_CHARGING_LIMIT_CURRENT 1200
 
 struct max77693_charger_data {
 	struct max77693_dev	*max77693;
@@ -908,6 +907,18 @@ static int sec_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		if(val->intval == POWER_SUPPLY_TYPE_WIRELESS) {
 			u8 reg_data;
+#ifdef CONFIG_FORCE_FAST_CHARGE
+				/* Yank555 : Use Fast charge currents accroding to user settings */
+				if (force_fast_charge == FAST_CHARGE_FORCE_AC) {
+					/* We are in basic Fast Charge mode, so we substitute AC to WIRELESS levels */
+					charger->charging_current_max = WIRELESS_CHARGE_1000;
+					charger->charging_current = WIRELESS_CHARGE_1000 + 100;
+				} else if (force_fast_charge == FAST_CHARGE_FORCE_CUSTOM_MA) {
+					/* We are in custom current Fast Charge mode for WIRELESS */
+					charger->charging_current_max = wireless_charge_level;
+					charger->charging_current = min(wireless_charge_level+100, MAX_CHARGE_LEVEL);
+				}
+#endif
 			max77693_read_reg(charger->max77693->i2c,
 				MAX77693_CHG_REG_CHG_CNFG_12, &reg_data);
 			reg_data &= ~(1 << 5);
