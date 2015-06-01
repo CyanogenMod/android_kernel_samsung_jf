@@ -926,13 +926,6 @@ asmlinkage int syscall_trace(int why, struct pt_regs *regs, int scno)
 
 	current_thread_info()->syscall = scno;
 
-	/*
-	 * IP is used to denote syscall entry/exit:
-	 * IP = 0 -> entry, =1 -> exit
-	 */
-	ip = regs->ARM_ip;
-	regs->ARM_ip = why;
-
 	/* the 0x80 provides a way for the tracing parent to distinguish
 	   between a syscall stop and SIGTRAP delivery */
 	ptrace_notify(SIGTRAP | ((current->ptrace & PT_TRACESYSGOOD)
