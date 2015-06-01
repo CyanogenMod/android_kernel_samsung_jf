@@ -13,17 +13,20 @@
  *
  */
 #include "../ssp.h"
-#include "../../../arch/arm/mach-msm/board-8064.h"
 
 #define	VENDOR		"CAPELLA"
 #define	CHIP_ID_3320	"CM3320"
 #define	CHIP_ID		"CM3323"
 
-static int chip_cm3323_rev = 0;
 
 /*************************************************************************/
 /* factory Sysfs                                                         */
 /*************************************************************************/
+
+static unsigned int is_jf_eur = 0;
+
+static unsigned int chip_cm3323_rev = 0;
+
 static ssize_t light_vendor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -33,11 +36,14 @@ static ssize_t light_vendor_show(struct device *dev,
 static ssize_t light_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
+if (chip_cm3323_rev > 0) {
 	struct ssp_data *data = dev_get_drvdata(dev);
 	if (data->ap_rev >= chip_cm3323_rev)
 		return sprintf(buf, "%s\n", CHIP_ID);
 	else
 		return sprintf(buf, "%s\n", CHIP_ID_3320);
+} else
+	return sprintf(buf, "%s\n", CHIP_ID_3320);
 }
 
 static ssize_t light_lux_show(struct device *dev,
@@ -75,9 +81,19 @@ static struct device_attribute *light_attrs[] = {
 
 void initialize_light_factorytest(struct ssp_data *data)
 {
-	if (system_rev <= 10)
+	if (samsung_hardware == GT_I9505)
+		is_jf_eur = true;
+
+	if (samsung_hardware == SGH_I337
+		 || samsung_hardware == SGH_M919
+		 || samsung_hardware == GT_I9505
+		 || samsung_hardware == GT_I9295)
 		chip_cm3323_rev = 8;
-	else
+	else if (samsung_hardware == SPH_L720
+		 	 || samsung_hardware == SCH_R970
+		 	 || samsung_hardware == SCH_I545
+			 || samsung_hardware == SHV_E300
+		 	 || samsung_hardware == SGH_N045)
 		chip_cm3323_rev = 9;
 
 	sensors_register(data->light_device, data, light_attrs, "light_sensor");

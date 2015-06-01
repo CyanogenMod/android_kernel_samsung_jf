@@ -127,6 +127,21 @@ extern int poweroff_charging;
 
 extern unsigned int system_rev;
 
+enum {
+	SGH_I337,
+	SPH_L720,
+	SGH_M919,
+	SCH_R970,
+	SCH_I545,
+	GT_I9505,
+	GT_I9295,
+	SHV_E300,
+	SGH_N045,
+	XXX_XXXX,
+};
+
+extern unsigned int samsung_hardware;
+
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_MXTS)
 extern void __init mxt540s_tsp_input_init(void);
 #endif

@@ -2150,9 +2150,9 @@ static void ssp_get_positions(int *acc, int *mag)
 	else
 		*acc = MPU6500_BOTTOM_RIGHT_UPPER;
 
-	if (system_rev == BOARD_REV11)
-		*mag = YAS532_TOP_RIGHT_LOWER;
-	else if (system_rev > BOARD_REV06)
+	if (system_rev > BOARD_REV06 
+		 && samsung_hardware != SPH_L720
+		 && samsung_hardware != SCH_I545)
 		*mag = YAS532_BOTTOM_RIGHT_LOWER;
 	else if (system_rev > BOARD_REV03)
 		*mag = YAS532_TOP_RIGHT_LOWER;

@@ -13,7 +13,6 @@
  *
  */
 #include "ssp.h"
-#include "../../arch/arm/mach-msm/board-8064.h"
 
 /*************************************************************************/
 /* SSP Kernel -> HAL input evnet function                                */
@@ -174,7 +173,7 @@ void report_gesture_data(struct ssp_data *data, struct sensor_value *gesdata)
 	data->buf[GESTURE_SENSOR].data[7] = gesdata->data[7]; /* c_delta */
 	data->buf[GESTURE_SENSOR].data[8] = gesdata->data[8]; /* d_delta */
 
-	if (system_rev <= 10) {
+	if (samsung_hardware == GT_I9505) {
 		input_report_abs(data->gesture_input_dev,
 			ABS_RUDDER, data->buf[GESTURE_SENSOR].data[0]);
 		input_report_abs(data->gesture_input_dev,
