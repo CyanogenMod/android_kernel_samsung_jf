@@ -35,6 +35,7 @@
 #include <linux/tty_flip.h>
 #include <linux/serial_core.h>
 #include <linux/serial.h>
+#include <linux/wakelock.h>
 #include <linux/nmi.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
@@ -55,6 +56,29 @@ extern int mako_console_stopped(void);
 static inline int mako_console_stopped(void) { return 0; }
 #endif
 
+extern int max77693_get_jig_state(void);
+#if defined(CONFIG_MACH_JF_DCM)
+/* Felica P2P fail issue, try to reduce every possible delays */
+#define DUMP_UART_PACKET 0
+#else
+#define DUMP_UART_PACKET 1
+#endif
+#define FULL_DUMP_UART_PACKET 0
+
+#if DUMP_UART_PACKET
+static char rx_buf[64]; /* 64 is rx fifo size */
+static char tx_buf[64]; /* 64 is tx fifo size */
+#endif
+
+/* optional low power wakeup, typically on a GPIO RX irq */
+struct msm_hsl_wakeup {
+	int	irq;	/* < 0 indicates low power wakeup disabled */
+	int rx_gpio;	/*  MSM_RX_GPIO, generally 23 */
+	unsigned char ignore; /* bool */
+	unsigned int wakeup_set;
+	struct wake_lock wake_lock; /* Keep a wake lock */
+};
+
 struct msm_hsl_port {
 	struct uart_port	uart;
 	char			name[16];
@@ -70,6 +94,7 @@ struct msm_hsl_port {
 	unsigned int		ver_id;
 	int			tx_timeout;
 	short			cons_flags;
+	struct msm_hsl_wakeup	wakeup;
 };
 
 #define UARTDM_VERSION_11_13	0
@@ -191,6 +216,33 @@ static int clk_en(struct uart_port *port, int enable)
 err:
 	return ret;
 }
+
+/**
+   Function: wake up ISR
+   Purpose: Creates a self expiring wake_lock that will prevent system
+			from suspend.
+ */
+static irqreturn_t msm_hsl_wakeup_isr(int irq, void *dev)
+{
+	unsigned int wakeup = 0;
+	struct msm_hsl_port *msm_hsl_port = (struct msm_hsl_port *)dev;
+	const unsigned long WAKE_LOCK_EXPIRE_TIME = HZ;
+	/* let it expire within 1 sec */
+
+	if (msm_hsl_port->wakeup.ignore)
+		msm_hsl_port->wakeup.ignore = 0;
+	else
+		wakeup = 1;
+
+	if (wakeup) {
+		/* let it self expire */
+		wake_lock_timeout(&msm_hsl_port->wakeup.wake_lock,
+					WAKE_LOCK_EXPIRE_TIME*6);
+	}
+
+	return IRQ_HANDLED;
+}
+
 static int msm_hsl_loopback_enable_set(void *data, u64 val)
 {
 	struct msm_hsl_port *msm_hsl_port = data;
@@ -316,6 +368,11 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 	unsigned int sr;
 	int count = 0;
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
+#if DUMP_UART_PACKET
+	int rx_buf_count = 0;
+
+	memset(rx_buf, 0xFF, 64);
+#endif
 
 	vid = msm_hsl_port->ver_id;
 	/*
@@ -368,14 +425,46 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 		else if (sr & UARTDM_SR_PAR_FRAME_BMSK)
 			flag = TTY_FRAME;
 
+#if DUMP_UART_PACKET
+		if (count < 4) {
+			if (rx_buf_count <= (sizeof(rx_buf) - count)) {
+				memcpy(rx_buf+rx_buf_count, &c, count);
+				rx_buf_count += count;
+			}
+		} else {
+			if (rx_buf_count <= (sizeof(rx_buf) - sizeof(int))) {
+				memcpy(rx_buf+rx_buf_count, &c, sizeof(int));
+				rx_buf_count += sizeof(int);
+			}
+		}
+#endif
+
 		/* TODO: handle sysrq */
 		/* if (!uart_handle_sysrq_char(port, c)) */
 		tty_insert_flip_string(tty, (char *) &c,
 				       (count > 4) ? 4 : count);
 		count -= 4;
 	}
+#if DUMP_UART_PACKET
+	/* skip insignificanty packet */
+#if FULL_DUMP_UART_PACKET
+	print_hex_dump(KERN_DEBUG, "RX UART: ",
+					16, 1, DUMP_PREFIX_ADDRESS,
+					rx_buf, rx_buf_count, 1);
+#else
+	if (rx_buf_count > 4) {
+		if (!is_console(port))
+			print_hex_dump(KERN_DEBUG, "RX UART: ", 16,
+				1, DUMP_PREFIX_ADDRESS, rx_buf,
+				rx_buf_count > 16 ? 16 : rx_buf_count, 1);
+	}
+#endif
+#endif
 
 	tty_flip_buffer_push(tty);
+
+	/* ignore pending wakeup irq */
+	msm_hsl_port->wakeup.ignore = 1;
 }
 
 static void handle_tx(struct uart_port *port)
@@ -387,6 +476,11 @@ static void handle_tx(struct uart_port *port)
 	unsigned int tf_pointer = 0;
 	unsigned int vid;
 
+#if DUMP_UART_PACKET
+	int tx_buf_count = 0;
+
+	memset(tx_buf, 0xFF, 64);
+#endif
 	vid = UART_TO_MSM(port)->ver_id;
 	tx_count = uart_circ_chars_pending(xmit);
 
@@ -442,6 +536,17 @@ static void handle_tx(struct uart_port *port)
 			break;
 		}
 		}
+
+#if DUMP_UART_PACKET
+		if ((tx_count - tf_pointer) < 4) {
+			memcpy(tx_buf+tx_buf_count, &x, tx_count - tf_pointer);
+			tx_buf_count += (tx_count - tf_pointer);
+		} else {
+			memcpy(tx_buf+tx_buf_count, &x, sizeof(int));
+			tx_buf_count += sizeof(int);
+		}
+#endif
+
 		msm_hsl_write(port, x, regmap[vid][UARTDM_TF]);
 		xmit->tail = ((tx_count - tf_pointer < 4) ?
 			      (tx_count - tf_pointer + xmit->tail) :
@@ -450,6 +555,21 @@ static void handle_tx(struct uart_port *port)
 		sent_tx = 1;
 	}
 
+#if DUMP_UART_PACKET
+	/* skip echo packet */
+#if FULL_DUMP_UART_PACKET
+	print_hex_dump(KERN_DEBUG, "TX UART: ",
+				16, 1, DUMP_PREFIX_ADDRESS,
+				tx_buf, tx_count, 1);
+#else
+	if (tx_count > 4) {
+		if (!is_console(port))
+			print_hex_dump(KERN_DEBUG, "TX UART: ",
+				16, 1, DUMP_PREFIX_ADDRESS,
+				tx_buf, tx_count > 16 ? 16 : tx_count, 1);
+	}
+#endif
+#endif
 	if (uart_circ_empty(xmit))
 		msm_hsl_stop_tx(port);
 
@@ -908,6 +1028,12 @@ static void msm_hsl_release_port(struct uart_port *port)
 			  GSBI_CONTROL_ADDR);
 		iounmap(msm_hsl_port->mapped_gsbi);
 		msm_hsl_port->mapped_gsbi = NULL;
+	}
+
+	/* Free Wake UP IRQ */
+	if (msm_hsl_port->wakeup.irq > 0) {
+		free_irq(msm_hsl_port->wakeup.irq, msm_hsl_port);
+		msm_hsl_port->wakeup.irq = -1;
 	}
 }
 
@@ -1434,6 +1560,31 @@ static int __devinit msm_serial_hsl_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
+	/* Get wakup_irq resource if available */
+	msm_hsl_port->wakeup.irq = -1;
+	uart_resource = platform_get_resource_byname(pdev,
+					IORESOURCE_IO, "wakeup_gpio");
+	if (uart_resource) {
+		printk(KERN_INFO "%s: Found wakeup gpio %d\n",
+				__func__, uart_resource->start);
+		msm_hsl_port->wakeup.wakeup_set = 0;
+		msm_hsl_port->wakeup.rx_gpio = uart_resource->start;
+		msm_hsl_port->wakeup.irq = gpio_to_irq(uart_resource->start);
+
+		/* Create a wake_lock to prevent system from suspend */
+		wake_lock_init(&msm_hsl_port->wakeup.wake_lock,
+			WAKE_LOCK_SUSPEND, "msm_serial_hsl");
+
+		ret = request_irq(msm_hsl_port->wakeup.irq, msm_hsl_wakeup_isr,
+			IRQF_TRIGGER_FALLING, "msm_hsl_wakeup", msm_hsl_port);
+		if (unlikely(ret)) {
+			pr_err("%s: failed to request wakeup_irq\n", __func__);
+			return ret;
+		}
+
+		disable_irq(msm_hsl_port->wakeup.irq);
+	}
+
 	device_set_wakeup_capable(&pdev->dev, 1);
 	platform_set_drvdata(pdev, port);
 	pm_runtime_enable(port->dev);
@@ -1483,7 +1634,9 @@ static int msm_serial_hsl_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
+	struct msm_hsl_port *msm_hsl_port;
 	port = get_port_from_line(get_line(pdev));
+	msm_hsl_port = UART_TO_MSM(port);
 
 	if (port) {
 
@@ -1496,6 +1649,26 @@ static int msm_serial_hsl_suspend(struct device *dev)
 		uart_suspend_port(&msm_hsl_uart_driver, port);
 		if (device_may_wakeup(dev))
 			enable_irq_wake(port->irq);
+
+		if (max77693_get_jig_state() &&
+				gpio_get_value(msm_hsl_port->wakeup.rx_gpio)) {
+			/* Enable wakeup_irq
+			 * wakeup_irq state :
+			 * 1. max77693_get_jig_state : MUIC such as FSA9485 detects it
+			 * 2. UART_RX GPIO is high : h/w behavior
+			 * */
+			if (msm_hsl_port->wakeup.irq > 0) {
+				printk(KERN_ERR "%s enabling wakeup irq\n",
+								__func__);
+				enable_irq_wake(msm_hsl_port->wakeup.irq);
+				enable_irq(msm_hsl_port->wakeup.irq);
+				msm_hsl_port->wakeup.wakeup_set = 1;
+			}
+		} else {
+			/* If RX_GPIO is low, uart is not connected. */
+			msm_hsl_port->wakeup.wakeup_set = 0;
+			//uart_connecting = 0;
+		}
 	}
 
 	return 0;
@@ -1505,7 +1678,9 @@ static int msm_serial_hsl_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
+	struct msm_hsl_port *msm_hsl_port;
 	port = get_port_from_line(get_line(pdev));
+	msm_hsl_port = UART_TO_MSM(port);
 
 	if (port) {
 
@@ -1519,6 +1694,18 @@ static int msm_serial_hsl_resume(struct device *dev)
 			    mako_console_stopped())
 				console_stop(port->cons);
 			msm_hsl_init_clock(port);
+		}
+		if (max77693_get_jig_state() || msm_hsl_port->wakeup.wakeup_set) {
+			/* disable wakeup_irq */
+			if (msm_hsl_port->wakeup.irq > 0) {
+				printk(KERN_ERR "%s disbling wakeup irq\n",
+								__func__);
+				if (!msm_hsl_port->wakeup.wakeup_set)
+					return 0;
+
+				disable_irq_wake(msm_hsl_port->wakeup.irq);
+				disable_irq(msm_hsl_port->wakeup.irq);
+			}
 		}
 	}
 
@@ -1536,7 +1723,8 @@ static int msm_hsl_runtime_suspend(struct device *dev)
 	port = get_port_from_line(get_line(pdev));
 
 	dev_dbg(dev, "pm_runtime: suspending\n");
-	msm_hsl_deinit_clock(port);
+	if (is_console(port))
+		msm_hsl_deinit_clock(port);
 	return 0;
 }
 
@@ -1547,7 +1735,8 @@ static int msm_hsl_runtime_resume(struct device *dev)
 	port = get_port_from_line(get_line(pdev));
 
 	dev_dbg(dev, "pm_runtime: resuming\n");
-	msm_hsl_init_clock(port);
+	if (is_console(port))
+		msm_hsl_init_clock(port);
 	return 0;
 }
 
