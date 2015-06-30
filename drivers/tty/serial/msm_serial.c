@@ -300,7 +300,7 @@ static void handle_tx(struct uart_port *port)
 {
 	struct circ_buf *xmit = &port->state->xmit;
 	struct msm_port *msm_port = UART_TO_MSM(port);
-	int sent_tx;
+	int sent_tx = 0;
 
 	if (port->x_char) {
 		msm_write(port, port->x_char, UART_TF);
