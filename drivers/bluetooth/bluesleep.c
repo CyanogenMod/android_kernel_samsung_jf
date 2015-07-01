@@ -98,6 +98,7 @@ static void bluesleep_start_wq(struct work_struct *work);
 static void bluesleep_stop_wq(struct work_struct *work);
 static void bluesleep_abnormal_stop_wq(struct work_struct *work);
 
+
 /* work queue */
 DECLARE_DELAYED_WORK(sleep_workqueue, bluesleep_sleep_work);
 DECLARE_DELAYED_WORK(tx_timer_expired_workqueue, bluesleep_ext_wake_set_wq);
@@ -105,6 +106,7 @@ DECLARE_DELAYED_WORK(tx_data_wakeup_workqueue, bluesleep_sleep_wakeup_wq);
 DECLARE_DELAYED_WORK(bluesleep_start_workqueue, bluesleep_start_wq);
 DECLARE_DELAYED_WORK(bluesleep_stop_workqueue, bluesleep_stop_wq);
 DECLARE_DELAYED_WORK(bluesleep_abnormal_stop_workqueue, bluesleep_abnormal_stop_wq);
+
 
 /* Macros for handling sleep work */
 #define bluesleep_rx_busy()     schedule_delayed_work(&sleep_workqueue, 0)
@@ -118,6 +120,7 @@ DECLARE_DELAYED_WORK(bluesleep_abnormal_stop_workqueue, bluesleep_abnormal_stop_
 #define bluesleep_start()     schedule_delayed_work(&bluesleep_start_workqueue, 0)
 #define bluesleep_stop()     schedule_delayed_work(&bluesleep_stop_workqueue, 0)
 #define bluesleep_abnormal_stop()     schedule_delayed_work(&bluesleep_abnormal_stop_workqueue, 0)
+
 
 /* 10 second timeout */
 #define TX_TIMER_INTERVAL  3
