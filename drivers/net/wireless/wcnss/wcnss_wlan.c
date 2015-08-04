@@ -85,6 +85,7 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define WCNSS_USR_CTRL_MSG_START  0x00000000
 #define WCNSS_USR_SERIAL_NUM      (WCNSS_USR_CTRL_MSG_START + 1)
 #define WCNSS_USR_HAS_CAL_DATA    (WCNSS_USR_CTRL_MSG_START + 2)
+#define WCNSS_USR_WLAN_MAC_ADDR   (WCNSS_USR_CTRL_MSG_START + 3)
 
 #define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
 
@@ -391,7 +392,6 @@ static ssize_t wcnss_version_show(struct device *dev,
 static DEVICE_ATTR(wcnss_version, S_IRUSR,
 		wcnss_version_show, NULL);
 
-
 void wcnss_riva_dump_pmic_regs(void)
 {
 	int i, rc;
@@ -501,9 +501,20 @@ static void wcnss_smd_notify_event(void *data, unsigned int event)
 	}
 }
 
+#if defined(CONFIG_PRIMA_WLAN) && !defined(CONFIG_PRIMA_WLAN_MODULE)
+static struct platform_device wcnss_ready = {
+    .name = "wcnss_ready",
+    .id = -1,
+};
+#endif
+
 static void wcnss_post_bootup(struct work_struct *work)
 {
 	pr_info("%s: Cancel APPS vote for Iris & Riva\n", __func__);
+
+#if defined(CONFIG_PRIMA_WLAN) && !defined(CONFIG_PRIMA_WLAN_MODULE)
+    platform_device_register(&wcnss_ready);
+#endif
 
 	/* Since Riva is up, cancel any APPS vote for Iris & Riva VREGs  */
 	wcnss_wlan_power(&penv->pdev->dev, &penv->wlan_config,
@@ -1434,6 +1445,16 @@ void process_usr_ctrl_cmd(u8 *buf, size_t len)
 			pr_err("%s: Invalid data for cal %d\n", __func__,
 				buf[2]);
 		has_calibrated_data = buf[2];
+		break;
+
+	case WCNSS_USR_WLAN_MAC_ADDR:
+		memcpy(&penv->wlan_nv_macAddr,  &buf[2],
+				sizeof(penv->wlan_nv_macAddr));
+
+		pr_debug("%s: MAC Addr:" MAC_ADDRESS_STR "\n", __func__,
+			penv->wlan_nv_macAddr[0], penv->wlan_nv_macAddr[1],
+			penv->wlan_nv_macAddr[2], penv->wlan_nv_macAddr[3],
+			penv->wlan_nv_macAddr[4], penv->wlan_nv_macAddr[5]);
 		break;
 
 	default:
