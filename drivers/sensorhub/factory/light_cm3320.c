@@ -19,14 +19,21 @@
 #define	CHIP_ID		"CM3323"
 
 
+#if defined(CONFIG_MACH_JF_ATT) || defined(CONFIG_MACH_JF_TMO) || \
+	defined(CONFIG_MACH_JF_EUR) || defined(CONFIG_MACH_JACTIVE_EUR)
+#define CHIP_CM3323_REV	8
+#elif defined(CONFIG_MACH_JF_SPR) || defined(CONFIG_MACH_JF_USC) || \
+	defined(CONFIG_MACH_JF_VZW) || defined(CONFIG_MACH_JF_LGT) || \
+	defined(CONFIG_MACH_JF_SKT) || defined(CONFIG_MACH_JF_KTT) || \
+	defined(CONFIG_MACH_JF_DCM) || defined(CONFIG_MACH_JF_CRI)
+#define CHIP_CM3323_REV	9
+#elif defined(CONFIG_MACH_JFVE_EUR)
+#define CHIP_CM3323_REV	0
+#endif
+
 /*************************************************************************/
 /* factory Sysfs                                                         */
 /*************************************************************************/
-
-static unsigned int is_jf_eur = 0;
-
-static unsigned int chip_cm3323_rev = 0;
-
 static ssize_t light_vendor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -36,14 +43,15 @@ static ssize_t light_vendor_show(struct device *dev,
 static ssize_t light_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-if (chip_cm3323_rev > 0) {
+#ifdef CHIP_CM3323_REV
 	struct ssp_data *data = dev_get_drvdata(dev);
-	if (data->ap_rev >= chip_cm3323_rev)
+	if (data->ap_rev >= CHIP_CM3323_REV)
 		return sprintf(buf, "%s\n", CHIP_ID);
 	else
 		return sprintf(buf, "%s\n", CHIP_ID_3320);
-} else
+#else
 	return sprintf(buf, "%s\n", CHIP_ID_3320);
+#endif
 }
 
 static ssize_t light_lux_show(struct device *dev,
@@ -81,21 +89,6 @@ static struct device_attribute *light_attrs[] = {
 
 void initialize_light_factorytest(struct ssp_data *data)
 {
-	if (samsung_hardware == GT_I9505)
-		is_jf_eur = true;
-
-	if (samsung_hardware == SGH_I337
-		 || samsung_hardware == SGH_M919
-		 || samsung_hardware == GT_I9505
-		 || samsung_hardware == GT_I9295)
-		chip_cm3323_rev = 8;
-	else if (samsung_hardware == SPH_L720
-		 	 || samsung_hardware == SCH_R970
-		 	 || samsung_hardware == SCH_I545
-			 || samsung_hardware == SHV_E300
-		 	 || samsung_hardware == SGH_N045)
-		chip_cm3323_rev = 9;
-
 	sensors_register(data->light_device, data, light_attrs, "light_sensor");
 }
 
