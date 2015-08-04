@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -20,7 +20,7 @@
  */
 
 /*
- * Airgo Networks, Inc proprietary. All rights reserved.
+ * Qualcomm Networks, Inc proprietary. All rights reserved.
  * This file sirWrapper.h contains the common definitions used by all
  * Firmware modules.
  *

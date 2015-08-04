@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -61,15 +81,14 @@ when        who          what, where, why
 #include "wlan_qct_tl.h"
 #include "wlan_qct_tli.h"
 #include "tlDebug.h"
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-#include "wlan_bal_misc.h"
-#endif
 
-#define WDA_DS_DXE_RES_COUNT   WDA_TLI_MIN_RES_DATA + 20
+#define WDA_DS_DXE_RES_COUNT   (WDA_TLI_MIN_RES_DATA + 20)
 
-#define VOS_TO_WPAL_PKT(_vos_pkt) ((wpt_packet*)_vos_pkt)
+/* macro's for acessing TL API/data structures */
+#define WDA_TL_SET_TX_XMIT_PENDING(a) WLANTL_SetTxXmitPending(a)
+#define WDA_TL_IS_TX_XMIT_PENDING(a) WLANTL_IsTxXmitPending(a)
+#define WDA_TL_CLEAR_TX_XMIT_PENDING(a) WLANTL_ClearTxXmitPending(a)
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 #define WDA_HI_FLOW_MASK 0xF0
 #define WDA_LO_FLOW_MASK 0x0F
 
@@ -79,159 +98,7 @@ WDA_DS_TxCompleteCB
  v_PVOID_t pvosGCtx, 
  v_PVOID_t pFrameDataBuff
 );
-#endif
 
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-/*==========================================================================
-   FUNCTION    WDA_DS_PrepareBDHeader
-
-  DESCRIPTION
-    Inline function for preparing BD header before HAL processing.
-
-  DEPENDENCIES
-    Just notify HAL that suspend in TL is complete.
-
-  PARAMETERS
-
-   IN
-    vosDataBuff:      vos data buffer
-    ucDisableFrmXtl:  is frame xtl disabled
-
-   OUT
-    ppvBDHeader:      it will contain the BD header
-    pvDestMacAddr:   it will contain the destination MAC address
-    pvosStatus:       status of the combined processing
-    pusPktLen:        packet len.
-
-  RETURN VALUE
-    No return.
-
-  SIDE EFFECTS
-
-============================================================================*/
-void
-WDA_DS_PrepareBDHeader
-(
-  vos_pkt_t*      vosDataBuff,
-  v_PVOID_t*      ppvBDHeader,
-  v_MACADDR_t*    pvDestMacAddr,
-  v_U8_t          ucDisableFrmXtl,
-  VOS_STATUS*     pvosStatus,
-  v_U16_t*        pusPktLen,
-  v_U8_t          ucQosEnabled,
-  v_U8_t          ucWDSEnabled,
-  v_U8_t          extraHeadSpace
-)
-{
-  v_U8_t      ucHeaderOffset;
-  v_U8_t      ucHeaderLen;
-#ifndef WLAN_SOFTAP_FEATURE
-  v_PVOID_t   pvPeekData;
-#endif
-  v_U8_t      ucBDHeaderLen = WLANTL_BD_HEADER_LEN(ucDisableFrmXtl);
-
-  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
-  /*-------------------------------------------------------------------------
-    Get header pointer from VOSS
-    !!! make sure reserve head zeros out the memory
-   -------------------------------------------------------------------------*/
-  vos_pkt_get_packet_length( vosDataBuff, pusPktLen);
-
-  if ( WLANTL_MAC_HEADER_LEN(ucDisableFrmXtl) > *pusPktLen )
-  {
-    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WLAN TL: Length of the packet smaller than expected network"
-               " header %d", *pusPktLen ));
-
-    *pvosStatus = VOS_STATUS_E_INVAL;
-    return;
-  }
-
-  vos_pkt_reserve_head( vosDataBuff, ppvBDHeader,
-                        ucBDHeaderLen );
-  if ( NULL == *ppvBDHeader )
-  {
-    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                "WLAN TL:VOSS packet corrupted on Attach BD header"));
-    *pvosStatus = VOS_STATUS_E_INVAL;
-    return;
-  }
-
-  /*-----------------------------------------------------------------------
-    Extract MAC address
-   -----------------------------------------------------------------------*/
-#ifdef WLAN_SOFTAP_FEATURE
-  {
-   v_SIZE_t usMacAddrSize = VOS_MAC_ADDR_SIZE;
-   *pvosStatus = vos_pkt_extract_data( vosDataBuff,
-                                     ucBDHeaderLen +
-                                     WLANTL_MAC_ADDR_ALIGN(ucDisableFrmXtl),
-                                     (v_PVOID_t)pvDestMacAddr,
-                                     &usMacAddrSize );
-  }
-#else
-  *pvosStatus = vos_pkt_peek_data( vosDataBuff,
-                                     ucBDHeaderLen +
-                                     WLANTL_MAC_ADDR_ALIGN(ucDisableFrmXtl),
-                                     (v_PVOID_t)&pvPeekData,
-                                     VOS_MAC_ADDR_SIZE );
-
-  /*Fix me*/
-  vos_copy_macaddr(pvDestMacAddr, (v_MACADDR_t*)pvPeekData);
-#endif
-  if ( VOS_STATUS_SUCCESS != *pvosStatus )
-  {
-     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                "WLAN TL:Failed while attempting to extract MAC Addr %d",
-                *pvosStatus));
-  }
-  else
-  {
-    /*---------------------------------------------------------------------
-        Fill MPDU info fields:
-          - MPDU data start offset
-          - MPDU header start offset
-          - MPDU header length
-          - MPDU length - this is a 16b field - needs swapping
-    --------------------------------------------------------------------*/
-    ucHeaderOffset = ucBDHeaderLen;
-    ucHeaderLen    = WLANTL_MAC_HEADER_LEN(ucDisableFrmXtl);
-
-    if ( 0 != ucDisableFrmXtl )
-    {
-      if ( 0 != ucQosEnabled )
-      {
-        ucHeaderLen += WLANTL_802_11_HEADER_QOS_CTL;
-      }
-
-      // Similar to Qos we need something for WDS format !
-      if ( ucWDSEnabled != 0 )
-      {
-        // If we have frame translation enabled
-        ucHeaderLen    += WLANTL_802_11_HEADER_ADDR4_LEN;
-      }
-      if ( extraHeadSpace != 0 )
-      {
-        // Decrease the packet length with the extra padding after the header
-        *pusPktLen = *pusPktLen - extraHeadSpace;
-      }
-    }
-
-    WLANHAL_TX_BD_SET_MPDU_HEADER_LEN( *ppvBDHeader, ucHeaderLen);
-    WLANHAL_TX_BD_SET_MPDU_HEADER_OFFSET( *ppvBDHeader, ucHeaderOffset);
-    WLANHAL_TX_BD_SET_MPDU_DATA_OFFSET( *ppvBDHeader,
-                                          ucHeaderOffset + ucHeaderLen + extraHeadSpace);
-    WLANHAL_TX_BD_SET_MPDU_LEN( *ppvBDHeader, *pusPktLen);
-
-    TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-                "WLAN TL: VALUES ARE HLen=%x Hoff=%x doff=%x len=%x ex=%d",
-                ucHeaderLen, ucHeaderOffset, 
-                (ucHeaderOffset + ucHeaderLen + extraHeadSpace), 
-                *pusPktLen, extraHeadSpace));
-  }/* if peek MAC success*/
-
-}/* WLANTL_PrepareBDHeader */
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
 #ifdef WLAN_PERF
 /*==========================================================================
@@ -280,86 +147,9 @@ void WDA_TLI_FastHwFwdDataFrame
   WLAN_STADescType*  pStaInfo
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   /* FIXME WDI/WDA should support this function
      once HAL supports it
    */
-#else /* FEATURE_WLAN_INTEGRATED_SOC */
-   v_PVOID_t   pvPeekData;
-   v_U8_t      ucDxEBDWLANHeaderLen = WLANTL_BD_HEADER_LEN(0) + sizeof(WLANBAL_sDXEHeaderType); 
-   v_U8_t      ucIsUnicast;
-   WLANBAL_sDXEHeaderType  *pDxEHeader;
-   v_PVOID_t   pvBDHeader;
-   v_PVOID_t   pucBuffPtr;
-   v_U16_t      usPktLen;
-
-   /*-----------------------------------------------------------------------
-    Extract packet length
-   -----------------------------------------------------------------------*/
-
-   vos_pkt_get_packet_length( vosDataBuff, &usPktLen);
-
-   /*-----------------------------------------------------------------------
-    Extract MAC address
-    -----------------------------------------------------------------------*/
-   *pvosStatus = vos_pkt_peek_data( vosDataBuff, 
-                                 WLANTL_MAC_ADDR_ALIGN(0), 
-                                 (v_PVOID_t)&pvPeekData, 
-                                 VOS_MAC_ADDR_SIZE );
-
-   if ( VOS_STATUS_SUCCESS != *pvosStatus ) 
-   {
-      TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                 "WLAN TL:Failed while attempting to extract MAC Addr %d", 
-                 *pvosStatus));
-      *pvosStatus = VOS_STATUS_E_INVAL;
-      return;
-   }
-
-   /*-----------------------------------------------------------------------
-    Reserve head room for DxE header, BD, and WLAN header
-    -----------------------------------------------------------------------*/
-
-   vos_pkt_reserve_head( vosDataBuff, &pucBuffPtr, 
-                        ucDxEBDWLANHeaderLen );
-   if ( NULL == pucBuffPtr )
-   {
-       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                    "WLAN TL:No enough space in VOSS packet %p for DxE/BD/WLAN header", vosDataBuff));
-      *pvosStatus = VOS_STATUS_E_INVAL;
-       return;
-   }
-   pDxEHeader = (WLANBAL_sDXEHeaderType  *)pucBuffPtr;
-   pvBDHeader = (v_PVOID_t) &pDxEHeader[1];
-
-   /* UMA Tx acceleration is enabled. 
-    * UMA would help convert frames to 802.11, fill partial BD fields and 
-    * construct LLC header. To further accelerate this kind of frames,
-    * HAL would attempt to reuse the BD descriptor if the BD signature 
-    * matches to the saved BD descriptor.
-    */
-   if(pStaInfo->wSTAType == WLAN_STA_IBSS)
-      ucIsUnicast = !(((tANI_U8 *)pvPeekData)[0] & 0x01);
-   else
-      ucIsUnicast = 1;
- 
-   *puFastFwdOK = (v_U32_t) WLANHAL_TxBdFastFwd(pvosGCtx, pvPeekData, pMetaInfo->ucTID, ucIsUnicast, pvBDHeader, usPktLen );
-    
-   /* Can't be fast forwarded. Trim the VOS head back to original location. */
-   if(! *puFastFwdOK){
-       vos_pkt_trim_head(vosDataBuff, ucDxEBDWLANHeaderLen);
-   }else{
-      /* could be fast forwarded. Now notify BAL DxE header filling could be completely skipped
-       */
-      v_U32_t uPacketSize = WLANTL_BD_HEADER_LEN(0) + usPktLen;
-      vos_pkt_set_user_data_ptr( vosDataBuff, VOS_PKT_USER_DATA_ID_BAL, 
-                       (v_PVOID_t)uPacketSize);
-      pDxEHeader->size  = SWAP_ENDIAN_UINT32(uPacketSize);
-   }
-
-   *pvosStatus = VOS_STATUS_SUCCESS;
-   return;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 #endif /*WLAN_PERF*/
 
@@ -415,7 +205,6 @@ VOS_STATUS WDA_DS_Register
   v_U32_t                   *uAvailableTxBuf
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   tWDA_CbContext      *wdaContext = NULL;
   WDI_Status          wdiStatus;
 
@@ -474,61 +263,6 @@ VOS_STATUS WDA_DS_Register
   *uAvailableTxBuf = WDA_DS_DXE_RES_COUNT; 
 
   return VOS_STATUS_SUCCESS;
-#else /* FEATURE_WLAN_INTEGRATED_SOC */
-  VOS_STATUS          vosStatus;
-  WLANBAL_TlRegType   tlReg;
-
-  VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-             "WLAN WDA: WDA_DS_Register" );
-
-  /*------------------------------------------------------------------------
-    Sanity check
-   ------------------------------------------------------------------------*/
-  if ( ( NULL == pvosGCtx ) ||
-       ( NULL == pfnTxPacketCallback ) ||
-       ( NULL == pfnTxCompleteCallback ) ||
-       ( NULL == pfnRxPacketCallback ) ||
-       ( NULL == pfnResourceCB ) )
-  {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WLAN WDA:Invalid pointers on WDA_DS_Register" );
-    return VOS_STATUS_E_FAULT;
-  }
-
-  /*------------------------------------------------------------------------
-    Register with BAL as transport layer client
-  ------------------------------------------------------------------------*/
-  tlReg.receiveFrameCB = pfnRxPacketCallback;
-  tlReg.getTXFrameCB   = pfnTxPacketCallback;
-  tlReg.txCompleteCB   = pfnTxCompleteCallback;
-  tlReg.txResourceCB   = pfnResourceCB;
-  tlReg.txResourceThreashold = uResTheshold;
-  tlReg.tlUsrData      = pvosGCtx;
-
-  vosStatus = WLANBAL_RegTlCbFunctions( pvosGCtx, &tlReg );
-
-  if ( VOS_STATUS_SUCCESS != vosStatus )
-  {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, 
-               "WLAN TL: TL failed to register with BAL, Err: %d", vosStatus );
-    return vosStatus;
-  }
-
-  /*------------------------------------------------------------------------
-    Request resources for tx from bus
-  ------------------------------------------------------------------------*/
-  vosStatus = WLANBAL_GetTxResources( pvosGCtx, uAvailableTxBuf );
-
-  if ( VOS_STATUS_SUCCESS != vosStatus )
-  {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WLAN TL:TL failed to get resources from BAL, Err: %d",
-               vosStatus );
-    return vosStatus;
-  }
-
-  return vosStatus;
-#endif
 }
 
 /*==========================================================================
@@ -562,8 +296,8 @@ WDA_DS_StartXmit
   v_PVOID_t pvosGCtx
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   vos_msg_t                    sMessage;
+  VOS_STATUS                   status;
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   if ( NULL == pvosGCtx )
@@ -573,6 +307,11 @@ WDA_DS_StartXmit
     return VOS_STATUS_E_FAULT;
   }
 
+  if(WDA_TL_IS_TX_XMIT_PENDING( pvosGCtx ))
+  {  
+    /*Already WDA_DS_TX_START_XMIT msg is pending in TL msg queue */
+    return VOS_STATUS_SUCCESS;
+  }
   /* Serialize our event  */
   VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
              "Serializing WDA TX Start Xmit event" );
@@ -582,10 +321,17 @@ WDA_DS_StartXmit
   sMessage.bodyptr = NULL;
   sMessage.type    = WDA_DS_TX_START_XMIT;
 
-  return vos_tx_mq_serialize(VOS_MQ_ID_TL, &sMessage);
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-  return WLANBAL_StartXmit( pvosGCtx );
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
+  WDA_TL_SET_TX_XMIT_PENDING(pvosGCtx);
+
+  status = vos_tx_mq_serialize(VOS_MQ_ID_TL, &sMessage);
+
+  if(status != VOS_STATUS_SUCCESS)
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_FATAL,
+             "Serializing WDA TX Start Xmit event FAILED" );
+    WDA_TL_CLEAR_TX_XMIT_PENDING(pvosGCtx);
+  }
+  return status;
 }
 
 
@@ -692,7 +438,6 @@ WDA_DS_BuildTxPacketInfo
   v_U8_t          ucUP
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   VOS_STATUS             vosStatus;
   WDI_DS_TxMetaInfoType* pTxMetaInfo = NULL;
   v_SIZE_t               usMacAddrSize;
@@ -745,7 +490,8 @@ WDA_DS_BuildTxPacketInfo
                     WLANTL_MAC_ADDR_ALIGN( ucDisableFrmXtl ),
                     (v_PVOID_t)pvDestMacAddr,
                     &usMacAddrSize );
-  if ( VOS_STATUS_SUCCESS != vosStatus )
+  if ((VOS_STATUS_SUCCESS != vosStatus) ||
+          (usMacAddrSize != VOS_MAC_ADDR_SIZE))
   {
     VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                "WDA:Failed while attempting to extract MAC Addr %d",
@@ -753,8 +499,6 @@ WDA_DS_BuildTxPacketInfo
     VOS_ASSERT( 0 );
     return VOS_STATUS_E_FAULT;
   }
-
-  VOS_ASSERT(usMacAddrSize == VOS_MAC_ADDR_SIZE);
 
   vos_copy_macaddr( (v_MACADDR_t*)pTxMetaInfo->fSTAMACAddress, pvDestMacAddr );
 
@@ -770,33 +514,6 @@ WDA_DS_BuildTxPacketInfo
              pTxMetaInfo->isEapol, pTxMetaInfo->fdisableFrmXlt, pTxMetaInfo->frmType );
 
   return VOS_STATUS_SUCCESS;
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-  VOS_STATUS   vosStatus;
-  v_PVOID_t    pvBDHeader;
-
-  WDA_DS_PrepareBDHeader( vosDataBuff, &pvBDHeader, pvDestMacAddr, ucDisableFrmXtl,
-                  &vosStatus, pusPktLen, ucQosEnabled, ucWDSEnabled, extraHeadSpace );
-
-  if ( VOS_STATUS_SUCCESS != vosStatus )
-  {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WLAN TL:Failed while attempting to prepare BD %d", vosStatus );
-    return vosStatus;
-  }
-
-  vosStatus = WLANHAL_FillTxBd( pvosGCtx, typeSubtype, pvDestMacAddr, pAddr2,
-                    &uTid, ucDisableFrmXtl, pvBDHeader, txFlag, timeStamp );
-
-  if ( VOS_STATUS_SUCCESS != vosStatus )
-  {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WLAN TL:Failed while attempting to fill BD %d", vosStatus );
-    return vosStatus;
-  }
-
-  return VOS_STATUS_SUCCESS;
-
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
 
@@ -827,58 +544,10 @@ WDA_DS_TrimRxPacketInfo
   vos_pkt_t *vosDataBuff
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   /* Nothing to trim
    * Do Nothing */
 
   return VOS_STATUS_SUCCESS;
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-  VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
-  v_U16_t  usPktLen;
-  v_U8_t   ucMPDUHOffset;
-  v_U16_t  usMPDUDOffset;
-  v_U16_t  usMPDULen;
-  v_U8_t   ucMPDUHLen = 0;
-  v_U8_t   aucBDHeader[WLANHAL_RX_BD_HEADER_SIZE];
-
-  vos_pkt_pop_head( vosDataBuff, aucBDHeader, WLANHAL_RX_BD_HEADER_SIZE);
-
-  ucMPDUHOffset = (v_U8_t)WLANHAL_RX_BD_GET_MPDU_H_OFFSET(aucBDHeader);
-  usMPDUDOffset = (v_U16_t)WLANHAL_RX_BD_GET_MPDU_D_OFFSET(aucBDHeader);
-  usMPDULen     = (v_U16_t)WLANHAL_RX_BD_GET_MPDU_LEN(aucBDHeader);
-  ucMPDUHLen    = (v_U8_t)WLANHAL_RX_BD_GET_MPDU_H_LEN(aucBDHeader);
-  
-  VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-       "WLAN TL:BD header processing data: HO %d DO %d Len %d HLen %d"
-       " Tid %d BD %d",
-       ucMPDUHOffset, usMPDUDOffset, usMPDULen, ucMPDUHLen,
-       WLANHAL_RX_BD_HEADER_SIZE );
-
-  vos_pkt_get_packet_length( vosDataBuff, &usPktLen);
-
-  if (( ucMPDUHOffset >= WLANHAL_RX_BD_HEADER_SIZE ) &&
-      ( usMPDUDOffset >  ucMPDUHOffset ) &&
-      ( usMPDULen     >= ucMPDUHLen ) &&
-      ( usPktLen >= usMPDULen ))
-  {
-    if((ucMPDUHOffset - WLANHAL_RX_BD_HEADER_SIZE) > 0)
-    {
-      vos_pkt_trim_head( vosDataBuff, ucMPDUHOffset - WLANHAL_RX_BD_HEADER_SIZE);
-    }
-    else
-    {
-      /* Nothing to trim
-       * Do Nothing */
-    }
-    vosStatus = VOS_STATUS_SUCCESS;
-  }
-  else
-  {
-    vosStatus = VOS_STATUS_E_FAILURE;
-  }
-
-  return vosStatus;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
 
@@ -919,7 +588,6 @@ WDA_DS_PeekRxPacketInfo
   v_BOOL_t  bSwap
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   /*------------------------------------------------------------------------
     Sanity check
    ------------------------------------------------------------------------*/
@@ -940,26 +608,6 @@ WDA_DS_PeekRxPacketInfo
   }
      
   return VOS_STATUS_SUCCESS;
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-  VOS_STATUS vosStatus;
-
-  vosStatus = vos_pkt_peek_data( vosDataBuff, 0, (v_PVOID_t)ppRxHeader,
-                                   WLANHAL_RX_BD_HEADER_SIZE);
-
-  if ( ( VOS_STATUS_SUCCESS != vosStatus ) || ( NULL == (v_PVOID_t)ppRxHeader ) )
-  {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WDA :Cannot extract BD header" );
-    return VOS_STATUS_E_FAILURE;
-  }
-
-  if ( VOS_TRUE == bSwap )
-  {
-    WLANHAL_SwapRxBd( *ppRxHeader );
-  }
-
-  return VOS_STATUS_SUCCESS;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
 
@@ -1004,7 +652,6 @@ WDA_DS_GetFrameTypeSubType
   v_U8_t    *ucTypeSubtype
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   /*------------------------------------------------------------------------
     Sanity check
    ------------------------------------------------------------------------*/
@@ -1018,40 +665,6 @@ WDA_DS_GetFrameTypeSubType
   *ucTypeSubtype = ( WDA_GET_RX_TYPE( pRxHeader ) << 4 ) | WDA_GET_RX_SUBTYPE( pRxHeader );
 
   return VOS_STATUS_SUCCESS;
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-  v_PVOID_t           pvBDHeader = pRxHeader;
-  v_U16_t             usFrmCtrl  = 0; 
-  v_U8_t              ucFrmType;
-  v_SIZE_t            usFrmCtrlSize = sizeof(usFrmCtrl); 
-  VOS_STATUS          vosStatus;
-
-  /*---------------------------------------------------------------------
-    Extract frame control field from 802.11 header if present 
-    (frame translation not done) 
-  ---------------------------------------------------------------------*/
-  vosStatus = vos_pkt_extract_data( vosDataBuff, 
-                       ( 0 == WLANHAL_RX_BD_GET_FT(pvBDHeader) ) ?
-                       WLANHAL_RX_BD_GET_MPDU_H_OFFSET(pvBDHeader):
-                       WLANHAL_RX_BD_HEADER_SIZE,
-                       &usFrmCtrl, &usFrmCtrlSize );
-
-  if (( VOS_STATUS_SUCCESS != vosStatus ) || 
-      ( sizeof(usFrmCtrl) != usFrmCtrlSize ))
-  {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WLAN TL: Cannot extract Frame Control Field" );
-    return VOS_STATUS_E_FAILURE;
-  }
-
-
-  ucFrmType = (v_U8_t)WLANHAL_RxBD_GetFrameTypeSubType( pvBDHeader, 
-                                                        usFrmCtrl);
-  WLANHAL_RX_BD_SET_TYPE_SUBTYPE(pvBDHeader, ucFrmType);
-
-  *ucTypeSubtype = ucFrmType;
-  
-  return VOS_STATUS_SUCCESS;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
 
@@ -1088,16 +701,8 @@ WDA_DS_RxAmsduBdFix
   v_PVOID_t pvBDHeader
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   /* Do nothing for Prima */
   return VOS_STATUS_SUCCESS;
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-  /* AMSDU HW bug fix
-   * After 2nd AMSDU subframe HW could not handle BD correctly
-   * HAL workaround is needed */
-  WLANHAL_RxAmsduBdFix(pvosGCtx, pvBDHeader);
-  return VOS_STATUS_SUCCESS;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
 /*==========================================================================
@@ -1133,17 +738,12 @@ WDA_DS_GetRssi
   v_S7_t*   puRssi
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
          "WDA:halPS_GetRssi no longer supported. Need replacement");
 
   *puRssi = -30;
 
   return VOS_STATUS_SUCCESS;
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-  halPS_GetRssi(vos_get_context(VOS_MODULE_ID_SME, pvosGCtx), puRssi);
-  return VOS_STATUS_SUCCESS;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
 /*==========================================================================
@@ -1179,14 +779,10 @@ WDA_DS_GetTxResources
   v_U32_t*  puResCount
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   /* Return minimum necessary number of packet(DXE descriptor) for data */
   /* TODO Need to get this from DXE??? */
   *puResCount = WDA_TLI_BD_PDU_RESERVE_THRESHOLD + 50;
   return VOS_STATUS_SUCCESS;
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-  return WLANBAL_GetTxResources( pvosGCtx, puResCount );
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
 
@@ -1218,42 +814,9 @@ WDA_DS_GetReplayCounter
   v_PVOID_t pRxHeader
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   return WDA_GET_RX_REPLAY_COUNT( pRxHeader );
-#else  /* FEATURE_WLAN_INTEGRATED_SOC */
-   v_U8_t *pucRxBDHeader = pRxHeader;
-
-/* 48-bit replay counter is created as follows
-   from RX BD 6 byte PMI command:
-   Addr : AES/TKIP
-   0x38 : pn3/tsc3
-   0x39 : pn2/tsc2
-   0x3a : pn1/tsc1
-   0x3b : pn0/tsc0
-
-   0x3c : pn5/tsc5
-   0x3d : pn4/tsc4 */
-
-#ifdef ANI_BIG_BYTE_ENDIAN
-    v_U64_t ullcurrentReplayCounter = 0;
-    /* Getting 48-bit replay counter from the RX BD */
-    ullcurrentReplayCounter = WLANHAL_RX_BD_GET_PMICMD_20TO23(pucRxBDHeader); 
-    ullcurrentReplayCounter <<= 16;
-    ullcurrentReplayCounter |= (( WLANHAL_RX_BD_GET_PMICMD_24TO25(pucRxBDHeader) & 0xFFFF0000) >> 16);
-    return ullcurrentReplayCounter;
-#else
-    v_U64_t ullcurrentReplayCounter = 0;
-    /* Getting 48-bit replay counter from the RX BD */
-    ullcurrentReplayCounter = (WLANHAL_RX_BD_GET_PMICMD_24TO25(pucRxBDHeader) & 0x0000FFFF); 
-    ullcurrentReplayCounter <<= 32; 
-    ullcurrentReplayCounter |= WLANHAL_RX_BD_GET_PMICMD_20TO23(pucRxBDHeader); 
-    return ullcurrentReplayCounter;
-#endif
-
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 /*==========================================================================
    FUNCTION    WDA_DS_TxFrames
 
@@ -1300,6 +863,7 @@ WDA_DS_TxFrames
   v_U32_t     uMgmtAvailRes;
   v_U32_t     uDataAvailRes;
   WLANTL_TxCompCBType  pfnTxComp = NULL;
+  v_U32_t     uTxFailCount = 0;
 
   wdaContext = (tWDA_CbContext *)vos_get_context(VOS_MODULE_ID_WDA, pvosGCtx);
   if ( NULL == wdaContext )
@@ -1355,9 +919,13 @@ WDA_DS_TxFrames
                                  0 /* more */ );
     if ( WDI_STATUS_SUCCESS != wdiStatus )
     {
-      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                   "WDA : Pushing a packet to WDI failed.");
-      VOS_ASSERT( wdiStatus != WDI_STATUS_E_NOT_ALLOWED );
+      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
+                  "WDA : Pushing a packet to WDI failed." );
+      if ( WDI_STATUS_E_NOT_ALLOWED != wdiStatus )
+      {
+        uTxFailCount++;
+      }
+      VOS_ASSERT( wdiStatus == WDI_STATUS_E_NOT_ALLOWED );
       //We need to free the packet here
       vos_pkt_get_user_data_ptr(pTxPacket, VOS_PKT_USER_DATA_ID_TL, (void **)&pfnTxComp);
       if(pfnTxComp)
@@ -1367,6 +935,13 @@ WDA_DS_TxFrames
     }
 
   };
+
+  if ( uTxFailCount )
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                 "WDA : Tx fail count for mgmt pkts: %d.", uTxFailCount);
+    uTxFailCount = 0;
+  }
 
   /*Data tx*/
   uDataAvailRes = WDI_GetAvailableResCount(wdaContext->pWdiContext, 
@@ -1410,9 +985,13 @@ WDA_DS_TxFrames
                                  0 /* more */ );
     if ( WDI_STATUS_SUCCESS != wdiStatus )
     {
-      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                   "WDA : Pushing a packet to WDI failed.");
-      VOS_ASSERT( wdiStatus != WDI_STATUS_E_NOT_ALLOWED );
+      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
+                  "WDA : Pushing a packet to WDI failed." );
+      if ( WDI_STATUS_E_NOT_ALLOWED != wdiStatus )
+      {
+        uTxFailCount++;
+      }
+      VOS_ASSERT( wdiStatus == WDI_STATUS_E_NOT_ALLOWED );
       //We need to free the packet here
       vos_pkt_get_user_data_ptr(pTxPacket, VOS_PKT_USER_DATA_ID_TL, (void **)&pfnTxComp);
       if(pfnTxComp)
@@ -1423,13 +1002,18 @@ WDA_DS_TxFrames
 
   };
 
+  if ( uTxFailCount )
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                 "WDA : Tx fail count for data pkts: %d.", uTxFailCount);
+  }
+
+
   WDI_DS_TxComplete(wdaContext->pWdiContext, ucTxResReq);
 
   return vosStatus;
 }
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 /*==========================================================================
    FUNCTION    WDA_DS_TxFlowControlCallback
 
@@ -1514,7 +1098,6 @@ WDA_DS_TxFlowControlCallback
    }
 
 }
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 /*==========================================================================
    FUNCTION    WDA_DS_GetTxFlowMask
@@ -1547,7 +1130,6 @@ WDA_DS_GetTxFlowMask
  v_U8_t*   puFlowMask
 )
 {
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
    tWDA_CbContext* wdaContext = NULL;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
@@ -1572,13 +1154,8 @@ WDA_DS_GetTxFlowMask
    *puFlowMask = wdaContext->uTxFlowMask;
 
    return VOS_STATUS_SUCCESS;
-#else
-   *puFlowMask = WDA_TXFLOWMASK;
-   return VOS_STATUS_SUCCESS;
-#endif  /* FEATURE_WLAN_INTEGRATED_SOC */
 }
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 v_VOID_t 
 WDA_DS_TxCompleteCB
 (
@@ -1620,4 +1197,3 @@ WDA_DS_TxCompleteCB
 
   wdaContext->pfnTxCompleteCallback( pvosGCtx, pFrameDataBuff, vosStatus );
 }
-#endif  /* FEATURE_WLAN_INTEGRATED_SOC */

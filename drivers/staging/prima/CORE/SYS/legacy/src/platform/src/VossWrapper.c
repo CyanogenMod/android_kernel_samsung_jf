@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -67,48 +87,10 @@
 #include "VossWrapper.h"
 
 #ifdef WLAN_DEBUG
-#define TIMER_NAME timer_ptr->timerName 
+#define TIMER_NAME (timer_ptr->timerName)
 #else
 #define TIMER_NAME "N/A"
 #endif
-
-// Routine used to retrieve the Winwrapper context pointer from the pMac structure
-extern tpAniSirTxWrapper sysGetTxWrapperContext(v_PVOID_t pMac);
-
-
- 
- /**---------------------------------------------------------------------
- * tx_voss_wrapper_init() 
- *
- * FUNCTION:  Initialize the VOSS wrapper 
- *
- * LOGIC:
- *       - Just allocate the spinlock used for critical section implementation.
- *
- * ASSUMPTIONS:
- *        - None.
- *
- * NOTE:
- *
- * @param  None.
- *
- * @return None.
- *
- */
-v_VOID_t tx_voss_wrapper_init(v_PVOID_t pMacGlobal, v_PVOID_t pAdapter)
-{
-    tpAniSirTxWrapper pTxWrapper = sysGetTxWrapperContext(pMacGlobal);
-
-    // if already allocated, then don't allcoate again...
-    if ( !pTxWrapper->pAdapter )
-    {
-        // Store the pointer to the MAC globals structure, in the Tx wrapper context
-        pTxWrapper->pAdapter = pAdapter;
-
-    }
-}
-
-
 
 /**---------------------------------------------------------------------
  * tx_time_get() 
@@ -302,12 +284,22 @@ static v_VOID_t tx_main_timer_func( v_PVOID_t functionContext )
 {
    TX_TIMER *timer_ptr = (TX_TIMER *)functionContext;
 
-   VOS_ASSERT(NULL != timer_ptr);
 
-   VOS_ASSERT(NULL != timer_ptr->pExpireFunc);
+   if (NULL == timer_ptr)
+   {
+       VOS_ASSERT(0);
+       return;
+   }
+
+
+   if (NULL == timer_ptr->pExpireFunc)
+   {
+       VOS_ASSERT(0);
+       return;
+   }
 
    VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO, 
-             "Timer %s triggered\n", TIMER_NAME);
+             "Timer %s triggered", TIMER_NAME);
 
    // Now call the actual timer function, taking the function pointer,
    // from the timer structure.
@@ -324,7 +316,7 @@ static v_VOID_t tx_main_timer_func( v_PVOID_t functionContext )
       if (VOS_STATUS_SUCCESS != status)
       {
          VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_WARN, 
-             "Unable to reschedule timer %s; status=%d\n", TIMER_NAME, status);
+             "Unable to reschedule timer %s; status=%d", TIMER_NAME, status);
       }
    }
 } /*** tx_timer_change() ***/
@@ -339,7 +331,22 @@ v_UINT_t tx_timer_create_intern_debug( v_PVOID_t pMacGlobal, TX_TIMER *timer_ptr
 {
     VOS_STATUS status;
 
-    VOS_ASSERT((NULL != expiration_function) && (NULL != name_ptr));
+    if (NULL == expiration_function)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
+                "NULL timer expiration");
+        VOS_ASSERT(0);
+        return TX_TIMER_ERROR;
+    }
+
+    if(NULL == name_ptr)
+    {
+
+        VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
+                "NULL name pointer for timer");
+        VOS_ASSERT(0);
+        return TX_TIMER_ERROR;
+    }
 
     if (!initScheduleTimeInTicks)
         return TX_TICK_ERROR;
@@ -397,7 +404,6 @@ v_UINT_t tx_timer_create_intern( v_PVOID_t pMacGlobal, TX_TIMER *timer_ptr,
 {
     VOS_STATUS status;
 
-    VOS_ASSERT((NULL != expiration_function) && (NULL != name_ptr));
     if((NULL == name_ptr) || (NULL == expiration_function))
         return TX_TIMER_ERROR;
 
@@ -421,7 +427,7 @@ v_UINT_t tx_timer_create_intern( v_PVOID_t pMacGlobal, TX_TIMER *timer_ptr,
 
 #ifdef WLAN_DEBUG
     // Store the timer name
-    vos_mem_copy(timer_ptr->timerName, name_ptr, sizeof(timer_ptr->timerName));
+    strlcpy(timer_ptr->timerName, name_ptr, sizeof(timer_ptr->timerName));
 #endif // Store the timer name, for Debug build only
 
     status = vos_timer_init( &timer_ptr->vosTimer, VOS_TIMER_TYPE_SW, 

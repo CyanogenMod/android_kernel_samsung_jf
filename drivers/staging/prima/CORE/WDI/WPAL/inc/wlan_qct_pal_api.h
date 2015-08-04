@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -52,7 +72,7 @@
 #define WPAL_MIN( _x, _y ) ( ( (_x) < (_y) ) ? (_x) : (_y)  )  
 
 // macro to get the ceiling of an integer division operation...
-#define WPAL_CEIL_DIV( _a, _b ) ( 0 != (_a) % (_b) ) ? ( (_a) / (_b) + 1 ) : ( (_a) / (_b) ) 
+#define WPAL_CEIL_DIV( _a, _b ) (( 0 != (_a) % (_b) ) ? ( (_a) / (_b) + 1 ) : ( (_a) / (_b) ))
 
 // macro to return the floor of an integer division operation
 #define WPAL_FLOOR_DIV( _a, _b ) ( ( (_a) - ( (_a) % (_b) ) ) / (_b) )
@@ -61,8 +81,8 @@
    ( ( ( (_x) << 8 ) & 0xFF00 ) | ( ( (_x) >> 8 ) & 0x00FF ) )
 
 #define WPAL_SWAP_U32(_x) \
-   ( ( ( (_x) << 24 ) & 0xFF000000 ) | ( ( (_x) >> 24 ) & 0x000000FF ) ) | \
-   ( ( ( (_x) << 8 ) & 0x00FF0000 ) | ( ( (_x) >> 8 ) & 0x0000FF00 ) )
+  (( ( ( (_x) << 24 ) & 0xFF000000 ) | ( ( (_x) >> 24 ) & 0x000000FF ) ) | \
+   ( ( ( (_x) << 8 ) & 0x00FF0000 ) | ( ( (_x) >> 8 ) & 0x0000FF00 ) ))
 
 // Endian operations for Big Endian and Small Endian modes
 #ifndef ANI_BIG_BYTE_ENDIAN
@@ -304,4 +324,61 @@ wpt_status wpalRivaSubystemRestart(void);
        NONE
 ---------------------------------------------------------------------------*/
 void wpalWlanReload(void);
+
+/*---------------------------------------------------------------------------
+    wpalWcnssResetIntr -  Trigger the reset FIQ to Riva
+
+    Param:
+       None
+    Return:
+       NONE
+---------------------------------------------------------------------------*/
+void wpalWcnssResetIntr(void);
+
+/*---------------------------------------------------------------------------
+    wpalFwDumpReq -  Trigger the dump commands to Firmware
+
+    Param:
+       cmd - Command No. to execute
+       arg1 - argument 1 to cmd
+       arg2 - argument 2 to cmd
+       arg3 - argument 3 to cmd
+       arg4 - argument 4 to cmd
+    Return:
+       NONE
+---------------------------------------------------------------------------*/
+void wpalFwDumpReq(wpt_uint32 cmd, wpt_uint32 arg1, wpt_uint32 arg2,
+                    wpt_uint32 arg3, wpt_uint32 arg4);
+
+/*---------------------------------------------------------------------------
+    wpalDevicePanic -  Trigger Device Panic
+       Trigger device panic to help debug
+
+    Param:
+       NONE
+
+    Return:
+       NONE
+---------------------------------------------------------------------------*/
+void wpalDevicePanic(void);
+
+/*---------------------------------------------------------------------------
+    wpalIsWDresetInProgress -  calls vos API isWDresetInProgress()
+
+    Param:
+       NONE
+    Return:
+       STATUS
+--------------------------------------------------------------------------*/
+int  wpalIsWDresetInProgress(void);
+
+/*---------------------------------------------------------------------------
+    wpalIsSsrPanicOnFailure -  calls vos API isSsrPanicOnFailure()
+
+    Param:
+       NONE
+    Return:
+       STATUS
+--------------------------------------------------------------------------*/
+int  wpalIsSsrPanicOnFailure(void);
 #endif // __WLAN_QCT_PAL_API_H

@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -19,8 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * */
 /**=========================================================================
   
   \file  limSession.c
@@ -111,21 +129,39 @@ tpPESession peCreateSession(tpAniSirGlobal pMac, tANI_U8 *bssid , tANI_U8* sessi
             if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
                      (void **) &pMac->lim.gpSession[i].dph.dphHashTable.pHashTable, sizeof(tpDphHashNode)*numSta))
             {
-                limLog(pMac, LOGE, FL("memory allocate failed!\n"));
+                limLog(pMac, LOGE, FL("memory allocate failed!"));
                 return NULL;
             }
 
             if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
                   (void **) &pMac->lim.gpSession[i].dph.dphHashTable.pDphNodeArray, sizeof(tDphHashNode)*numSta))
             {
-                limLog(pMac, LOGE, FL("memory allocate failed!\n"));
+                limLog(pMac, LOGE, FL("memory allocate failed!"));
                 palFreeMemory(pMac->hHdd,pMac->lim.gpSession[i].dph.dphHashTable.pHashTable);
+                pMac->lim.gpSession[i].dph.dphHashTable.pHashTable = NULL;
                 return NULL;
             }
             pMac->lim.gpSession[i].dph.dphHashTable.size = numSta;
 
             dphHashTableClassInit(pMac, 
                            &pMac->lim.gpSession[i].dph.dphHashTable);
+
+            if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
+                    (void **) &pMac->lim.gpSession[i].gpLimPeerIdxpool, 
+                    sizeof(*pMac->lim.gpSession[i].gpLimPeerIdxpool) * (numSta+1)))
+            {
+                PELOGE(limLog(pMac, LOGE, FL("memory allocate failed!"));)
+                palFreeMemory(pMac->hHdd,pMac->lim.gpSession[i].dph.dphHashTable.pHashTable);
+                palFreeMemory(pMac->hHdd,pMac->lim.gpSession[i].dph.dphHashTable.pDphNodeArray);
+                pMac->lim.gpSession[i].dph.dphHashTable.pHashTable = NULL;
+                pMac->lim.gpSession[i].dph.dphHashTable.pDphNodeArray = NULL;
+                return NULL;
+            }
+            palZeroMemory(pMac->hHdd, pMac->lim.gpSession[i].gpLimPeerIdxpool,
+                  sizeof(*pMac->lim.gpSession[i].gpLimPeerIdxpool) * (numSta+1));
+            pMac->lim.gpSession[i].freePeerIdxHead = 0;
+            pMac->lim.gpSession[i].freePeerIdxTail = 0;
+            pMac->lim.gpSession[i].gLimNumOfCurrentSTAs = 0;
 
             /* Copy the BSSID to the session table */
             sirCopyMacAddr(pMac->lim.gpSession[i].bssId, bssid);
@@ -157,6 +193,12 @@ tpPESession peCreateSession(tpAniSirGlobal pMac, tANI_U8 *bssid , tANI_U8* sessi
             pMac->lim.gpSession[i].htSupportedChannelWidthSet = 0;
             pMac->lim.gpSession[i].htRecommendedTxWidthSet = 0;
             pMac->lim.gpSession[i].htSecondaryChannelOffset = 0;
+#ifdef FEATURE_WLAN_TDLS
+            palZeroMemory(pMac->hHdd, pMac->lim.gpSession[i].peerAIDBitmap,
+                  sizeof(pMac->lim.gpSession[i].peerAIDBitmap));
+#endif
+            pMac->lim.gpSession[i].fWaitForProbeRsp = 0;
+            pMac->lim.gpSession[i].fIgnoreCapsChange = 0;
             return(&pMac->lim.gpSession[i]);
         }
     }
@@ -200,6 +242,30 @@ tpPESession peFindSessionByBssid(tpAniSirGlobal pMac,  tANI_U8*  bssid,    tANI_
 }
 
 
+/*--------------------------------------------------------------------------
+  \brief peFindSessionByBssIdx() - looks up the PE session given the bssIdx.
+
+  This function returns the session context  if the session
+  corresponding to the given bssIdx is found in the PE session table.
+  \param pMac                   - pointer to global adapter context
+  \param bssIdx                   - bss index of the session
+  \return tpPESession          - pointer to the session context or NULL if session is not found.
+  \sa
+  --------------------------------------------------------------------------*/
+tpPESession peFindSessionByBssIdx(tpAniSirGlobal pMac,  tANI_U8 bssIdx)
+{
+    tANI_U8 i;
+    for (i = 0; i < pMac->lim.maxBssId; i++)
+    {
+        /* If BSSID matches return corresponding tables address*/
+        if ( (pMac->lim.gpSession[i].valid) && (pMac->lim.gpSession[i].bssIdx == bssIdx))
+        {
+            return &pMac->lim.gpSession[i];
+        }
+    }
+    limLog(pMac, LOG4, FL("Session lookup fails for bssIdx: %d"), bssIdx);
+    return NULL;
+}
 
 /*--------------------------------------------------------------------------
   \brief peFindSessionBySessionId() - looks up the PE session given the session ID.
@@ -338,6 +404,12 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
         psessionEntry->dph.dphHashTable.pDphNodeArray = NULL;
     }
 
+    if(psessionEntry->gpLimPeerIdxpool != NULL)
+    {
+        palFreeMemory(pMac->hHdd, psessionEntry->gpLimPeerIdxpool);
+        psessionEntry->gpLimPeerIdxpool = NULL;
+    }
+
     if(psessionEntry->beacon != NULL)
     {
         palFreeMemory( pMac->hHdd, psessionEntry->beacon);
@@ -378,6 +450,25 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
         // Cleanup the whole block
         palFreeMemory(pMac->hHdd, (void *)psessionEntry->parsedAssocReq);
         psessionEntry->parsedAssocReq = NULL;
+    }
+    if (NULL != psessionEntry->limAssocResponseData)
+    {
+        palFreeMemory( pMac->hHdd, psessionEntry->limAssocResponseData);
+        psessionEntry->limAssocResponseData = NULL;
+    }
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    if (NULL != psessionEntry->pLimMlmReassocRetryReq)
+    {
+        palFreeMemory( pMac->hHdd, psessionEntry->pLimMlmReassocRetryReq);
+        psessionEntry->pLimMlmReassocRetryReq = NULL;
+    }
+#endif
+
+    if (NULL != psessionEntry->pLimMlmReassocReq)
+    {
+        palFreeMemory( pMac->hHdd, psessionEntry->pLimMlmReassocReq);
+        psessionEntry->pLimMlmReassocReq = NULL;
     }
 
 #ifdef FEATURE_WLAN_CCX

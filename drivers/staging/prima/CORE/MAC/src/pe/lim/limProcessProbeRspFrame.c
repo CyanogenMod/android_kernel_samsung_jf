@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -33,15 +53,8 @@
  */
 
 #include "wniApi.h"
-#ifdef ANI_PRODUCT_TYPE_AP
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "aniGlobal.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 #include "schApi.h"
 #include "utilsApi.h"
 #include "limApi.h"
@@ -53,6 +66,19 @@
 #include "limSendMessages.h"
 
 #include "parserApi.h"
+
+tSirRetStatus
+limValidateIEInformationInProbeRspFrame (tANI_U8 *pRxPacketInfo)
+{
+   tSirRetStatus       status = eSIR_SUCCESS;
+
+   if (WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo) < (SIR_MAC_B_PR_SSID_OFFSET + SIR_MAC_MIN_IE_LEN))
+   {
+      status = eSIR_FAILURE;
+   }
+
+   return status;
+}
 
 /**
  * limProcessProbeRspFrame
@@ -92,17 +118,13 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
                                                 (void **)&pProbeRsp, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrame\n") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrame") );
         return;
     }
 
     pProbeRsp->ssId.length              = 0;
     pProbeRsp->wpa.length               = 0;
     pProbeRsp->propIEinfo.apName.length = 0;
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    pProbeRsp->propIEinfo.aniIndicator  = 0;
-    pProbeRsp->propIEinfo.wdsLength     = 0;
-#endif
 
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
@@ -118,7 +140,14 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
        palFreeMemory(pMac->hHdd, pProbeRsp);    
        return;
    }
-
+   // Validate IE information before processing Probe Response Frame
+   if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
+   {
+       PELOG1(limLog(pMac, LOG1,
+                 FL("Parse error ProbeResponse, length=%d"), frameLen);)
+       palFreeMemory(pMac->hHdd, pProbeRsp);
+       return;
+   }
 
     /**
      * Expect Probe Response only when
@@ -147,14 +176,22 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
     {
         frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
+        if (pMac->lim.gLimBackgroundScanMode == eSIR_ROAMING_SCAN)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                      FL("Probe Resp Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
+                      MAC_ADDR_ARRAY(pHdr->bssId),
+                      (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+        }
+
         // Get pointer to Probe Response frame body
         pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
 
-        if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp)
-                          ==eSIR_FAILURE)
+        if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE ||
+            !pProbeRsp->ssidPresent) // Enforce Mandatory IEs
         {
             PELOG1(limLog(pMac, LOG1,
-               FL("PArse error ProbeResponse, length=%d\n"),
+               FL("Parse error ProbeResponse, length=%d"),
                frameLen);)
             palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
@@ -166,18 +203,6 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                ((pMac->lim.gLimHalScanState == eLIM_HAL_SCANNING_STATE) ? eANI_BOOLEAN_TRUE : eANI_BOOLEAN_FALSE), eANI_BOOLEAN_TRUE);
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)           //mlm state check should be global - 18th oct
         {
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-            // STA/AP is in learn mode
-            /* Not sure whether the below 2 lines are needed for the station. TODO If yes, this should be 
-             * uncommented. Also when we tested enabling this, there is a crash as soon as the station
-             * comes up which needs to be fixed*/
-            //if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE)
-              //  limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo, eANI_BOOLEAN_TRUE);
-            limCollectMeasurementData(pMac, pRxPacketInfo, pProbeRsp);
-           PELOG3(limLog(pMac, LOG3,
-               FL("Parsed WDS info in ProbeRsp frames: wdsLength=%d\n"),
-               pProbeRsp->propIEinfo.wdsLength);)
-#endif
         }
         else if (psessionEntry->limMlmState ==
                                      eLIM_MLM_WT_JOIN_BEACON_STATE)
@@ -221,7 +246,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                           &cfg) != eSIR_SUCCESS)
             {
                 /// Could not get BSSID from CFG. Log error.
-                limLog(pMac, LOGP, FL("could not retrieve BSSID\n"));
+                limLog(pMac, LOGP, FL("could not retrieve BSSID"));
             }
             #endif //TO SUPPORT BT-AMP
             sirCopyMacAddr(currentBssId,psessionEntry->bssId);
@@ -235,7 +260,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             if (!LIM_IS_CONNECTION_ACTIVE(psessionEntry))
             {
                 limLog(pMac, LOGW,
-                    FL("Received Probe Resp from AP. So it is alive!!\n"));
+                    FL("Received Probe Resp from AP. So it is alive!!"));
 
                 if (pProbeRsp->HTInfo.present)
                     limReceivedHBHandler(pMac, (tANI_U8)pProbeRsp->HTInfo.primaryChannel, psessionEntry);
@@ -243,21 +268,9 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                     limReceivedHBHandler(pMac, (tANI_U8)pProbeRsp->channelNumber, psessionEntry);
             }
 
-#if defined ANI_PRODUCT_TYPE_CLIENT || defined (ANI_AP_CLIENT_SDK)
             
             if (psessionEntry->limSystemRole == eLIM_STA_ROLE)
             {
-                if (pProbeRsp->quietIEPresent)
-                {
-                    limUpdateQuietIEFromBeacon(pMac, &(pProbeRsp->quietIE), psessionEntry);
-                }
-                else if ((psessionEntry->gLimSpecMgmt.quietState == eLIM_QUIET_BEGIN) ||
-                     (psessionEntry->gLimSpecMgmt.quietState == eLIM_QUIET_RUNNING))
-                {
-                    PELOG1(limLog(pMac, LOG1, FL("Received a probe rsp without Quiet IE\n"));)
-                    limCancelDot11hQuiet(pMac, psessionEntry);
-                }
-
                 if (pProbeRsp->channelSwitchPresent ||
                     pProbeRsp->propIEinfo.propChannelSwitchPresent)
                 {
@@ -269,7 +282,6 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 }
             }
         
-#endif
             
             /**
             * Now Process EDCA Parameters, if EDCAParamSet count is different.
@@ -284,7 +296,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             limGetQosMode(psessionEntry, &qosEnabled);
             limGetWmeMode(psessionEntry, &wmeEnabled);
            PELOG2(limLog(pMac, LOG2,
-                    FL("wmeEdcaPresent: %d wmeEnabled: %d, edcaPresent: %d, qosEnabled: %d,  edcaParams.qosInfo.count: %d schObject.gLimEdcaParamSetCount: %d\n"),
+                    FL("wmeEdcaPresent: %d wmeEnabled: %d, edcaPresent: %d, qosEnabled: %d,  edcaParams.qosInfo.count: %d schObject.gLimEdcaParamSetCount: %d"),
                           pProbeRsp->wmeEdcaPresent, wmeEnabled, pProbeRsp->edcaPresent, qosEnabled,
                           pProbeRsp->edcaParams.qosInfo.count, psessionEntry->gLimEdcaParamSetCount);)
             if (((pProbeRsp->wmeEdcaPresent && wmeEnabled) ||
@@ -292,7 +304,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 (pProbeRsp->edcaParams.qosInfo.count != psessionEntry->gLimEdcaParamSetCount))
             {
                 if (schBeaconEdcaProcess(pMac, &pProbeRsp->edcaParams, psessionEntry) != eSIR_SUCCESS)
-                    PELOGE(limLog(pMac, LOGE, FL("EDCA parameter processing error\n"));)
+                    PELOGE(limLog(pMac, LOGE, FL("EDCA parameter processing error"));)
                 else if (pStaDs != NULL)
                 {
                     // If needed, downgrade the EDCA parameters
@@ -304,9 +316,15 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                         limSendEdcaParams(pMac, psessionEntry->gLimEdcaParamsActive, pStaDs->bssId, eANI_BOOLEAN_FALSE);
                 }
                 else
-                    PELOGE(limLog(pMac, LOGE, FL("Self Entry missing in Hash Table\n"));)
+                    PELOGE(limLog(pMac, LOGE, FL("Self Entry missing in Hash Table"));)
 
             }
+
+           if (psessionEntry->fWaitForProbeRsp == true)
+           {
+               limLog(pMac, LOGW, FL("Checking probe response for capability change\n") );
+               limDetectChangeInApCapabilities(pMac, pProbeRsp, psessionEntry);
+           }
         }
         else if ((psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) &&
                  (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE))
@@ -330,17 +348,13 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
                                                 (void **)&pProbeRsp, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrameNoSession\n") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrameNoSession") );
         return;
     }
 
     pProbeRsp->ssId.length              = 0;
     pProbeRsp->wpa.length               = 0;
     pProbeRsp->propIEinfo.apName.length = 0;
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    pProbeRsp->propIEinfo.aniIndicator  = 0;
-    pProbeRsp->propIEinfo.wdsLength     = 0;
-#endif
 
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
@@ -351,26 +365,57 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
              WDA_GET_RX_MPDU_LEN(pRxPacketInfo));
     limPrintMacAddr(pMac, pHdr->sa, LOG2);
 
-    if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (!(WDA_GET_OFFLOADSCANLEARN(pRxPacketInfo) ||
+          WDA_GET_ROAMCANDIDATEIND(pRxPacketInfo)))
     {
-        palFreeMemory(pMac->hHdd, pProbeRsp);
-        return;
+#endif
+       if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
+       {
+          palFreeMemory(pMac->hHdd, pProbeRsp);
+          return;
+       }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     }
-
+#endif
+     // Validate IE information before processing Probe Response Frame
+    if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
+    {
+       PELOG1(limLog(pMac, LOG1,FL("Parse error ProbeResponse, length=%d"),
+              frameLen);)
+       palFreeMemory(pMac->hHdd, pProbeRsp);
+       return;
+    }
+     // Validate IE information before processing Probe Response Frame
+    if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
+    {
+       PELOG1(limLog(pMac, LOG1,FL("Parse error ProbeResponse, length=%d"),
+              frameLen);)
+       palFreeMemory(pMac->hHdd, pProbeRsp);
+       return;
+    }
     /*  Since there is no psessionEntry, PE cannot be in the following states:
      *   - eLIM_MLM_WT_JOIN_BEACON_STATE
      *   - eLIM_MLM_LINK_ESTABLISHED_STATE
      *   - eLIM_MLM_BSS_STARTED_STATE
      *  Hence, expect Probe Response only when
      *   1. STA is in scan mode waiting for Beacon/Probe response 
+     *   2. LFR logic in FW sends up candidate frames
      *  
      *  Ignore Probe Response frame in all other states
      */
-    if( (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||
-        (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE)  ||     //mlm state check should be global - 18th oct
-        (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE) )
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (WDA_GET_OFFLOADSCANLEARN(pRxPacketInfo))
     {
         frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+
+        if (pMac->lim.gLimBackgroundScanMode == eSIR_ROAMING_SCAN)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                      FL("Probe Resp Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
+                      MAC_ADDR_ARRAY(pHdr->bssId),
+                      (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+        }
 
         // Get pointer to Probe Response frame body
         pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
@@ -381,24 +426,41 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
             palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
+        limLog( pMac, LOG2, FL("Save this probe rsp in LFR cache"));
+        limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo,
+                                     eANI_BOOLEAN_FALSE, eANI_BOOLEAN_TRUE);
+    }
+    else
+#endif
+    if( (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||
+        (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE)  ||     //mlm state check should be global - 18th oct
+        (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE) )
+    {
+        frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+
+        if (pMac->lim.gLimBackgroundScanMode == eSIR_ROAMING_SCAN)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                      FL("Probe Resp Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
+                      MAC_ADDR_ARRAY(pHdr->bssId),
+                      (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+        }
+
+        // Get pointer to Probe Response frame body
+        pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
+
+        if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE)
+        {
+            limLog(pMac, LOG1, FL("Parse error ProbeResponse, length=%d"), frameLen);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
+            return;
+        }
 
         if( (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||
              (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE) )
             limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_TRUE);
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)
         {
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-            // STA/AP is in learn mode
-            /* Not sure whether the below 2 lines are needed for the station. TODO If yes, this should be 
-             * uncommented. Also when we tested enabling this, there is a crash as soon as the station
-             * comes up which needs to be fixed*/
-            //if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE)
-              //  limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo, eANI_BOOLEAN_TRUE);
-            limCollectMeasurementData(pMac, pRxPacketInfo, pProbeRsp);
-            limLog(pMac, LOG3,
-               FL("Parsed WDS info in ProbeRsp frames: wdsLength=%d\n"),
-               pProbeRsp->propIEinfo.wdsLength);
-#endif
         }
     } 
     palFreeMemory(pMac->hHdd, pProbeRsp);

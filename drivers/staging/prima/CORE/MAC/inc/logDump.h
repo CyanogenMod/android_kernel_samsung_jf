@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -20,9 +20,9 @@
  */
 
 /*============================================================================
-Copyright (c) 2007 QUALCOMM Incorporated.
+Copyright (c) 2007 Qualcomm Technologies, Inc.
 All Rights Reserved.
-Qualcomm Confidential and Proprietary
+Qualcomm Technologies Confidential and Proprietary
 
 logDump.h
 
@@ -62,24 +62,21 @@ typedef struct sRegList {
 int log_sprintf(tpAniSirGlobal pMac, char *pBuf, char *fmt, ... );
 
 char *
-dump_thread_info( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p);
-
-char *
 dump_log_level_set( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p);
 
 char *
-dump_cfg_set( tpAniSirGlobal pMac, tANI_U32 arg1, 
+dump_cfg_set( tpAniSirGlobal pMac, tANI_U32 arg1,
               tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p);
 
 char *
-dump_cfg_get( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, 
+dump_cfg_get( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2,
               tANI_U32 arg3, tANI_U32 arg4, char *p);
 
 char *
 dump_cfg_group_get( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2,
                     tANI_U32 arg3, tANI_U32 arg4, char *p);
 
-void logDumpRegisterTable( tpAniSirGlobal pMac, tDumpFuncEntry *pEntry, 
+void logDumpRegisterTable( tpAniSirGlobal pMac, tDumpFuncEntry *pEntry,
                            tANI_U32   nItems );
 
 

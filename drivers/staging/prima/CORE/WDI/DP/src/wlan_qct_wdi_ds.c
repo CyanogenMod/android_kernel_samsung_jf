@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -132,6 +152,7 @@ WDI_Status WDI_DS_TxPacket(void *pContext,
   WDI_DS_BdMemPoolType *pMemPool;
   wpt_uint8      ucBdPoolType;
   wpt_uint8      staId;
+  WDI_Status wdiStatus;
 
   // Do Sanity checks
   if (NULL == pContext)
@@ -161,15 +182,29 @@ WDI_Status WDI_DS_TxPacket(void *pContext,
   switch(ucType)
   {
     case WDI_MAC_DATA_FRAME:
+#ifdef FEATURE_WLAN_TDLS
+       /* I utilizes TDLS mgmt frame always sent at BD_RATE2. (See limProcessTdls.c)
+          Assumption here is data frame sent by WDA_TxPacket() <- HalTxFrame/HalTxFrameWithComplete()
+          should take managment path. As of today, only TDLS feature has special data frame
+          which needs to be treated as mgmt.
+        */
+       if((!pTxMetadata->isEapol) &&
+          ((pTxMetadata->txFlags & WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME) != WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME))
+#else
+       if(!pTxMetadata->isEapol)
+#endif
+       {
        pMemPool = &(pClientData->dataMemPool);
        ucBdPoolType = WDI_DATA_POOL_ID;
-    break;
+       break;
+       }
+    // intentional fall-through to handle eapol packet as mgmt
     case WDI_MAC_MGMT_FRAME:
        pMemPool = &(pClientData->mgmtMemPool);
        ucBdPoolType = WDI_MGMT_POOL_ID;
     break;
     default:
-      return WDI_STATUS_E_FAILURE;;
+      return WDI_STATUS_E_FAILURE;
   }
 
   // Allocate BD header from pool
@@ -182,12 +217,17 @@ WDI_Status WDI_DS_TxPacket(void *pContext,
   alignment = 0;
   WDI_DS_PrepareBDHeader(pFrame, ucSwFrameTXXlation, alignment);
 
-  if(WDI_STATUS_SUCCESS != 
-      WDI_FillTxBd( pContext, ucTypeSubtype, pSTAMACAddress, pAddr2MACAddress, 
-        &ucUP, 1, pvBDHeader, ucTxFlag /* No ACK */, 0, &staId)){
+  wdiStatus = WDI_FillTxBd(pContext, ucTypeSubtype, pSTAMACAddress, pAddr2MACAddress,
+    &ucUP, 1, pvBDHeader, ucTxFlag /* No ACK */, 0, &staId);
+
+  if(WDI_STATUS_SUCCESS != wdiStatus)
+  {
     WDI_DS_MemPoolFree(pMemPool, pvBDHeader, physBDHeader);
-    return WDI_STATUS_E_FAILURE;
+    return wdiStatus;
   }
+
+  pTxMetadata->staIdx = staId;
+
   // Send packet to transport layer.
   if(eWLAN_PAL_STATUS_SUCCESS !=WDTS_TxPacket(pContext, pFrame)){
     WDI_DS_MemPoolFree(pMemPool, pvBDHeader, physBDHeader);
@@ -195,7 +235,17 @@ WDI_Status WDI_DS_TxPacket(void *pContext,
   }  
 
   /* resource count only for data packet */
-  if(WDI_MAC_DATA_FRAME == ucType)
+  // EAPOL packet doesn't use data mem pool if being treated as higher priority
+#ifdef FEATURE_WLAN_TDLS
+  /* I utilizes TDLS mgmt frame always sent at BD_RATE2. (See limProcessTdls.c)
+     Assumption here is data frame sent by WDA_TxPacket() <- HalTxFrame/HalTxFrameWithComplete()
+     should take managment path. As of today, only TDLS feature has special data frame
+     which needs to be treated as mgmt.
+  */
+  if((WDI_MAC_DATA_FRAME == ucType) && (!pTxMetadata->isEapol) && ((pTxMetadata->txFlags & WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME) != WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME))
+#else
+  if(WDI_MAC_DATA_FRAME == ucType && (!pTxMetadata->isEapol))
+#endif
   {
     WDI_DS_MemPoolIncreaseReserveCount(pMemPool, staId);
   }
@@ -467,3 +517,46 @@ WDI_Status WDI_DS_ClearStaIdxPerBssIdx(void *pContext, wpt_uint8 bssIdx, wpt_uin
   /* Could not find associated STA index with BSS index */
   return WDI_STATUS_E_FAILURE;
 }
+
+/* @brief: WDI_DS_GetTrafficStats
+ * This function should be invoked to fetch the current stats
+  * Parameters:
+ *  pStats:Pointer to the collected stats
+ *  len: length of buffer pointed to by pStats
+ *  Return Status: None
+ */
+void WDI_DS_GetTrafficStats(WDI_TrafficStatsType** pStats, wpt_uint32 *len)
+{
+   return WDTS_GetTrafficStats(pStats, len);
+}
+
+/* @brief: WDI_DS_DeactivateTrafficStats
+ * This function should be invoked to deactivate traffic stats collection
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDI_DS_DeactivateTrafficStats(void)
+{
+   return WDTS_DeactivateTrafficStats();
+}
+
+/* @brief: WDI_DS_ActivateTrafficStats
+ * This function should be invoked to activate traffic stats collection
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDI_DS_ActivateTrafficStats(void)
+{
+   return WDTS_ActivateTrafficStats();
+}
+
+/* @brief: WDI_DS_ClearTrafficStats
+ * This function should be invoked to clear all past stats
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDI_DS_ClearTrafficStats(void)
+{
+   return WDTS_ClearTrafficStats();
+}
+

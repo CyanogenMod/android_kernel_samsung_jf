@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -19,8 +39,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * */
+
 #ifndef WLAN_QCT_TLI_H
 #define WLAN_QCT_TLI_H
 
@@ -34,8 +53,6 @@ DESCRIPTION
   This file contains the internal declarations used within wlan transport
   layer module.
 
-  Copyright (c) 2008 QUALCOMM Incorporated. All Rights Reserved.
-  Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
 
@@ -93,19 +110,12 @@ when        who    what, where, why
 
 
 #define STATIC  static
-
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
  * -------------------------------------------------------------------------*/
 
 /*Maximum number of TIDs */
 #define WLAN_MAX_TID                          8
-
-/** The define is moved to external header file to be used by HDD */
-#ifndef WLAN_SOFTAP_FEATURE
-/*Maximum number of supported stations */
-#define WLAN_MAX_STA_COUNT                    5
-#endif
 
 /*Offset of the OUI field inside the LLC/SNAP header*/
 #define WLANTL_LLC_OUI_OFFSET                 3
@@ -114,7 +124,7 @@ when        who    what, where, why
 #define WLANTL_LLC_OUI_SIZE                   3
 
 /*Offset of the protocol type field inside the LLC/SNAP header*/
-#define WLANTL_LLC_PROTO_TYPE_OFFSET  WLANTL_LLC_OUI_OFFSET +  WLANTL_LLC_OUI_SIZE
+#define WLANTL_LLC_PROTO_TYPE_OFFSET  (WLANTL_LLC_OUI_OFFSET +  WLANTL_LLC_OUI_SIZE)
 
 /*Size of the protocol type field inside the LLC/SNAP header*/
 #define WLANTL_LLC_PROTO_TYPE_SIZE            2
@@ -124,6 +134,10 @@ when        who    what, where, why
 
 /*WAPI protocol type */
 #define WLANTL_LLC_WAI_TYPE              0x88b4
+
+#ifdef FEATURE_WLAN_TDLS
+#define WLANTL_LLC_TDLS_TYPE             0x890d
+#endif
 
 /*Length offset inside the AMSDU sub-frame header*/
 #define WLANTL_AMSDU_SUBFRAME_LEN_OFFSET     12
@@ -171,6 +185,11 @@ when        who    what, where, why
 #define WLANTL_80211_DATA_QOS_SUBTYPE  0x08
 #define WLANTL_80211_NULL_QOS_SUBTYPE  0x0C
 
+/*Defines for internal utility functions */
+#define WLANTL_FRAME_TYPE_BCAST 0xff
+#define WLANTL_FRAME_TYPE_MCAST 0x01
+#define WLANTL_FRAME_TYPE_UCAST 0x00
+
 
 /*-------------------------------------------------------------------------
   BT-AMP related definition - !!! should probably be moved to BT-AMP header
@@ -213,12 +232,12 @@ when        who    what, where, why
 
 /*get TL control block from vos global context */
 #define VOS_GET_TL_CB(_pvosGCtx) \
-        (WLANTL_CbType*)vos_get_context( VOS_MODULE_ID_TL, _pvosGCtx)
+  ((WLANTL_CbType*)vos_get_context( VOS_MODULE_ID_TL, _pvosGCtx))
 
 /* Check whether Rx frame is LS or EAPOL packet (other than data) */
 #define WLANTL_BAP_IS_NON_DATA_PKT_TYPE(usType) \
-        (WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
-        (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType)
+  ((WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
+   (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType))
 
 /*get RSSI0 from a RX BD*/
 /* 7 bits in phystats represent -100dBm to +27dBm */
@@ -230,9 +249,10 @@ when        who    what, where, why
 
 /* Check whether Rx frame is LS or EAPOL packet (other than data) */
 #define WLANTL_BAP_IS_NON_DATA_PKT_TYPE(usType) \
-        (WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
-        (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType)
+  ((WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
+   (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType))
 
+#define WLANTL_CACHE_TRACE_WATERMARK 100
 /*---------------------------------------------------------------------------
   TL signals for TX thread
 ---------------------------------------------------------------------------*/
@@ -245,7 +265,8 @@ typedef enum
    and TL is low on resources*/
   WLANTL_TX_RES_NEEDED  = 1,
 
-  /* Forwarding RX cached frames */
+  /* Forwarding RX cached frames. This is not used anymore as it is
+     replaced by WLANTL_RX_FWD_CACHED in RX thread*/
   WLANTL_TX_FWD_CACHED  = 2,
 
   /* Serialized STAID AC Indication */
@@ -257,8 +278,23 @@ typedef enum
   /* Serialzie Finish UL Authentication request */
   WLANTL_FINISH_ULA   = 5,
 
+  /* Serialized Snapshot request indication */
+  WLANTL_TX_SNAPSHOT = 6,
+
   WLANTL_TX_MAX
 }WLANTL_TxSignalsType;
+
+
+/*---------------------------------------------------------------------------
+  TL signals for RX thread
+---------------------------------------------------------------------------*/
+typedef enum
+{
+
+  /* Forwarding RX cached frames */
+  WLANTL_RX_FWD_CACHED  = 0,
+
+}WLANTL_RxSignalsType;
 
 /*---------------------------------------------------------------------------
   STA Event type
@@ -372,9 +408,7 @@ STATIC const WLANTL_STAFsmEntryType tlSTAFsm[WLANTL_STA_MAX_STATE] =
 typedef struct
 {
    v_BOOL_t     isAvailable;
-#ifdef ANI_CHIPSET_VOLANS
    v_U64_t      ullReplayCounter[WLANTL_MAX_WINSIZE];
-#endif
    v_PVOID_t    arrayBuffer[WLANTL_MAX_WINSIZE];
 } WLANTL_REORDER_BUFFER_T;
 
@@ -433,6 +467,8 @@ typedef struct
   WLANTL_TIMER_EXPIER_UDATA_T timerUdata;
 
   WLANTL_REORDER_BUFFER_T     *reorderBuffer;
+
+  v_U16_t            LastSN;
 }WLANTL_BAReorderType;
 
 
@@ -446,6 +482,17 @@ typedef struct
 }WLANTL_UAPSDInfoType;
 
 /*---------------------------------------------------------------------------
+  per-STA cache info
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  v_U16_t               cacheSize;
+  v_TIME_t              cacheInitTime;
+  v_TIME_t              cacheDoneTime;
+  v_TIME_t              cacheClearTime;
+}WLANTL_CacheInfoType;
+
+/*---------------------------------------------------------------------------
   STA Client type
 ---------------------------------------------------------------------------*/
 typedef struct
@@ -453,13 +500,6 @@ typedef struct
   /* Flag that keeps track of registration; only one STA with unique
      ID allowed */
   v_U8_t                        ucExists;
-
-  /*The flag controls the Rx path for the station - as long as there are
-    packets at sta level that need to be fwd-ed the Rx path will be blocked,
-    it will become unblocked only when the cached frames were fwd-ed;
-    while the rx path is blocked all rx-ed frames for that STA will be cached
-    */
-  v_U8_t                        ucRxBlocked;
 
   /* Function pointer to the receive packet handler from HDD */
   WLANTL_STARxCBType            pfnSTARx;
@@ -488,6 +528,9 @@ typedef struct
 
   /* Value of the averaged RSSI for this station in BMPS */
   v_S7_t                        rssiAvgBmps;
+
+  /* Value of the Alpha to calculate RSSI average */
+  v_S7_t                        rssiAlpha;
 
   /* Value of the averaged RSSI for this station */
   v_U32_t                       uLinkQualityAvg;
@@ -522,8 +565,11 @@ typedef struct
 
   /*Packet pending flag - set if tx is pending for the station*/
   v_U8_t                        ucPktPending;
-  
-  /*used on tx packet to signal when there is no more data to tx for the 
+
+  /*EAPOL Packet pending flag - set if EAPOL packet is pending for the station*/
+  v_U8_t                        ucEapolPktPending;
+
+  /*used on tx packet to signal when there is no more data to tx for the
    moment=> packets can be passed to BAL */
   v_U8_t                    ucNoMoreData;
 
@@ -548,9 +594,10 @@ typedef struct
   /*Begining of the cached packets chain*/
   vos_pkt_t*                 vosEndCachedFrame;
 
-#ifdef WLAN_SOFTAP_FEATURE
-
+  WLANTL_CacheInfoType       tlCacheInfo;
   /* LWM related fields */
+
+  v_BOOL_t  enableCaching;
 
   //current station is slow. LWM mode is enabled.
   v_BOOL_t ucLwmModeEnabled;
@@ -596,9 +643,7 @@ typedef struct
 
   /* Queue to keep unicast station management frame */
   vos_list_t pStaManageQ;
-#endif
 
-#ifdef ANI_CHIPSET_VOLANS
  /* 1 means replay check is needed for the station,
   * 0 means replay check is not needed for the station*/
   v_BOOL_t      ucIsReplayCheckValid;
@@ -609,8 +654,13 @@ typedef struct
  /* It contains no of replay packets found per STA.
     It is for debugging purpose only.*/
   v_U32_t       ulTotalReplayPacketsDetected;
-#endif
 
+ /* Set when pairwise key is installed, if ptkInstalled is
+    1 then we have to encrypt the data irrespective of TL
+    state (CONNECTED/AUTHENTICATED) */
+  v_U8_t ptkInstalled;
+
+  v_U32_t       linkCapacity;
 }WLANTL_STAClientType;
 
 /*---------------------------------------------------------------------------
@@ -704,7 +754,8 @@ typedef struct
   WLANTL_ConfigInfoType     tlConfigInfo;
 
   /* list of the active stations */
-  WLANTL_STAClientType      *atlSTAClients; /*Allocate memory [WLAN_MAX_STA_COUNT] of station */
+  WLANTL_STAClientType*      atlSTAClients[WLAN_MAX_STA_COUNT];
+
 
   /* information on the management frame client */
   WLANTL_MgmtFrmClientType  tlMgmtFrmClient;
@@ -744,7 +795,6 @@ typedef struct
 
   v_BOOL_t                  bUrgent;
 
-#ifdef WLAN_SOFTAP_FEATURE
 
   /* resource flag */
   v_U32_t bd_pduResCount;
@@ -794,9 +844,16 @@ typedef struct
 
   v_U8_t done_once;
   v_U8_t uFramesProcThres;
+#ifdef FEATURE_WLAN_TDLS
+  /*number of total TDLS peers registered to TL
+    Incremented at WLANTL_RegisterSTAClient(staType == WLAN_STA_TDLS)
+    Decremented at WLANTL_ClearSTAClient(staType == WLAN_STA_TDLS) */
+  v_U8_t        ucTdlsPeerCount;
 #endif
   /*whether we are in BMPS/UAPSD/WOWL mode, since the latter 2 need to be BMPS first*/
   v_BOOL_t                  isBMPS;
+  /* Whether WDA_DS_TX_START_XMIT msg is pending or not */
+  v_BOOL_t   isTxTranmitMsgPending;
 }WLANTL_CbType;
 
 /*==========================================================================
@@ -820,7 +877,7 @@ typedef struct
     pAdapter:       pointer to the global adapter context; a handle to TL's
                     or BAL's control block can be extracted from its context
     uSize:          maximum size accepted by the lower layer
-    uFlowMask       TX flow control mask. Each bit is defined as 
+    uFlowMask       TX flow control mask. Each bit is defined as
                     WDA_TXFlowEnumType
 
     OUT
@@ -845,9 +902,7 @@ WLANTL_GetFrames
   v_PVOID_t       pAdapter,
   vos_pkt_t     **ppFrameDataBuff,
   v_U32_t         uSize,
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   v_U8_t          uFlowMask,
-#endif
   v_BOOL_t*       pbUrgent
 );
 
@@ -1230,7 +1285,9 @@ WLANTL_PrepareBDHeader
 
    IN
     pTLCb:            TL control block
-    ucStaId:          station ID
+
+    *pucStaId         Station ID. In case of TDLS, this return the actual
+                      station index used to transmit.
 
    IN/OUT
     vosDataBuff:      vos data buffer, will contain the new header on output
@@ -1250,12 +1307,11 @@ WLANTL_Translate8023To80211Header
   vos_pkt_t*      vosDataBuff,
   VOS_STATUS*     pvosStatus,
   WLANTL_CbType*  pTLCb,
-  v_U8_t          ucStaId,
+  v_U8_t          *pucStaId,
   v_U8_t          ucUP,
   v_U8_t          *ucWDSEnabled,
   v_U8_t          *extraHeadSpace
 );
-
 /*==========================================================================
   FUNCTION    WLANTL_Translate80211To8023Header
 
@@ -1290,10 +1346,49 @@ WLANTL_Translate80211To8023Header
 (
   vos_pkt_t*      vosDataBuff,
   VOS_STATUS*     pvosStatus,
-  v_U16_t         usActualHLen,  
+  v_U16_t         usActualHLen,
   v_U8_t          ucHeaderLen,
   WLANTL_CbType*  pTLCb,
   v_U8_t          ucSTAId
+);
+
+/*==========================================================================
+  FUNCTION    WLANTL_FindFrameTypeBcMcUc
+
+  DESCRIPTION
+    Utility function to find whether received frame is broadcast, multicast
+    or unicast.
+
+  DEPENDENCIES
+    The STA must be registered with TL before this function can be called.
+
+  PARAMETERS
+
+   IN
+   pTLCb:          pointer to the TL's control block
+   ucSTAId:        identifier of the station being processed
+   vosDataBuff:    pointer to the vos buffer
+
+   IN/OUT
+    pucBcMcUc:       pointer to buffer, will contain frame type on return
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_INVAL:   invalid input parameters
+    VOS_STATUS_E_BADMSG:  failed to extract info from data buffer
+    VOS_STATUS_SUCCESS:   success
+
+  SIDE EFFECTS
+    None.
+============================================================================*/
+VOS_STATUS
+WLANTL_FindFrameTypeBcMcUc
+(
+  WLANTL_CbType *pTLCb,
+  v_U8_t        ucSTAId,
+  vos_pkt_t     *vosDataBuff,
+  v_U8_t        *pucBcMcUc
 );
 
 /*==========================================================================
@@ -1554,9 +1649,8 @@ void WLANTL_PowerStateChangedCB
    tPmcState newState
 );
 
-#ifdef WLAN_SOFTAP_FEATURE
 /*==========================================================================
-  FUNCTION   WLANTL_FwdPktToHDD 
+  FUNCTION   WLANTL_FwdPktToHDD
 
   DESCRIPTION
     Determine the Destation Station ID and route the Frame to Upper Layer
@@ -1591,5 +1685,4 @@ WLANTL_FwdPktToHDD
   v_U8_t          ucSTAId
 );
 
-#endif /* #ifdef WLANTL_SOFTAP_FEATURE */
 #endif /* #ifndef WLAN_QCT_TLI_H */

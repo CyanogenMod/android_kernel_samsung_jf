@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -54,6 +74,9 @@
 #define WE_CLEAR_RX_PKT_CNT   8
 #define WE_RX                 9
 #define WE_ENABLE_CHAIN      10
+#define WE_SET_PWR_CNTL_MODE 11
+#define WE_ENABLE_DPD        12
+#define WE_SET_CB            13
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_FTM_PRIV_SET_NONE_GET_INT    (SIOCIWFIRSTPRIV + 1)
@@ -85,12 +108,7 @@
 #define WLAN_FTM_PRIV_SET_NONE_GET_NONE   (SIOCIWFIRSTPRIV + 6)
 #define WE_SET_NV_DEFAULTS    1
 
-#define WLAN_FTM_PRIV_SET_VAR_INT_GET_NONE   (SIOCIWFIRSTPRIV + 7)
-#define WE_SET_RSSI_OFFSET 1
-
-
 #define WE_FTM_MAX_STR_LEN 1024
-#define MAX_FTM_VAR_ARGS  7
 
 #define MAX_NV_TABLE_SIZE  30000
 
@@ -151,14 +169,12 @@ typedef struct wlan_hdd_ftm_status_s
     v_BOOL_t  IsCmdPending;
     v_BOOL_t  cmd_iwpriv;
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     /** Large size of NV Table Handle **/
     eNvTable  processingNVTable;
     v_U32_t   targetNVTableSize;
     v_U8_t   *targetNVTablePointer;
     v_U32_t   processedNVTableSize;
     v_U8_t   *tempNVTableBuffer;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 } wlan_hdd_ftm_status_t;
 typedef struct ftm_msg_s
@@ -204,7 +220,7 @@ typedef struct rateStr2rateIndex_s
 
 #define FTM_VOS_EVENT_WAIT_TIME 10000
 
-#define SIZE_OF_TABLE(a) sizeof(a)/sizeof(a[0])                      
+#define SIZE_OF_TABLE(a) (sizeof(a) / sizeof(a[0]))
 
 int wlan_hdd_ftm_open(hdd_context_t *pHddCtx);
 void wlan_hdd_process_ftm_cmd (hdd_context_t *pHddCtx,tAniNlHdr *wnl);

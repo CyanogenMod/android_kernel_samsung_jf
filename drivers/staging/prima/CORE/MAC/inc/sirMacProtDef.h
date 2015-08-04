@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -19,8 +39,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
 /*
- * Airgo Networks, Inc proprietary. All rights reserved.
  * This file sirMacProtDef.h contains the MAC/PHY protocol
  * definitions used across various projects.
  * Author:        Chandra Modumudi
@@ -35,7 +55,7 @@
 
 #include "palTypes.h"
 #include "sirTypes.h"
-#include "wniCfgAp.h"
+#include "wniCfgSta.h"
 #include "aniCompiler.h"
 
 
@@ -155,13 +175,17 @@
 #define SIR_MAC_ACTION_QOS_MGMT        1
 #define SIR_MAC_ACTION_DLP             2
 #define SIR_MAC_ACTION_BLKACK          3
+#define SIR_MAC_ACTION_PUBLIC_USAGE    4
 #if defined WLAN_FEATURE_VOWIFI
 #define SIR_MAC_ACTION_RRM             5
 #endif
 #define SIR_MAC_ACTION_HT              7
+#ifdef FEATURE_WLAN_TDLS
+#define SIR_MAC_ACTION_TDLS           12
+#endif
 #define SIR_MAC_ACTION_WME            17
-#if defined WLAN_FEATURE_P2P
-#define SIR_MAC_ACTION_PUBLIC_USAGE 4
+#ifdef WLAN_FEATURE_11AC
+#define SIR_MAC_ACTION_VHT            21
 #endif
 
 // QoS management action codes
@@ -215,6 +239,11 @@
 
 #endif
 
+//VHT Action Field 
+#ifdef WLAN_FEATURE_11AC
+#define SIR_MAC_VHT_OPMODE_NOTIFICATION        2
+#endif
+
 // HT Action Field Codes
 #define SIR_MAC_SM_POWER_SAVE       1
 
@@ -227,15 +256,26 @@
 #define SIR_MAC_BLKACK_ADD_REQ      0
 #define SIR_MAC_BLKACK_ADD_RSP      1
 #define SIR_MAC_BLKACK_DEL          2
-#if defined WLAN_FEATURE_P2P
 #define SIR_MAC_ACTION_VENDOR_SPECIFIC 9
 #define SIR_MAC_ACTION_VENDOR_SPECIFIC_CATEGORY     0x7F
 #define SIR_MAC_ACTION_P2P_SUBTYPE_PRESENCE_RSP     2
-#endif
 
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
 #define SIR_MAC_ACTION_SA_QUERY               8 
+#endif
+
+#ifdef FEATURE_WLAN_TDLS
+#define SIR_MAC_TDLS_SETUP_REQ           0
+#define SIR_MAC_TDLS_SETUP_RSP           1
+#define SIR_MAC_TDLS_SETUP_CNF           2
+#define SIR_MAC_TDLS_TEARDOWN            3
+#define SIR_MAC_TDLS_PEER_TRAFFIC_IND    4
+#define SIR_MAC_TDLS_CH_SWITCH_REQ       5
+#define SIR_MAC_TDLS_CH_SWITCH_RSP       6
+#define SIR_MAC_TDLS_PEER_TRAFFIC_RSP    9
+#define SIR_MAC_TDLS_DIS_REQ             10
+#define SIR_MAC_TDLS_DIS_RSP             14
 #endif
 
 #define SIR_MAC_MAX_RANDOM_LENGTH   2306
@@ -371,6 +411,7 @@
 #define SIR_MAC_VHT_CAPABILITIES_EID   191
 #define SIR_MAC_VHT_OPERATION_EID      192
 #define SIR_MAC_VHT_EXT_BSS_LOAD_EID   193
+#define SIR_MAC_VHT_OPMODE_EID         199
 #endif
 #define SIR_MAC_MAX_SUPPORTED_MCS_SET    16
 
@@ -407,14 +448,15 @@
 #define SIR_MAC_WSM_OUI             SIR_MAC_WME_OUI
 #define SIR_MAC_WSC_OUI             "\x00\x50\xf2\x04"
 #define SIR_MAC_WSC_OUI_SIZE        4
-#ifdef WLAN_FEATURE_P2P
 #define SIR_MAC_P2P_OUI             "\x50\x6f\x9a\x09"
 #define SIR_MAC_P2P_OUI_SIZE        4
 #define SIR_P2P_NOA_ATTR            12
 #define SIR_MAX_NOA_ATTR_LEN        31
 #define SIR_MAX_NOA_DESCR           2
 #define SIR_P2P_IE_HEADER_LEN       6
-#endif
+
+#define SIR_MAC_CISCO_OUI "\x00\x40\x96"
+#define SIR_MAC_CISCO_OUI_SIZE 3
 
 // min size of wme oui header: oui(3) + type + subtype + version
 #define SIR_MAC_OUI_WME_HDR_MIN       6
@@ -459,8 +501,10 @@
 #define SIR_MAC_OUI_WSM_SCHEDULE_MAX        20
 
 #ifdef WLAN_NS_OFFLOAD
-#define SIR_MAC_NS_OFFLOAD_SIZE        1  //support only one IPv6 offload
+#define SIR_MAC_NS_OFFLOAD_SIZE             1  //support only one IPv6 offload
 #define SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA   2 //Number of target IP in NA frames. It must be at least 2
+#define SIR_MAC_IPV6_ADDR_LEN               16
+#define SIR_IPV6_ADDR_VALID                 1
 #endif //WLAN_NS_OFFLOAD
 #define SIR_MAC_ARP_OFFLOAD_SIZE        1
 
@@ -587,7 +631,14 @@
 
 // bitname must be one of the above, eg ESS, CF_POLLABLE, etc.
 #define SIR_MAC_CLEAR_CAPABILITY(u16value, bitname) \
-    (u16value) &= (~(SIR_MAC_SET_##bitname(0)))
+  ((u16value) &= (~(SIR_MAC_SET_##bitname(0))))
+
+#define IS_WES_MODE_ENABLED(x) \
+                    ((x)->roam.configParam.isWESModeEnabled)
+
+#define BA_RECIPIENT       1
+#define BA_INITIATOR       2
+#define BA_BOTH_DIRECTIONS 3
 
 /// Status Code (present in Management response frames) enum
 
@@ -707,7 +758,11 @@ typedef enum eSirMacReasonCodes
     eSIR_MAC_INVALID_RSN_CAPABILITIES_REASON         = 22, //Invalid RSN information element capabilities
     eSIR_MAC_1X_AUTH_FAILURE_REASON                  = 23, //IEEE 802.1X authentication failed
     eSIR_MAC_CIPHER_SUITE_REJECTED_REASON            = 24, //Cipher suite rejected because of the security policy
-    // reserved                                        25 - 31
+#ifdef FEATURE_WLAN_TDLS
+    eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE          = 25, //TDLS direct link teardown due to TDLS peer STA unreachable via the TDLS direct link
+    eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON             = 26, //TDLS direct link teardown for unspecified reason
+#endif
+    // reserved                                        27 - 31
     eSIR_MAC_QOS_UNSPECIFIED_REASON                  = 32, //Disassociated for unspecified, QoS-related reason
     eSIR_MAC_QAP_NO_BANDWIDTH_REASON                 = 33, //Disassociated because QoS AP lacks sufficient bandwidth for this QoS STA
     eSIR_MAC_XS_UNACKED_FRAMES_REASON                = 34, //Disassociated because excessive number of frames need to be acknowledged, but are not
@@ -1250,12 +1305,7 @@ typedef __ani_attr_pre_packed struct sSirMacTspecIE
     tANI_U16            surplusBw;
     tANI_U16            mediumTime;
 }
-#ifndef LX5280
-__ani_attr_packed
-#else
-__ani_attr_aligned_4  __ani_attr_packed
-#endif
-tSirMacTspecIE;
+__ani_attr_packed tSirMacTspecIE;
 
 // max size of the classifier params in the tclas IE
 #define SIR_MAC_CLSPARAM_LEN 253
@@ -1548,6 +1598,129 @@ typedef  struct sSirMacRpiReportIE
     tSirMacRpiReport     rpiReport;
 } tSirMacRpiReportIE, *tpSirMacRpiReportIE;
 
+#define SIR_MAC_MAX_SUPP_RATES            32
+
+#define SIR_MAC_MAX_EXTN_CAP               8
+
+// VHT Capabilities Info
+typedef __ani_attr_pre_packed struct sSirMacVHTCapabilityInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U32        reserved1: 2;
+    tANI_U32     txAntPattern: 1;
+    tANI_U32     rxAntPattern: 1;
+    tANI_U32  vhtLinkAdaptCap: 2;
+    tANI_U32   maxAMPDULenExp: 3;
+    tANI_U32        htcVHTCap: 1;
+    tANI_U32        vhtTXOPPS: 1;
+    tANI_U32  muBeamformeeCap: 1;
+    tANI_U32  muBeamformerCap: 1;
+    tANI_U32   numSoundingDim: 3;
+    tANI_U32 csnofBeamformerAntSup: 3;
+    tANI_U32  suBeamformeeCap: 1;
+    tANI_U32  suBeamFormerCap: 1;
+    tANI_U32           rxSTBC: 3;
+    tANI_U32           txSTBC: 1;
+    tANI_U32 shortGI160and80plus80MHz: 1;
+    tANI_U32     shortGI80MHz: 1;
+    tANI_U32    ldpcCodingCap: 1;
+    tANI_U32 supportedChannelWidthSet: 2;
+    tANI_U32       maxMPDULen: 2;
+#else
+    tANI_U32       maxMPDULen: 2;
+    tANI_U32 supportedChannelWidthSet: 2;
+    tANI_U32    ldpcCodingCap: 1;
+    tANI_U32     shortGI80MHz: 1;
+    tANI_U32 shortGI160and80plus80MHz: 1;
+    tANI_U32           txSTBC: 1;
+    tANI_U32           rxSTBC: 3;
+    tANI_U32  suBeamFormerCap: 1;
+    tANI_U32  suBeamformeeCap: 1;
+    tANI_U32 csnofBeamformerAntSup: 3;
+    tANI_U32   numSoundingDim: 3;
+    tANI_U32  muBeamformerCap: 1;
+    tANI_U32  muBeamformeeCap: 1;
+    tANI_U32        vhtTXOPPS: 1;
+    tANI_U32        htcVHTCap: 1;
+    tANI_U32   maxAMPDULenExp: 3;
+    tANI_U32  vhtLinkAdaptCap: 2;
+    tANI_U32     rxAntPattern: 1;
+    tANI_U32     txAntPattern: 1;
+    tANI_U32        reserved1: 2;
+#endif
+} __ani_attr_packed tSirMacVHTCapabilityInfo;
+
+typedef __ani_attr_pre_packed struct sSirMacVHTTxSupDataRateInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U16 reserved: 3;
+    tANI_U16 txSupDataRate: 13;
+#else
+    tANI_U16 txSupDataRate: 13;
+    tANI_U16 reserved: 3;
+#endif
+}__ani_attr_packed tSirMacVHTTxSupDataRateInfo;
+
+typedef __ani_attr_pre_packed struct sSirMacVHTRxSupDataRateInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U16 reserved: 3;
+    tANI_U16 rxSupDataRate: 13;
+#else
+    tANI_U16 rxSupDataRate: 13;
+    tANI_U16 reserved: 3;
+#endif
+}__ani_attr_packed tSirMacVHTRxSupDataRateInfo;
+
+/**
+ * struct sSirVhtMcsInfo - VHT MCS information
+ * @rx_mcs_map: RX MCS map 2 bits for each stream, total 8 streams
+ * @rx_highest: Indicates highest long GI VHT PPDU data rate
+ *      STA can receive. Rate expressed in units of 1 Mbps.
+ *      If this field is 0 this value should not be used to
+ *      consider the highest RX data rate supported.
+ * @tx_mcs_map: TX MCS map 2 bits for each stream, total 8 streams
+ * @tx_highest: Indicates highest long GI VHT PPDU data rate
+ *      STA can transmit. Rate expressed in units of 1 Mbps.
+ *      If this field is 0 this value should not be used to
+ *      consider the highest TX data rate supported.
+ */
+typedef struct sSirVhtMcsInfo {
+    tANI_U16 rxMcsMap;
+    tANI_U16 rxHighest;
+    tANI_U16 txMcsMap;
+    tANI_U16 txHighest;
+}tSirVhtMcsInfo;
+
+/**
+ * struct sSirVHtCap - VHT capabilities
+ *
+ * This structure is the "VHT capabilities element" as
+ * described in 802.11ac D3.0 8.4.2.160
+ * @vht_cap_info: VHT capability info
+ * @supp_mcs: VHT MCS supported rates
+ */
+typedef struct sSirVHtCap {
+    tANI_U32       vhtCapInfo;
+    tSirVhtMcsInfo suppMcs;
+}tSirVHTCap;
+
+/**
+ * struct sSirHtCap - HT capabilities
+ *
+ * This structure refers to "HT capabilities element" as
+ * described in 802.11n draft section 7.3.2.52
+ */
+
+
+typedef struct sSirHtCap {
+    tANI_U16 capInfo;
+    tANI_U8  ampduParamsInfo;
+    tANI_U8  suppMcsSet[16];
+    tANI_U16 extendedHtCapInfo;
+    tANI_U32 txBFCapInfo;
+    tANI_U8  antennaSelectionInfo;
+}tSirHTCap;
 
 // HT Cap and HT IE Size defines
 #define HT_CAPABILITY_IE_SIZE                       28
@@ -2166,7 +2339,14 @@ typedef __ani_attr_pre_packed struct sSirMacActionFrameHdr
     tANI_U8    actionID;
 } __ani_attr_packed tSirMacActionFrameHdr, *tpSirMacActionFrameHdr;
 
-#if defined WLAN_FEATURE_P2P
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+typedef __ani_attr_pre_packed struct sSirMacVendorSpecificFrameHdr
+{
+    tANI_U8    category;
+    tANI_U8    Oui[4];
+} __ani_attr_packed tSirMacVendorSpecificFrameHdr, *tpSirMacVendorSpecificFrameHdr;
+#endif
+
 typedef __ani_attr_pre_packed struct sSirMacVendorSpecificPublicActionFrameHdr
 {
     tANI_U8    category;
@@ -2185,7 +2365,6 @@ typedef __ani_attr_pre_packed struct sSirMacP2PActionFrameHdr
 } __ani_attr_packed tSirMacP2PActionFrameHdr, *tpSirMacP2PActionFrameHdr;
 
 
-#endif
 
 typedef  struct sSirMacMeasActionFrameHdr
 {
@@ -2585,4 +2764,5 @@ typedef __ani_attr_pre_packed struct sSirPhy11aHdr
 #endif
 } __ani_attr_packed tSirPhy11aHdr, *tpSirPhy11aHdr;
 
+#define SIR_MAC_MIN_IE_LEN 2 // Minimum IE length for IE validation
 #endif /* __MAC_PROT_DEFS_H */
