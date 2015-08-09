@@ -441,7 +441,7 @@ void esd_recovery(void)
 	if (pdev_for_esd) {
 		mfd = platform_get_drvdata(pdev_for_esd);
 
-		if (mfd->panel_power_on == TRUE) {
+		if (!mdp_fb_is_power_off(mfd)) {
 			mutex_lock(&power_state_chagne);
 
 			panel_next_off(pdev_for_esd);

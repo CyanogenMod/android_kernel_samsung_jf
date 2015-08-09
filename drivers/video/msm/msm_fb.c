@@ -1255,12 +1255,6 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 			mfd->suspend.panel_power_state = MDP_PANEL_POWER_ON;
 		} else if (blank_mode == FB_BLANK_VSYNC_SUSPEND) {
 			mfd->suspend.panel_power_state = MDP_PANEL_POWER_DOZE;
-			/* if unblank is called when system is in suspend,
-			wait for the system to resume */
-			while (mfd->suspend.op_suspend) {
-				pr_debug("waiting for system to resume\n");
-				msleep(20);
-			}
 		} else {
 			mfd->suspend.panel_power_state = MDP_PANEL_POWER_OFF;
 		}
