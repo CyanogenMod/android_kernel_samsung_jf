@@ -1077,6 +1077,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msm_fb_panel_data *pdata = NULL;
 	int ret = 0;
+	struct fb_event event;
 	int cur_power_state, req_power_state = MDP_PANEL_POWER_OFF;
 
 	if (!op_enable)
@@ -1089,6 +1090,11 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	}
 
 	cur_power_state = mfd->panel_power_state;
+
+	/* Send notification */
+	event.info = info;
+	event.data = &blank_mode;
+	fb_notifier_call_chain(FB_EARLY_EVENT_BLANK, &event);
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
@@ -1157,6 +1163,17 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 		mutex_unlock(&power_state_chagne);
 		break;
+	}
+
+	/* Send post notification */
+	if (ret) {
+		event.info = info;
+		event.data = &blank_mode;
+		fb_notifier_call_chain(FB_R_EARLY_EVENT_BLANK, &event);
+	} else {
+		event.info = info;
+		event.data = &blank_mode;
+		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
 	}
 
 	return ret;
