@@ -470,6 +470,8 @@ static int __init do_early_param(char *param, char *val)
 			samsung_hardware = SHV_E300;
 		} else if (strncmp(val, "SGH-N045", 8) == 0) {
 			samsung_hardware = SGH_N045;
+		} else if (strncmp(val, "GT-I9295", 8) == 0) {
+			samsung_hardware = GT_I9295;
 		} else {
 			samsung_hardware = XXX_XXXX;
 		}

@@ -3708,7 +3708,7 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 	}
 
 	if (info->node != 0 || mfd->cont_splash_done)	/* primary */
-		if (!mfd->panel_power_on)		/* suspended */
+		if (mdp_fb_is_power_off(mfd))		/* suspended */
 			return -EPERM;
 
 	if (req->src.format == MDP_FB_FORMAT)
@@ -3845,7 +3845,7 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 		/* mixer 0 */
 		ctrl->mixer0_played = 0;
 		if (ctrl->panel_mode & MDP4_PANEL_MDDI) {
-			if (mfd->panel_power_on)
+			if (!mdp_fb_is_power_off(mfd))
 				mdp4_mddi_blt_dmap_busy_wait(mfd);
 		}
 	}
@@ -3855,7 +3855,7 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 
 	if (pipe->mixer_num == MDP4_MIXER0) {
 		if (ctrl->panel_mode & MDP4_PANEL_MDDI) {
-			if (mfd->panel_power_on)
+			if (!mdp_fb_is_power_off(mfd))
 				mdp4_mddi_overlay_restore();
 		}
 	} else {	/* mixer1, DTV, ATV */
@@ -3917,7 +3917,7 @@ int mdp4_overlay_vsync_ctrl(struct fb_info *info, int enable)
 	if (mfd == NULL)
 		return -ENODEV;
 
-	if (!mfd->panel_power_on)
+	if (mdp_fb_is_power_off(mfd))
 		return -EINVAL;
 
 	if (enable)
@@ -4185,8 +4185,8 @@ int mdp4_overlay_commit(struct fb_info *info)
 	if (mfd == NULL)
 		return -ENODEV;
 
-	if (!mfd->panel_power_on) /* suspended */
-		return -EINVAL;
+	if (mdp_fb_is_power_off(mfd))
+		ret = -EINVAL;
 
 	mixer = mfd->panel_info.pdest;	/* DISPLAY_1 or DISPLAY_2 */
 
