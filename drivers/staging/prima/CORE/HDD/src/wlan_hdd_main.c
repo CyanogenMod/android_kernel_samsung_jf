@@ -227,7 +227,6 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
    hdd_context_t *pHddCtx;
 #ifdef WLAN_BTAMP_FEATURE
    VOS_STATUS status;
-   hdd_context_t *pHddCtx;
 #endif
    long result;
 
