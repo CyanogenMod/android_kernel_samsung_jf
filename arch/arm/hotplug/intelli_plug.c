@@ -52,21 +52,21 @@ static struct delayed_work intelli_plug_boost;
 static struct workqueue_struct *intelliplug_wq;
 static struct workqueue_struct *intelliplug_boost_wq;
 
-static unsigned int intelli_plug_active = 0;
+static unsigned int __read_mostly intelli_plug_active = 0;
 module_param(intelli_plug_active, uint, 0664);
 
 static unsigned int touch_boost_active = 1;
 module_param(touch_boost_active, uint, 0664);
 
-static unsigned int nr_run_profile_sel = 0;
+static unsigned int __read_mostly nr_run_profile_sel = 0;
 module_param(nr_run_profile_sel, uint, 0664);
 
 //default to something sane rather than zero
-static unsigned int sampling_time = DEF_SAMPLING_MS;
+static unsigned int __read_mostly sampling_time = DEF_SAMPLING_MS;
 
 static int persist_count = 0;
 
-static bool suspended = false;
+static bool __read_mostly suspended = false;
 
 struct ip_cpu_info {
 	unsigned int sys_max;
@@ -99,42 +99,42 @@ defined (CONFIG_ARCH_MSM8610) || defined (CONFIG_ARCH_MSM8228)
 
 static unsigned int nr_fshift = NR_FSHIFT;
 
-static unsigned int nr_run_thresholds_balance[] = {
+static unsigned int __read_mostly nr_run_thresholds_balance[] = {
 	(THREAD_CAPACITY * 625 * MULT_FACTOR) / DIV_FACTOR,
 	(THREAD_CAPACITY * 875 * MULT_FACTOR) / DIV_FACTOR,
 	(THREAD_CAPACITY * 1125 * MULT_FACTOR) / DIV_FACTOR,
 	UINT_MAX
 };
 
-static unsigned int nr_run_thresholds_performance[] = {
+static unsigned int __read_mostly nr_run_thresholds_performance[] = {
 	(THREAD_CAPACITY * 380 * MULT_FACTOR) / DIV_FACTOR,
 	(THREAD_CAPACITY * 625 * MULT_FACTOR) / DIV_FACTOR,
 	(THREAD_CAPACITY * 875 * MULT_FACTOR) / DIV_FACTOR,
 	UINT_MAX
 };
 
-static unsigned int nr_run_thresholds_conservative[] = {
+static unsigned int __read_mostly nr_run_thresholds_conservative[] = {
 	(THREAD_CAPACITY * 875 * MULT_FACTOR) / DIV_FACTOR,
 	(THREAD_CAPACITY * 1625 * MULT_FACTOR) / DIV_FACTOR,
 	(THREAD_CAPACITY * 2125 * MULT_FACTOR) / DIV_FACTOR,
 	UINT_MAX
 };
 
-static unsigned int nr_run_thresholds_eco[] = {
+static unsigned int __read_mostly nr_run_thresholds_eco[] = {
         (THREAD_CAPACITY * 380 * MULT_FACTOR) / DIV_FACTOR,
 	UINT_MAX
 };
 
-static unsigned int nr_run_thresholds_eco_extreme[] = {
+static unsigned int __read_mostly nr_run_thresholds_eco_extreme[] = {
         (THREAD_CAPACITY * 750 * MULT_FACTOR) / DIV_FACTOR,
 	UINT_MAX
 };
 
-static unsigned int nr_run_thresholds_disable[] = {
+static unsigned int __read_mostly nr_run_thresholds_disable[] = {
 	0,  0,  0,  UINT_MAX
 };
 
-static unsigned int *nr_run_profiles[] = {
+static unsigned int __read_mostly *nr_run_profiles[] = {
 	nr_run_thresholds_balance,
 	nr_run_thresholds_performance,
 	nr_run_thresholds_conservative,
@@ -149,13 +149,13 @@ static unsigned int *nr_run_profiles[] = {
 
 #define CPU_NR_THRESHOLD	((THREAD_CAPACITY << 1) + (THREAD_CAPACITY / 2))
 
-static unsigned int nr_possible_cores;
+static unsigned int __read_mostly nr_possible_cores;
 module_param(nr_possible_cores, uint, 0444);
 
-static unsigned int cpu_nr_run_threshold = CPU_NR_THRESHOLD;
+static unsigned int __read_mostly cpu_nr_run_threshold = CPU_NR_THRESHOLD;
 module_param(cpu_nr_run_threshold, uint, 0664);
 
-static unsigned int nr_run_hysteresis = NR_RUN_HYSTERESIS_QUAD;
+static unsigned int __read_mostly nr_run_hysteresis = NR_RUN_HYSTERESIS_QUAD;
 module_param(nr_run_hysteresis, uint, 0664);
 
 static unsigned int nr_run_last;
