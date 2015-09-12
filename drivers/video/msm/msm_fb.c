@@ -46,9 +46,6 @@
 #include <linux/sw_sync.h>
 #include <linux/file.h>
 
-#include <linux/cpu.h>
-#include "../../../arch/arm/mach-msm/acpuclock.h"
-
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
@@ -1242,15 +1239,6 @@ static void msm_fb_imageblit(struct fb_info *info, const struct fb_image *image)
 	}
 }
 
-static void __ref pump_up_the_jam(void)
-{
-	int cpu = 0;
-	for_each_possible_cpu(cpu) {
-		cpu_up(cpu);
-		acpuclk_set_rate(cpu, 1512000, SETRATE_CPUFREQ);
-	}
-}
-
 static int msm_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
@@ -1265,10 +1253,8 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 	if (mfd->op_enable == 0) {
 		if (blank_mode == FB_BLANK_UNBLANK) {
 			mfd->suspend.panel_power_state = MDP_PANEL_POWER_ON;
-			pump_up_the_jam();
 		} else if (blank_mode == FB_BLANK_VSYNC_SUSPEND) {
 			mfd->suspend.panel_power_state = MDP_PANEL_POWER_DOZE;
-			pump_up_the_jam();
 		} else {
 			mfd->suspend.panel_power_state = MDP_PANEL_POWER_OFF;
 		}
