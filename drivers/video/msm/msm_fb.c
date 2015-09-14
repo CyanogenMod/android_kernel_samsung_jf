@@ -1247,7 +1247,7 @@ static void __ref pump_up_the_jam(void)
 	int cpu = 0;
 	for_each_possible_cpu(cpu) {
 		cpu_up(cpu);
-		acpuclk_set_rate(cpu, 1890000, SETRATE_CPUFREQ);
+		acpuclk_set_rate(cpu, 1512000, SETRATE_CPUFREQ);
 	}
 }
 
