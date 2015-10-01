@@ -414,6 +414,20 @@ static ssize_t mdp_set_rgb(struct device *dev,
 	return -EINVAL;
 }
 
+void mdp_restore_rgb(void)
+{
+	struct mdp_pcc_cfg_data pcc_cfg;
+
+	memset(&pcc_cfg, 0, sizeof(struct mdp_pcc_cfg_data));
+
+	pcc_cfg.block = MDP_BLOCK_DMA_P;
+	pcc_cfg.ops = MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE;
+	pcc_cfg.r.r = pcc_r;
+	pcc_cfg.g.g = pcc_g;
+	pcc_cfg.b.b = pcc_b;
+	mdp4_pcc_cfg(&pcc_cfg);
+}
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, msm_fb_msm_fb_type, NULL);
 static DEVICE_ATTR(msm_fb_fps_level, S_IRUGO | S_IWUSR | S_IWGRP, NULL, \
 				msm_fb_fps_level_change);
