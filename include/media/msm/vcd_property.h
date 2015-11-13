@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -68,6 +68,7 @@
 #define VCD_I_LTR_USE (VCD_START_BASE + 0x34)
 #define VCD_I_CAPABILITY_LTR_COUNT (VCD_START_BASE + 0x35)
 #define VCD_I_LTR_MARK (VCD_START_BASE + 0x36)
+#define VCD_I_PIC_ORDER_CNT_TYPE (VCD_START_BASE + 0x37)
 
 #define VCD_START_REQ      (VCD_START_BASE + 0x1000)
 #define VCD_I_REQ_IFRAME   (VCD_START_REQ + 0x1)
@@ -445,6 +446,10 @@ struct vcd_property_ltrperiod_type {
 struct vcd_property_ltruse_type {
 	u32 ltr_id;
 	u32 ltr_frames;
+};
+
+struct vcd_property_pic_order_cnt_type {
+	u32 poc_type;
 };
 
 #endif

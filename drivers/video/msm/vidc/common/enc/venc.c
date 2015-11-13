@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, 2015, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1999,6 +1999,48 @@ static long vid_enc_ioctl(struct file *file,
 		}
 		if (!result) {
 			ERR("VEN_IOCTL_(G)SET_LTRUSE failed\n");
+			return -EIO;
+		}
+		break;
+	}
+	case VEN_IOCTL_SET_PIC_ORDER_CNT_TYPE:
+	case VEN_IOCTL_GET_PIC_ORDER_CNT_TYPE:
+	{
+		struct vcd_property_hdr vcd_property_hdr;
+		struct vcd_property_pic_order_cnt_type vcd_property_val;
+		struct venc_poctype poc;
+
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+
+		if (cmd == VEN_IOCTL_SET_PIC_ORDER_CNT_TYPE) {
+			if (copy_from_user(&poc, venc_msg.in, sizeof(poc)))
+				return -EFAULT;
+
+			vcd_property_hdr.prop_id = VCD_I_PIC_ORDER_CNT_TYPE;
+			vcd_property_hdr.sz = sizeof(struct
+					vcd_property_pic_order_cnt_type);
+
+			vcd_property_val.poc_type = poc.poc_type;
+
+			result = vcd_set_property(client_ctx->vcd_handle,
+				&vcd_property_hdr, &vcd_property_val);
+		} else {
+			vcd_property_hdr.prop_id = VCD_I_PIC_ORDER_CNT_TYPE;
+			vcd_property_hdr.sz = sizeof(struct
+					vcd_property_pic_order_cnt_type);
+
+			result = vcd_get_property(client_ctx->vcd_handle,
+					&vcd_property_hdr, &vcd_property_val);
+			if (!result) {
+				poc.poc_type = vcd_property_val.poc_type;
+				if (copy_to_user(venc_msg.out, &poc,
+					sizeof(poc)))
+					return -EFAULT;
+			}
+		}
+		if (result) {
+			ERR("VEN_IOCTL_(G)SET_PIC_ORDER_CNT_TYPE failed\n");
 			return -EIO;
 		}
 		break;

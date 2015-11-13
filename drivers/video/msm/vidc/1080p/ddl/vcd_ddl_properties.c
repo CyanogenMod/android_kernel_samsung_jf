@@ -1224,6 +1224,27 @@ static u32 ddl_set_enc_property(struct ddl_client_context *ddl,
 		}
 		break;
 	}
+	case VCD_I_PIC_ORDER_CNT_TYPE:
+	{
+		struct vcd_property_pic_order_cnt_type *poc =
+			(struct vcd_property_pic_order_cnt_type *)
+				property_value;
+		if (sizeof(struct vcd_property_pic_order_cnt_type) ==
+			property_hdr->sz &&
+			encoder->codec.codec == VCD_CODEC_H264 &&
+			(poc->poc_type == 0 || poc->poc_type == 2)) {
+			if (encoder->i_period.b_frames &&
+				poc->poc_type) {
+				DDL_MSG_HIGH("bframes = %d. Setting poc to 0",
+					encoder->i_period.b_frames);
+				encoder->pic_order_cnt_type = 0;
+			} else {
+				encoder->pic_order_cnt_type = poc->poc_type;
+			}
+			vcd_status = VCD_S_SUCCESS;
+		}
+		break;
+	}
 	default:
 		DDL_MSG_ERROR("%s: INVALID ID 0x%x\n", __func__,
 			(int)property_hdr->prop_id);
@@ -1824,6 +1845,15 @@ static u32 ddl_get_enc_property(struct ddl_client_context *ddl,
 			vcd_status = VCD_S_SUCCESS;
 		}
 	break;
+	case VCD_I_PIC_ORDER_CNT_TYPE:
+		if (sizeof(struct vcd_property_pic_order_cnt_type) ==
+			property_hdr->sz) {
+			((struct vcd_property_pic_order_cnt_type *)
+				property_value)->poc_type
+					= encoder->pic_order_cnt_type;
+			vcd_status = VCD_S_SUCCESS;
+		}
+		break;
 	default:
 		DDL_MSG_ERROR("%s: unknown prop_id = 0x%x", __func__,
 			property_hdr->prop_id);
@@ -1871,6 +1901,12 @@ static u32 ddl_set_enc_dynamic_property(struct ddl_client_context *ddl,
 			property_hdr->sz) {
 			encoder->i_period = *i_period;
 			dynamic_prop_change = DDL_ENC_CHANGE_IPERIOD;
+			if (encoder->i_period.b_frames &&
+				encoder->pic_order_cnt_type) {
+				DDL_MSG_HIGH("bframes = %d. Setting poc to 0",
+					encoder->i_period.b_frames);
+				encoder->pic_order_cnt_type = 0;
+			}
 			vcd_status = VCD_S_SUCCESS;
 		}
 	}
