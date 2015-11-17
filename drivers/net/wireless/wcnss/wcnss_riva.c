@@ -41,9 +41,6 @@ static DEFINE_SEMAPHORE(riva_power_on_lock);
 #define RIVA_PMU_CFG_GC_BUS_MUX_SEL_TOP   BIT(5)
 #define RIVA_PMU_CFG_IRIS_XO_CFG_STS      BIT(6) /* 1: in progress, 0: done */
 
-#define RIVA_PMU_CFG_IRIS_RESET           BIT(7)
-#define RIVA_PMU_CFG_IRIS_RESET_STS       BIT(8) /* 1: in progress, 0: done */
-
 #define RIVA_PMU_CFG_IRIS_XO_MODE         0x6
 #define RIVA_PMU_CFG_IRIS_XO_MODE_48      (3 << 1)
 
@@ -70,7 +67,7 @@ static struct vregs_info iris_vregs[] = {
 	{"iris_vddxo",  VREG_NULL_CONFIG, 1800000, 0, 1800000, 10000,  NULL},
 	{"iris_vddrfa", VREG_NULL_CONFIG, 1300000, 0, 1300000, 100000, NULL},
 	{"iris_vddpa",  VREG_NULL_CONFIG, 2900000, 0, 3000000, 515000, NULL},
-	{"iris_vdddig", VREG_NULL_CONFIG, 1300000, 0, 1300000, 10000,  NULL},
+	{"iris_vdddig", VREG_NULL_CONFIG, 1200000, 0, 1225000, 10000,  NULL},
 };
 
 static struct vregs_info riva_vregs[] = {
@@ -128,19 +125,6 @@ static int configure_iris_xo(struct device *dev, bool use_48mhz_xo, int on)
 		if (use_48mhz_xo)
 			reg |= RIVA_PMU_CFG_IRIS_XO_MODE_48;
 
-		writel_relaxed(reg, RIVA_PMU_CFG);
-
-		/* Reset IRIS */
-		reg |= RIVA_PMU_CFG_IRIS_RESET;
-		writel_relaxed(reg, RIVA_PMU_CFG);
-
-		/* Wait for PMU_CFG.iris_reg_reset_sts */
-		while (readl_relaxed(RIVA_PMU_CFG) &
-				RIVA_PMU_CFG_IRIS_RESET_STS)
-			cpu_relax();
-
-		/* Reset iris reset bit */
-		reg &= ~RIVA_PMU_CFG_IRIS_RESET;
 		writel_relaxed(reg, RIVA_PMU_CFG);
 
 		/* Start IRIS XO configuration */
