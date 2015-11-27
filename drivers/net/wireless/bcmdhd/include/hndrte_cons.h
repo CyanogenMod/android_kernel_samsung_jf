@@ -1,7 +1,7 @@
 /*
  * Console support for hndrte.
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: hndrte_cons.h 383834 2013-02-07 23:21:51Z $
+ * $Id: hndrte_cons.h 427140 2013-10-02 18:07:07Z $
  */
 #ifndef	_HNDRTE_CONS_H
 #define	_HNDRTE_CONS_H
@@ -36,7 +36,7 @@ typedef struct {
 	uint32		buf;		/* Can't be pointer on (64-bit) hosts */
 	uint		buf_size;
 	uint		idx;
-	char		*_buf_compat;	/* redundant pointer for backward compat. */
+	uint		out_idx;	/* output index */
 } hndrte_log_t;
 
 typedef struct {

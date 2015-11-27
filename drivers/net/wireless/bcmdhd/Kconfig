@@ -5,6 +5,13 @@ config BCM4330
 	  This module adds support for wireless adapters based on
 	  Broadcom 4330 chipset.
 
+config BCM4343
+	tristate "Broadcom 4343 wireless cards support"
+	depends on WLAN
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4343 chipset.
+
 config BCM4334
 	tristate "Broadcom 4334 wireless cards support"
 	depends on WLAN
@@ -25,6 +32,13 @@ config BCM4339
 	---help---
 	  This module adds support for wireless adapters based on
 	  Broadcom 4339 chipset.
+
+config BCM4354
+	tristate "Broadcom 4354 wireless cards support"
+	depends on WLAN
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4354 chipset.
 
 config BCM43241
 	tristate "Broadcom 43241 wireless cards support"
@@ -78,7 +92,7 @@ config DHD_USE_SCHED_SCAN
 
 config BROADCOM_WIFI_RESERVED_MEM
 	bool "BROADCOM Reserved memory for wifi device"
-	depends on (BCM4330 || BCM4334 || BCM4335 || BCM4339 || BCM43241)
+	depends on (BCM4330 ||BCM4343 || BCM4334 || BCM4335 || BCM4339 || BCM4354 || BCM43241)
 	---help---
 	  This is a configuration for broadcom WLAN driver.
 
@@ -91,7 +105,7 @@ config BCM4335BT
 
 config WLAN_REGION_CODE
 	int "---Region codes for Broadcom WiFi Driver"
-	depends on (BCM4330 || BCM4334 || BCM4335 || BCM4339 || BCM43241)
+	depends on (BCM4330 || BCM4343 || BCM4334 || BCM4335 || BCM4339 || BCM4354 || BCM43241)
 	default 100
 	---help---
 		This is a region code for Broadcom Wi-Fi featured functions.
@@ -102,23 +116,17 @@ config WLAN_REGION_CODE
 		- 202 : KOR KTT
 		- 203 : KOR LGT
 		- 300 : CHN OPEN
-		- 400 : USA OPEN
-		- 401 : USA ATT
-		- 402 : USA TMO
-		- 403 : USA VZW
-		- 404 : USA SPR
-		- 405 : USA USC
 
 config WIFI_2GHZ_VHT_NO_SUPPORT
-	bool "BROADCOM Reserved memory for wifi device"
-	depends on BCM4339
+	bool "NOT Use VHT mode in 2GHz band"
+	depends on (BCM4339 || BCM4354)
 	default n
 	---help---
 	  This is a configuration for 2GHZ VHT mode.
 
-config SUPPORT_AIBSS
+config WLAIBSS
 	bool "Advanced IBSS mode"
-	depends on (BCM4335 || BCM4339)
+	depends on (BCM4335 || BCM4339 || BCM4354)
 	default y
 	---help---
 	  This is a configuration for Oxygen Network.
