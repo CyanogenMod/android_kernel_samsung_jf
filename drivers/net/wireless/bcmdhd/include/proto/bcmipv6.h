@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  *
  * Fundamental constants relating to Neighbor Discovery Protocol
  *
- * $Id: bcmipv6.h 384540 2013-02-12 04:28:58Z $
+ * $Id: bcmipv6.h 399482 2013-04-30 09:24:37Z $
  */
 
 #ifndef _bcmipv6_h_
@@ -143,5 +143,17 @@ static const struct ipv6_addr all_node_ipv6_maddr = {
 									0, 0, 0, 0,
 									0, 0, 0, 1
 									}};
+
+#define IPV6_ISMULTI(a) (a[0] == 0xff)
+
+#define IPV6_MCAST_TO_ETHER_MCAST(ipv6, ether) \
+{ \
+	ether[0] = 0x33; \
+	ether[1] = 0x33; \
+	ether[2] = ipv6[12]; \
+	ether[3] = ipv6[13]; \
+	ether[4] = ipv6[14]; \
+	ether[5] = ipv6[15]; \
+}
 
 #endif	/* !defined(_bcmipv6_h_) */
