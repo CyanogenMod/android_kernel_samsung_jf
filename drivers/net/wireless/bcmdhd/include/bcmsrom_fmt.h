@@ -1,7 +1,7 @@
 /*
  * SROM format definition.
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsrom_fmt.h 381260 2013-01-25 22:07:55Z $
+ * $Id: bcmsrom_fmt.h 427005 2013-10-02 00:15:10Z $
  */
 
 #ifndef	_bcmsrom_fmt_h_
@@ -389,6 +389,7 @@
 #define SROM8_NOISELVL_5GM	215
 #define SROM8_NOISELVL_5GH	216
 #define SROM8_NOISELVL_5GU	217
+#define SROM8_NOISECALOFFSET	218
 
 #define SROM9_REV_CRC		219
 
@@ -458,6 +459,11 @@
 #define SROM11_PHYCAL_TEMPDELTA  	92
 #define SROM11_MPWR_1_AND_2 		93
 #define SROM11_5GB0_4080_W1_A1          94
+#define SROM11_TSSIFLOOR_2G 		95
+#define SROM11_TSSIFLOOR_5GL 		96
+#define SROM11_TSSIFLOOR_5GM 		97
+#define SROM11_TSSIFLOOR_5GH 		98
+#define SROM11_TSSIFLOOR_5GU 		99
 
 /* Masks and offsets for Terrmal parameters */
 #define SROM11_TEMPS_PERIOD_MASK	0xf0
@@ -569,6 +575,7 @@
 #define SROM11_MCSBW805GHPO 		196
 #define SROM11_MCSBW805GHPO_1		197
 #define SROM11_RPCAL_5GU		198
+#define SROM11_PDOFF_2G_CCK	        199
 #define SROM11_MCSLR5GLPO		200
 #define SROM11_MCSLR5GMPO		201
 #define SROM11_MCSLR5GHPO		202
