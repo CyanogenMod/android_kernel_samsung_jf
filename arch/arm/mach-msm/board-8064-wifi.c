@@ -51,6 +51,15 @@ void *wlan_static_scan_buf0;
 void *wlan_static_scan_buf1;
 void *wlan_static_dhd_info_buf;
 
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE)
+#define ENABLE_4335BT_WAR
+#endif
+
+#ifdef ENABLE_4335BT_WAR
+static int bt_off = 0;
+extern int bt_is_running;
+#endif /* ENABLE_4335BT_WAR */
+
 static void *brcm_wlan_mem_prealloc(int section, unsigned long size)
 {
 	if (section == PREALLOC_WLAN_SEC_NUM)
@@ -199,13 +208,31 @@ int __init brcm_wifi_init_gpio(void)
 	return 0;
 }
 
+#ifdef ENABLE_4335BT_WAR
+static int brcm_wlan_power(int onoff,bool b0rev)
+#else
 static int brcm_wlan_power(int onoff)
+#endif
 {
+	int ret = 0;
 	printk(KERN_INFO"------------------------------------------------");
 	printk(KERN_INFO"------------------------------------------------\n");
 	printk(KERN_INFO"%s Enter: power %s\n", __func__, onoff ? "on" : "off");
 
 	if (onoff) {
+#ifdef ENABLE_4335BT_WAR
+		if(b0rev == true && ice_gpiox_get(FPGA_GPIO_BT_EN) == 0)
+		{
+			bt_off = 1;
+			ice_gpiox_set(FPGA_GPIO_BT_EN, 1);
+			printk("[brcm_wlan_power] Bluetooth Power On.\n");
+			msleep(50);
+		}
+		else {
+			bt_off = 0;
+		}
+#endif /* ENABLE_4335BT_WAR */
+
 		/*
 		if (gpio_request(GPIO_WL_REG_ON, "WL_REG_ON"))
 		{
@@ -215,7 +242,7 @@ static int brcm_wlan_power(int onoff)
 		if (ice_gpiox_set(FPGA_GPIO_WLAN_EN, 1)) {		// yhcha-patch
 			printk(KERN_ERR "%s: WL_REG_ON  failed to pull up\n",
 				__func__);
-			return -EIO;
+			ret =  -EIO;
 		}
 	} else {
 		/*
@@ -228,10 +255,17 @@ static int brcm_wlan_power(int onoff)
 		if (ice_gpiox_set(FPGA_GPIO_WLAN_EN, 0)) {		// yhcha-patch
 			printk(KERN_ERR "%s: WL_REG_ON  failed to pull down\n",
 				__func__);
-			return -EIO;
+			ret = -EIO;
 		}
 	}
-	return 0;
+#ifdef ENABLE_4335BT_WAR
+	if(onoff && (bt_off == 1) && (bt_is_running == 0)) {
+		msleep(100);
+		ice_gpiox_set(FPGA_GPIO_BT_EN, 0);
+		printk("[brcm_wlan_power] BT_REG_OFF.\n");
+	}
+#endif
+	return ret;
 }
 
 static int brcm_wlan_reset(int onoff)
@@ -280,6 +314,7 @@ static int brcm_wlan_set_carddetect(int val)
 		pr_warning("%s: Nobody to notify\n", __func__);
 
 	/* msleep(200); wait for carddetect */
+
 
 	return 0;
 }
