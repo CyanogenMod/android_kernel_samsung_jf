@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,22 +15,12 @@
 #include <media/msm/vidc_type.h>
 #include <media/msm/vcd_api.h>
 
-#if DEBUG
+#define VCD_MSG_LOW(xx_fmt...)		DDL_MSG_LOW(xx_fmt)
+#define VCD_MSG_MED(xx_fmt...)		DDL_MSG_MED(xx_fmt)
+#define VCD_MSG_HIGH(xx_fmt...)		DDL_MSG_HIGH(xx_fmt)
 
-#define VCD_MSG_LOW(xx_fmt...)		printk(KERN_INFO "\n\t* " xx_fmt)
-#define VCD_MSG_MED(xx_fmt...)		printk(KERN_INFO "\n  * " xx_fmt)
-#define VCD_MSG_HIGH(xx_fmt...)		printk(KERN_WARNING "\n" xx_fmt)
-
-#else
-
-#define VCD_MSG_LOW(xx_fmt...)
-#define VCD_MSG_MED(xx_fmt...)
-#define VCD_MSG_HIGH(xx_fmt...)
-
-#endif
-
-#define VCD_MSG_ERROR(xx_fmt...)	printk(KERN_ERR "\n err: " xx_fmt)
-#define VCD_MSG_FATAL(xx_fmt...)	printk(KERN_ERR "\n<FATAL> " xx_fmt)
+#define VCD_MSG_ERROR(xx_fmt...)	DDL_MSG_ERROR(xx_fmt)
+#define VCD_MSG_FATAL(xx_fmt...)	DDL_MSG_FATAL(xx_fmt)
 
 #define VCD_FAILED_RETURN(rc, xx_fmt...)		\
 	do {						\

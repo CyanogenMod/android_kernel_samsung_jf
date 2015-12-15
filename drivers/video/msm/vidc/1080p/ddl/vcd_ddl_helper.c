@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,7 +22,6 @@ struct ddl_context *ddl_get_context(void)
 	return &ddl_context;
 }
 
-#ifdef DDL_MSG_LOG
 s8 *ddl_get_state_string(enum ddl_client_state client_state)
 {
 	s8 *ptr;
@@ -70,7 +69,6 @@ s8 *ddl_get_state_string(enum ddl_client_state client_state)
 	}
 	return ptr;
 }
-#endif
 
 u32 ddl_client_transact(u32 operation,
 	struct ddl_client_context **pddl_client)
