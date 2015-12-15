@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -408,7 +408,7 @@ static u32 ddl_decoder_seq_done_callback(struct ddl_context *ddl_context,
 						seq_hdr_info.dec_frm_size);
 				}
 			}
-			DDL_MSG_INFO("profile %u level %u progressive %u",
+			DDL_MSG_HIGH("profile %u level %u progressive %u",
 					decoder->profile.profile,
 					decoder->level.level,
 					decoder->progressive_only);

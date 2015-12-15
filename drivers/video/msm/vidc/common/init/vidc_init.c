@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -64,6 +64,10 @@ static irqreturn_t vidc_isr(int irq, void *dev);
 static spinlock_t vidc_spin_lock;
 
 u32 vidc_msg_timing, vidc_msg_pmem, vidc_msg_register;
+
+/* define debug level and output target */
+u32 vidc_debug_level = PRIO_ERROR;
+u32 vidc_debug_out = VIDC_OUT_PRINTK;
 
 #ifdef VIDC_ENABLE_DBGFS
 struct dentry *vidc_debugfs_root;
@@ -313,6 +317,10 @@ static int __init vidc_init(void)
 				(u32 *) &vidc_msg_pmem);
 		vidc_debugfs_file_create(root, "vidc_msg_register",
 				(u32 *) &vidc_msg_register);
+		vidc_debugfs_file_create(root, "vidc_debug_out",
+				(u32 *) &vidc_debug_out);
+		vidc_debugfs_file_create(root, "vidc_debug_level",
+				(u32 *) &vidc_debug_level);
 	}
 #endif
 	return 0;

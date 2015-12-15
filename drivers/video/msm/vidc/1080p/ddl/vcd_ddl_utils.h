@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,6 +20,9 @@
 extern u32 vidc_msg_pmem;
 extern u32 vidc_msg_timing;
 
+extern u32 vidc_debug_level;
+extern u32 vidc_debug_out;
+
 enum timing_data {
 	DEC_OP_TIME,
 	DEC_IP_TIME,
@@ -34,19 +37,57 @@ do { \
 		printk(KERN_DEBUG x); \
 } while (0)
 
-#ifdef DDL_MSG_LOG
-#define DDL_MSG_LOW(x...)    printk(KERN_INFO x)
-#define DDL_MSG_MED(x...)    printk(KERN_INFO x)
-#define DDL_MSG_HIGH(x...)   printk(KERN_INFO x)
-#else
-#define DDL_MSG_LOW(x...)
-#define DDL_MSG_MED(x...)
-#define DDL_MSG_HIGH(x...)
-#endif
+/* Enable dynamic debug logging method */
+enum vidc_msg_level {
+	PRIO_FATAL = 0x1,
+	PRIO_ERROR = PRIO_FATAL,
+	PRIO_HIGH = 0x2,
+	PRIO_MED = 0x4,
+	PRIO_LOW = 0x8
+};
 
-#define DDL_MSG_INFO(x...)   printk(KERN_INFO x)
-#define DDL_MSG_ERROR(x...)  printk(KERN_INFO x)
-#define DDL_MSG_FATAL(x...)  printk(KERN_INFO x)
+enum vidc_msg_out {
+	VIDC_OUT_PRINTK = 1,
+	VIDC_OUT_FTRACE
+};
+
+#define debug_msg_printk(__msg...) \
+do { \
+	if (vidc_debug_out == VIDC_OUT_PRINTK) \
+		printk(KERN_INFO __msg); \
+	else if (vidc_debug_out == VIDC_OUT_FTRACE) \
+		trace_printk(KERN_DEBUG __msg); \
+} while (0)
+
+#define DDL_MSG_LOW(x...) \
+do { \
+	if (vidc_debug_level & PRIO_LOW) \
+		debug_msg_printk(x); \
+} while (0)
+
+#define DDL_MSG_MED(x...) \
+do { \
+	if (vidc_debug_level & PRIO_MED) \
+		debug_msg_printk(x); \
+} while (0)
+
+#define DDL_MSG_HIGH(x...) \
+do { \
+	if (vidc_debug_level & PRIO_HIGH) \
+		debug_msg_printk(x); \
+} while (0)
+
+#define DDL_MSG_ERROR(x...) \
+do { \
+	if (vidc_debug_level & PRIO_ERROR) \
+		debug_msg_printk("\n <ERROR>: " x); \
+} while (0)
+
+#define DDL_MSG_FATAL(x...) \
+do { \
+	if (vidc_debug_level & PRIO_FATAL) \
+		debug_msg_printk("\n <FATAL>: " x); \
+} while (0)
 
 #define DDL_ALIGN_SIZE(sz, guard_bytes, align_mask) \
 	(((u32)(sz) + guard_bytes) & align_mask)

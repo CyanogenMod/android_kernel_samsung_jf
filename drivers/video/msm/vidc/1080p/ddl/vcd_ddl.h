@@ -550,9 +550,9 @@ void ddl_set_vidc_timeout(struct ddl_client_context *ddl);
 #ifdef DDL_BUF_LOG
 void ddl_list_buffers(struct ddl_client_context *ddl);
 #endif
-#ifdef DDL_MSG_LOG
+
 s8 *ddl_get_state_string(enum ddl_client_state client_state);
-#endif
+
 extern unsigned char *vidc_video_codec_fw;
 extern u32 vidc_video_codec_fw_size;
 
