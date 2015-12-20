@@ -48,14 +48,21 @@
 #include <mach/msm_serial_hs_lite.h>
 #include <asm/mach-types.h>
 #include "msm_serial_hs_hwreg.h"
+#if defined(CONFIG_SEC_PRODUCT_8960)
+#include <linux/mfd/pm8xxx/pm8921.h>
 
+#define PM8921_GPIO_BASE  NR_GPIO_IRQS
+#define PM8921_GPIO_PM_TO_SYS(pm_gpio) (pm_gpio - 1 + PM8921_GPIO_BASE)
+#endif
 #ifdef CONFIG_MACH_APQ8064_MAKO
 /* HACK: earjack noise due to HW flaw. disable console to avoid this issue */
 extern int mako_console_stopped(void);
 #else
 static inline int mako_console_stopped(void) { return 0; }
 #endif
-
+#if !defined(CONFIG_MFD_MAX77693)
+extern int uart_connecting;
+#endif
 extern int max77693_get_jig_state(void);
 #if defined(CONFIG_MACH_JF_DCM)
 /* Felica P2P fail issue, try to reduce every possible delays */
@@ -1635,6 +1642,25 @@ static int msm_serial_hsl_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
 	struct msm_hsl_port *msm_hsl_port;
+#if defined(CONFIG_SEC_PRODUCT_8960)
+	int rc;
+	struct pm_gpio uart_rxd_msm_gpio_config = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.pull           = PM_GPIO_PULL_NO,
+		.out_strength   = PM_GPIO_STRENGTH_MED,
+		.function       = PM_GPIO_FUNC_PAIRED,
+		.inv_int_pol    = 0,
+		.vin_sel        = 4,
+	};
+
+	rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(34),
+				 &uart_rxd_msm_gpio_config);
+	if (rc) {
+		pr_err("%s: pm8921 gpio %d config failed(%d)\n",
+			__func__, PM8921_GPIO_PM_TO_SYS(34), rc);
+		return rc;
+	}
+#endif
 	port = get_port_from_line(get_line(pdev));
 	msm_hsl_port = UART_TO_MSM(port);
 
@@ -1649,9 +1675,13 @@ static int msm_serial_hsl_suspend(struct device *dev)
 		uart_suspend_port(&msm_hsl_uart_driver, port);
 		if (device_may_wakeup(dev))
 			enable_irq_wake(port->irq);
-#if !defined(CONFIG_MACH_MELIUS)
+#if defined(CONFIG_MFD_MAX77693)
 		if (max77693_get_jig_state() &&
 				gpio_get_value(msm_hsl_port->wakeup.rx_gpio)) {
+#else
+		if (uart_connecting &&
+				gpio_get_value(msm_hsl_port->wakeup.rx_gpio)) {
+#endif
 			/* Enable wakeup_irq
 			 * wakeup_irq state :
 			 * 1. max77693_get_jig_state : MUIC such as FSA9485 detects it
@@ -1667,9 +1697,11 @@ static int msm_serial_hsl_suspend(struct device *dev)
 		} else {
 			/* If RX_GPIO is low, uart is not connected. */
 			msm_hsl_port->wakeup.wakeup_set = 0;
-			//uart_connecting = 0;
+			#if !defined(CONFIG_MFD_MAX77693)
+			uart_connecting = 0;
+			#endif
 		}
-#endif
+
 	}
 
 	return 0;
@@ -1680,6 +1712,25 @@ static int msm_serial_hsl_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
 	struct msm_hsl_port *msm_hsl_port;
+#if defined(CONFIG_SEC_PRODUCT_8960)
+	int rc;
+	struct pm_gpio uart_rxd_msm_gpio_config = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.pull           = PM_GPIO_PULL_NO,
+		.out_strength   = PM_GPIO_STRENGTH_MED,
+		.function       = PM_GPIO_FUNC_PAIRED,
+		.inv_int_pol    = 0,
+		.vin_sel        = 4,
+	};
+
+	rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(34),
+				 &uart_rxd_msm_gpio_config);
+	if (rc) {
+		pr_err("%s: pm8921 gpio %d config failed(%d)\n",
+			__func__, PM8921_GPIO_PM_TO_SYS(34), rc);
+		return rc;
+	}
+#endif
 	port = get_port_from_line(get_line(pdev));
 	msm_hsl_port = UART_TO_MSM(port);
 
@@ -1696,8 +1747,11 @@ static int msm_serial_hsl_resume(struct device *dev)
 				console_stop(port->cons);
 			msm_hsl_init_clock(port);
 		}
-#if !defined(CONFIG_MACH_MELIUS)
+#if defined(CONFIG_MFD_MAX77693)
 		if (max77693_get_jig_state() || msm_hsl_port->wakeup.wakeup_set) {
+#else
+		if (uart_connecting || msm_hsl_port->wakeup.wakeup_set) {
+#endif
 			/* disable wakeup_irq */
 			if (msm_hsl_port->wakeup.irq > 0) {
 				printk(KERN_ERR "%s disbling wakeup irq\n",
@@ -1709,7 +1763,6 @@ static int msm_serial_hsl_resume(struct device *dev)
 				disable_irq(msm_hsl_port->wakeup.irq);
 			}
 		}
-#endif
 	}
 
 	return 0;
