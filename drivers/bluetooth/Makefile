@@ -38,3 +38,5 @@ obj-$(CONFIG_MSM_BT_POWER)		+= bluetooth-power.o
 
 obj-$(CONFIG_BT_BCM4335)		+= bluesleep.o
 
+obj-$(CONFIG_BT_BCM4334)		+= bluesleep_bcm.o
+
