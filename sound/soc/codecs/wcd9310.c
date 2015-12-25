@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013,2015 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,7 +37,6 @@
 #include <linux/wakelock.h>
 #include <linux/suspend.h>
 #include "wcd9310.h"
-#include "wcdcal-hwdep.h"
 #ifdef CONFIG_SND_SOC_ES325
 #include "es325-export.h"
 #endif
@@ -349,7 +348,6 @@ struct tabla_priv {
 	/* Work to perform MBHC Firmware Read */
 	struct delayed_work mbhc_firmware_dwork;
 	const struct firmware *mbhc_fw;
-	struct firmware_cal *mbhc_cal;
 
 	/* num of slim ports required */
 	struct tabla_codec_dai_data dai[NUM_CODEC_DAIS];
@@ -395,8 +393,6 @@ struct tabla_priv {
 	struct dentry *debugfs_reg_peek;
 	struct dentry *debugfs_reg_poke;
 #endif
-	/* cal info for codec */
-	struct fw_info *fw_data;
 };
 
 static const u32 comp_shift[] = {
@@ -3101,7 +3097,7 @@ static int tabla_codec_enable_anc(struct snd_soc_dapm_widget *w,
 	const char *filename;
 	const struct firmware *fw;
 	int i;
-	int ret =0;
+	int ret;
 	int num_anc_slots;
 	struct anc_header *anc_head;
 	struct tabla_priv *tabla = snd_soc_codec_get_drvdata(codec);
@@ -3110,9 +3106,6 @@ static int tabla_codec_enable_anc(struct snd_soc_dapm_widget *w,
 	u32 *anc_ptr;
 	u16 reg;
 	u8 mask, val, old_val;
-	size_t cal_size;
-	const void *data;
-	struct firmware_cal *hwdep_cal = NULL;
 
 	pr_debug("%s: DAPM Event %d ANC func is %d\n",
 		 __func__, event, tabla->anc_func);
@@ -3124,40 +3117,24 @@ static int tabla_codec_enable_anc(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 
 		filename = "wcd9310/wcd9310_anc.bin";
-		hwdep_cal = wcdcal_get_fw_cal(tabla->fw_data, WCD9XXX_ANC_CAL);
-		if (hwdep_cal) {
-			data = hwdep_cal->data;
-			cal_size = hwdep_cal->size;
-			dev_dbg(codec->dev, "%s: using hwdep calibration\n",
-				__func__);
-		} else {
-			ret = request_firmware(&fw, filename, codec->dev);
-			if (ret != 0) {
-				dev_err(codec->dev, "Failed to acquire ANC data: %d\n",
-					ret);
-				return -ENODEV;
-			}
-			if (!fw) {
-				dev_err(codec->dev, "failed to get anc fw");
-				return -ENODEV;
-			}
-			data = fw->data;
-			cal_size = fw->size;
-			dev_dbg(codec->dev, "%s: using request_firmware calibration\n",
-					__func__);
 
+		ret = request_firmware(&fw, filename, codec->dev);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to acquire ANC data: %d\n",
+				ret);
+			return -ENODEV;
 		}
 
-		if (cal_size < sizeof(struct anc_header)) {
+		if (fw->size < sizeof(struct anc_header)) {
 			dev_err(codec->dev, "Not enough data\n");
-			ret = -ENOMEM;
-			goto err;
+			release_firmware(fw);
+			return -ENOMEM;
 		}
 
 		/* First number is the number of register writes */
-		anc_head = (struct anc_header *)(data);
-		anc_ptr = (u32 *)((u32)data + sizeof(struct anc_header));
-		anc_size_remaining = cal_size - sizeof(struct anc_header);
+		anc_head = (struct anc_header *)(fw->data);
+		anc_ptr = (u32 *)((u32)fw->data + sizeof(struct anc_header));
+		anc_size_remaining = fw->size - sizeof(struct anc_header);
 		num_anc_slots = anc_head->num_anc_slots;
 
 		if (tabla->anc_slot >= num_anc_slots) {
@@ -3170,8 +3147,8 @@ static int tabla_codec_enable_anc(struct snd_soc_dapm_widget *w,
 
 			if (anc_size_remaining < TABLA_PACKED_REG_SIZE) {
 				dev_err(codec->dev, "Invalid register format\n");
-				ret = -EINVAL;
-				goto err;
+				release_firmware(fw);
+				return -EINVAL;
 			}
 			anc_writes_size = (u32)(*anc_ptr);
 			anc_size_remaining -= sizeof(u32);
@@ -3180,8 +3157,8 @@ static int tabla_codec_enable_anc(struct snd_soc_dapm_widget *w,
 			if (anc_writes_size * TABLA_PACKED_REG_SIZE
 				> anc_size_remaining) {
 				dev_err(codec->dev, "Invalid register format\n");
-				ret = -EINVAL;
-				goto err;
+				release_firmware(fw);
+				return -ENOMEM;
 			}
 
 			if (tabla->anc_slot == i)
@@ -3193,9 +3170,8 @@ static int tabla_codec_enable_anc(struct snd_soc_dapm_widget *w,
 		}
 		if (i == num_anc_slots) {
 			dev_err(codec->dev, "Selected ANC slot not present\n");
-			ret = -EINVAL;
-			goto err;
-
+			release_firmware(fw);
+			return -ENOMEM;
 		}
 
 		for (i = 0; i < anc_writes_size; i++) {
@@ -3205,9 +3181,7 @@ static int tabla_codec_enable_anc(struct snd_soc_dapm_widget *w,
 			snd_soc_write(codec, reg, (old_val & ~mask) |
 				(val & mask));
 		}
-		if (!hwdep_cal)
-			release_firmware(fw);
-
+		release_firmware(fw);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		snd_soc_update_bits(codec, TABLA_A_CDC_ANC1_CTL, 0x01, 0x00);
@@ -3219,11 +3193,6 @@ static int tabla_codec_enable_anc(struct snd_soc_dapm_widget *w,
 		break;
 	}
 	return 0;
-err:
-	if (!hwdep_cal)
-		release_firmware(fw);
-	return ret;
-
 }
 
 static int tabla_hph_pa_event(struct snd_soc_dapm_widget *w,
@@ -4069,7 +4038,10 @@ static int tabla_volatile(struct snd_soc_codec *ssc, unsigned int reg)
 }
 
 #define TABLA_FORMATS (SNDRV_PCM_FMTBIT_S16_LE)
-static int tabla_write(struct snd_soc_codec *codec, unsigned int reg,
+#ifndef CONFIG_SOUND_CONTROL_HAX_GPL
+static
+#endif
+int tabla_write(struct snd_soc_codec *codec, unsigned int reg,
 	unsigned int value)
 {
 	int ret;
@@ -4084,7 +4056,14 @@ static int tabla_write(struct snd_soc_codec *codec, unsigned int reg,
 
 	return wcd9xxx_reg_write(codec->control_data, reg, value);
 }
-static unsigned int tabla_read(struct snd_soc_codec *codec,
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+EXPORT_SYMBOL(tabla_write);
+#endif
+
+#ifndef CONFIG_SOUND_CONTROL_HAX_GPL
+static
+#endif
+unsigned int tabla_read(struct snd_soc_codec *codec,
 				unsigned int reg)
 {
 	unsigned int val;
@@ -4105,6 +4084,10 @@ static unsigned int tabla_read(struct snd_soc_codec *codec,
 	val = wcd9xxx_reg_read(codec->control_data, reg);
 	return val;
 }
+
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+EXPORT_SYMBOL(tabla_read);
+#endif
 
 static s16 tabla_get_current_v_ins(struct tabla_priv *tabla, bool hu)
 {
@@ -6593,37 +6576,33 @@ void tabla_mbhc_init(struct snd_soc_codec *codec)
 			    tabla->mbhc_cfg.micbias);
 }
 
-static bool tabla_mbhc_fw_validate(const void *data, size_t size)
+static bool tabla_mbhc_fw_validate(const struct firmware *fw)
 {
 	u32 cfg_offset;
 	struct tabla_mbhc_imped_detect_cfg *imped_cfg;
 	struct tabla_mbhc_btn_detect_cfg *btn_cfg;
-	struct firmware_cal fw;
 
-	fw.data = (void *)data;
-	fw.size = size;
-
-	if (fw.size < TABLA_MBHC_CAL_MIN_SIZE)
+	if (fw->size < TABLA_MBHC_CAL_MIN_SIZE)
 		return false;
 
 	/* previous check guarantees that there is enough fw data up
 	 * to num_btn
 	 */
-	btn_cfg = TABLA_MBHC_CAL_BTN_DET_PTR(fw.data);
-	cfg_offset = (u32) ((void *) btn_cfg - (void *) fw.data);
-	if (fw.size < (cfg_offset + TABLA_MBHC_CAL_BTN_SZ(btn_cfg)))
+	btn_cfg = TABLA_MBHC_CAL_BTN_DET_PTR(fw->data);
+	cfg_offset = (u32) ((void *) btn_cfg - (void *) fw->data);
+	if (fw->size < (cfg_offset + TABLA_MBHC_CAL_BTN_SZ(btn_cfg)))
 		return false;
 
 	/* previous check guarantees that there is enough fw data up
 	 * to start of impedance detection configuration
 	 */
-	imped_cfg = TABLA_MBHC_CAL_IMPED_DET_PTR(fw.data);
-	cfg_offset = (u32) ((void *) imped_cfg - (void *) fw.data);
+	imped_cfg = TABLA_MBHC_CAL_IMPED_DET_PTR(fw->data);
+	cfg_offset = (u32) ((void *) imped_cfg - (void *) fw->data);
 
-	if (fw.size < (cfg_offset + TABLA_MBHC_CAL_IMPED_MIN_SZ))
+	if (fw->size < (cfg_offset + TABLA_MBHC_CAL_IMPED_MIN_SZ))
 		return false;
 
-	if (fw.size < (cfg_offset + TABLA_MBHC_CAL_IMPED_SZ(imped_cfg)))
+	if (fw->size < (cfg_offset + TABLA_MBHC_CAL_IMPED_SZ(imped_cfg)))
 		return false;
 
 	return true;
@@ -8151,26 +8130,6 @@ static int tabla_mbhc_init_and_calibrate(struct tabla_priv *tabla)
 	return ret;
 }
 
-static
-struct firmware_cal *get_hwdep_fw_cal(struct snd_soc_codec *codec,
-			enum wcd_cal_type type)
-{
-	struct tabla_priv *tabla;
-	struct firmware_cal *hwdep_cal;
-
-	if (!codec) {
-		pr_err("%s: NULL codec pointer\n", __func__);
-		return NULL;
-	}
-	tabla = snd_soc_codec_get_drvdata(codec);
-	hwdep_cal = wcdcal_get_fw_cal(tabla->fw_data, type);
-	if (!hwdep_cal) {
-               dev_err(codec->dev, "%s: cal not sent by %d\n",
-					__func__, type);
-		return NULL;
-	}
-	return hwdep_cal;
-}
 static void mbhc_fw_read(struct work_struct *work)
 {
 	struct delayed_work *dwork;
@@ -8178,8 +8137,6 @@ static void mbhc_fw_read(struct work_struct *work)
 	struct snd_soc_codec *codec;
 	const struct firmware *fw;
 	int ret = -1, retry = 0;
-	struct firmware_cal *fw_data = NULL;
-	bool use_default_cal = false;
 
 	dwork = to_delayed_work(work);
 	tabla = container_of(dwork, struct tabla_priv, mbhc_firmware_dwork);
@@ -8187,18 +8144,12 @@ static void mbhc_fw_read(struct work_struct *work)
 
 	while (retry < MBHC_FW_READ_ATTEMPTS) {
 		retry++;
-		pr_err("%s:Attempt %d to request MBHC firmware\n",
-					__func__, retry);
-		fw_data = get_hwdep_fw_cal(codec,
-					WCD9XXX_MBHC_CAL);
-		if (!fw_data)
-			ret = request_firmware(&fw, "wcd9310/wcd9310_mbhc.bin",
+		pr_info("%s:Attempt %d to request MBHC firmware\n",
+			__func__, retry);
+		ret = request_firmware(&fw, "wcd9310/wcd9310_mbhc.bin",
 					codec->dev);
-		/*
-		* if request_firmware and hwdep cal both fail then
-		* retry for few times before bailing out
-		*/
-		if ((ret != 0) && !fw_data) {
+
+		if (ret != 0) {
 			usleep_range(MBHC_FW_READ_TIMEOUT,
 				     MBHC_FW_READ_TIMEOUT);
 		} else {
@@ -8207,43 +8158,16 @@ static void mbhc_fw_read(struct work_struct *work)
 		}
 	}
 
-	if (!fw_data)
-		pr_debug("%s: using request_firmware\n", __func__);
-	else
-		pr_debug("%s: using hwdep cal\n", __func__);
-	if (ret != 0 && !fw_data) {
-
+	if (ret != 0) {
 		pr_err("%s: Cannot load MBHC firmware use default cal\n",
-			 __func__);
-		use_default_cal = true;
-	}
-	if (!use_default_cal) {
-		const void *data;
-		size_t size;
-
-	if (fw_data) {
-		data = fw_data->data;
-		size = fw_data->size;
-	} else {
-		data = fw->data;
-		size = fw->size;
-	}
-	if (tabla_mbhc_fw_validate(data, size) == false) {
+			__func__);
+	} else if (tabla_mbhc_fw_validate(fw) == false) {
 		pr_err("%s: Invalid MBHC cal data size use default cal\n",
-				 __func__);
-		if (!fw_data)
-			release_firmware(fw);
-		} else {
-			if (fw_data) {
-				tabla->mbhc_cfg.calibration =
-						(void *)fw_data->data;
-				tabla->mbhc_cal = fw_data;
-			} else {
-				tabla->mbhc_cfg.calibration =
-						(void *)fw->data;
-				tabla->mbhc_fw = fw;
-			}
-		}
+			 __func__);
+		release_firmware(fw);
+	} else {
+		tabla->mbhc_cfg.calibration = (void *)fw->data;
+		tabla->mbhc_fw = fw;
 	}
 
 	(void) tabla_mbhc_init_and_calibrate(tabla);
@@ -8286,20 +8210,12 @@ int tabla_hs_detect(struct snd_soc_codec *codec,
 	INIT_WORK(&tabla->hphrocp_work, hphrocp_off_report);
 	INIT_DELAYED_WORK(&tabla->mbhc_insert_dwork, mbhc_insert_work);
 
-	if ((!tabla->mbhc_cfg.read_fw_bin)||
-		(tabla->mbhc_cfg.read_fw_bin && tabla->mbhc_fw) ||
-		(tabla->mbhc_cfg.read_fw_bin && tabla->mbhc_cal)) {
+	if (!tabla->mbhc_cfg.read_fw_bin)
 		rc = tabla_mbhc_init_and_calibrate(tabla);
-	}
-	else {
-		if (!tabla->mbhc_fw || !tabla->mbhc_cal)
-			schedule_delayed_work(&tabla->mbhc_firmware_dwork,
+	else
+		schedule_delayed_work(&tabla->mbhc_firmware_dwork,
 				      usecs_to_jiffies(MBHC_FW_READ_TIMEOUT));
-		else
-			pr_err("%s: Skipping to read mbhc fw, 0x%p 0x%p\n",
-				__func__, tabla->mbhc_fw, tabla->mbhc_cal);
 
-	}
 	return rc;
 }
 EXPORT_SYMBOL_GPL(tabla_hs_detect);
@@ -8925,6 +8841,15 @@ static const struct file_operations poke_reg_fops = {
 };
 #endif
 
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+struct snd_kcontrol_new *gpl_faux_snd_controls_ptr =
+		(struct snd_kcontrol_new *)tabla_snd_controls;
+struct snd_soc_codec *fauxsound_codec_ptr;
+EXPORT_SYMBOL(fauxsound_codec_ptr);
+int wcd9xxx_hw_revision;
+EXPORT_SYMBOL(wcd9xxx_hw_revision);
+#endif
+
 static int tabla_codec_probe(struct snd_soc_codec *codec)
 {
 	struct wcd9xxx *control;
@@ -8934,14 +8859,25 @@ static int tabla_codec_probe(struct snd_soc_codec *codec)
 	int i;
 	int ch_cnt;
 
+#ifdef CONFIG_SOUND_CONTROL_HAX_GPL
+ pr_info("tabla codec probe...\n");
+ fauxsound_codec_ptr = codec;
+#endif
+
 	codec->control_data = dev_get_drvdata(codec->dev->parent);
 	control = codec->control_data;
+
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
+ if (TABLA_IS_2_0(control->version))
+ wcd9xxx_hw_revision = 1;
+ else
+ wcd9xxx_hw_revision = 2;
+#endif
 
 	tabla = kzalloc(sizeof(struct tabla_priv), GFP_KERNEL);
 	if (!tabla) {
 		dev_err(codec->dev, "Failed to allocate private data\n");
-		goto err_nomem_slimch;
-
+		return -ENOMEM;
 	}
 	for (i = 0 ; i < NUM_DECIMATORS; i++) {
 		tx_hpf_work[i].tabla = tabla;
@@ -8991,19 +8927,6 @@ static int tabla_codec_probe(struct snd_soc_codec *codec)
 	if (IS_ERR_VALUE(ret)) {
 		pr_err("%s: bad pdata\n", __func__);
 		goto err_pdata;
-	}
-	tabla->fw_data = kzalloc(sizeof(*(tabla->fw_data)), GFP_KERNEL);
-	if (!tabla->fw_data) {
-		dev_err(codec->dev, "Failed to allocate fw_data\n");
-		goto err_nomem_slimch;
-	}
-	set_bit(WCD9XXX_ANC_CAL, tabla->fw_data->cal_bit);
-	set_bit(WCD9XXX_MBHC_CAL, tabla->fw_data->cal_bit);
-	ret = wcd_cal_create_hwdep(tabla->fw_data,
-					WCD9XXX_CODEC_HWDEP_NODE, codec);
-	if (ret < 0) {
-		dev_err(codec->dev, "%s hwdep failed %d\n", __func__, ret);
-		goto err_hwdep;
 	}
 
 #ifdef CONFIG_SND_SOC_ES325
@@ -9193,10 +9116,7 @@ err_potential_irq:
 	wcd9xxx_free_irq(codec->control_data, TABLA_IRQ_MBHC_REMOVAL, tabla);
 err_remove_irq:
 	wcd9xxx_free_irq(codec->control_data, TABLA_IRQ_MBHC_INSERTION, tabla);
-err_hwdep:
 err_insert_irq:
-	kfree(tabla->fw_data);
-err_nomem_slimch:
 err_pdata:
 	mutex_destroy(&tabla->codec_resource_lock);
 	kfree(tabla);
@@ -9218,7 +9138,7 @@ static int tabla_codec_remove(struct snd_soc_codec *codec)
 	tabla_codec_disable_clock_block(codec);
 	TABLA_RELEASE_LOCK(tabla->codec_resource_lock);
 	tabla_codec_enable_bandgap(codec, TABLA_BANDGAP_OFF);
-	if (tabla->mbhc_fw||tabla->mbhc_cal)
+	if (tabla->mbhc_fw)
 		release_firmware(tabla->mbhc_fw);
 	for (i = 0; i < ARRAY_SIZE(tabla->dai); i++)
 		kfree(tabla->dai[i].ch_num);
@@ -9230,7 +9150,6 @@ static int tabla_codec_remove(struct snd_soc_codec *codec)
 	debugfs_remove(tabla->debugfs_mbhc);
 #endif
 	kfree(tabla);
-	kfree(tabla->fw_data);
 	return 0;
 }
 static struct snd_soc_codec_driver soc_codec_dev_tabla = {
