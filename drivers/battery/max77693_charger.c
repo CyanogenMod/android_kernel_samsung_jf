@@ -17,7 +17,7 @@
 #endif
 #ifdef CONFIG_FORCE_FAST_CHARGE
 #include <linux/fastchg.h>
-#else
+#endif
 
 #define ENABLE 1
 #define DISABLE 0
