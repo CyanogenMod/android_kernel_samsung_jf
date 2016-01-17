@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+e/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -131,6 +131,8 @@ enum {
 	SGH_I337,
 	SPH_L720,
 	SGH_M919,
+	SGH_S970G,
+	SM_S975L,
 	SCH_R970,
 	SCH_I545,
 	GT_I9505,
