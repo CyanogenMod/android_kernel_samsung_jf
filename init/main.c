@@ -120,6 +120,8 @@ enum {
 	SGH_I337,
 	SPH_L720,
 	SGH_M919,
+	SGH_S970,
+	SM_S975,
 	SCH_R970,
 	SCH_I545,
 	GT_I9505,
@@ -460,6 +462,10 @@ static int __init do_early_param(char *param, char *val)
 			samsung_hardware = SPH_L720;
 		} else if (strncmp(val, "SGH-M919", 8) == 0) {
 			samsung_hardware = SGH_M919;
+		} else if (strncmp(val, "SGH-S970", 8) == 0) {
+			samsung_hardware = SGH_S970;
+		} else if (strncmp(val, "SM-S975", 7) == 0) {
+			samsung_hardware = SM_S975;
 		} else if (strncmp(val, "SCH-R970", 8) == 0) {
 			samsung_hardware = SCH_R970;
 		} else if (strncmp(val, "SCH-I545", 8) == 0) {
