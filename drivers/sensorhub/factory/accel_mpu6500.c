@@ -347,6 +347,8 @@ void initialize_accel_factorytest(struct ssp_data *data)
 
 	if (samsung_hardware == SGH_I337
 		 || samsung_hardware == SGH_M919
+		 || samsung_hardware == SGH_S970
+		 || samsung_hardware == SM_S975
 		 || samsung_hardware == SCH_R970
 		 || samsung_hardware == GT_I9505
 		 || samsung_hardware == SHV_E300)
