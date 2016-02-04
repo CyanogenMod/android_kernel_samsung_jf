@@ -15,17 +15,19 @@
 #ifdef CONFIG_USB_HOST_NOTIFY
 #include "../../arch/arm/mach-msm/board-8064.h"
 #endif
+#ifdef CONFIG_FORCE_FAST_CHARGE
+#include <linux/fastchg.h>
+#endif
 
 #define ENABLE 1
 #define DISABLE 0
-
 
 #define RECOVERY_DELAY		3000
 #define RECOVERY_CNT		5
 #define REDUCE_CURRENT_STEP	100
 #define MINIMUM_INPUT_CURRENT	300
 #define SIOP_INPUT_LIMIT_CURRENT 1200
-#define SIOP_CHARGING_LIMIT_CURRENT 1000
+#define SIOP_CHARGING_LIMIT_CURRENT 1200
 
 struct max77693_charger_data {
 	struct max77693_dev	*max77693;
@@ -466,7 +468,11 @@ static void max77693_recovery_work(struct work_struct *work)
 		(chgin_dtls == 0x3) && (chg_dtls != 0x8) && (byp_dtls == 0x0))) {
 		pr_info("%s: try to recovery, cnt(%d)\n", __func__,
 				(chg_data->soft_reg_recovery_cnt + 1));
+#ifdef CONFIG_FORCE_FAST_CHARGE
+		if (screen_on_current_limit && chg_data->siop_level < 100 &&
+#else
 		if (chg_data->siop_level < 100 &&
+#endif
 				chg_data->cable_type == POWER_SUPPLY_TYPE_MAINS) {
 			pr_info("%s : LCD on status and revocer current\n", __func__);
 			max77693_set_input_current(chg_data,
@@ -815,8 +821,11 @@ static int sec_chg_set_property(struct power_supply *psy,
 			else
 				set_charging_current_max =
 					charger->charging_current_max;
-
+#ifdef CONFIG_FORCE_FAST_CHARGE
+			if (screen_on_current_limit && charger->siop_level < 100 &&
+#else
 			if (charger->siop_level < 100 &&
+#endif
 					val->intval == POWER_SUPPLY_TYPE_MAINS) {
 				set_charging_current_max = SIOP_INPUT_LIMIT_CURRENT;
 				if (set_charging_current > SIOP_CHARGING_LIMIT_CURRENT)
@@ -866,14 +875,21 @@ static int sec_chg_set_property(struct power_supply *psy,
 
 			/* do forced set charging current */
 			if (charger->cable_type == POWER_SUPPLY_TYPE_MAINS) {
+#ifdef CONFIG_FORCE_FAST_CHARGE
+				if (screen_on_current_limit && charger->siop_level < 100 )
+#else
 				if (charger->siop_level < 100 )
+#endif
 					set_charging_current_max =
 						SIOP_INPUT_LIMIT_CURRENT;
 				else
 					set_charging_current_max =
 						charger->charging_current_max;
-
+#ifdef CONFIG_FORCE_FAST_CHARGE
+				if (screen_on_current_limit && charger->siop_level < 100 && current_now > SIOP_CHARGING_LIMIT_CURRENT)
+#else
 				if (charger->siop_level < 100 && current_now > SIOP_CHARGING_LIMIT_CURRENT)
+#endif
 					current_now = SIOP_CHARGING_LIMIT_CURRENT;
 				max77693_set_input_current(charger,
 						set_charging_current_max);
@@ -891,6 +907,18 @@ static int sec_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		if(val->intval == POWER_SUPPLY_TYPE_WIRELESS) {
 			u8 reg_data;
+#ifdef CONFIG_FORCE_FAST_CHARGE
+				/* Yank555 : Use Fast charge currents accroding to user settings */
+				if (force_fast_charge == FAST_CHARGE_FORCE_AC) {
+					/* We are in basic Fast Charge mode, so we substitute AC to WIRELESS levels */
+					charger->charging_current_max = WIRELESS_CHARGE_1000;
+					charger->charging_current = WIRELESS_CHARGE_1000 + 100;
+				} else if (force_fast_charge == FAST_CHARGE_FORCE_CUSTOM_MA) {
+					/* We are in custom current Fast Charge mode for WIRELESS */
+					charger->charging_current_max = wireless_charge_level;
+					charger->charging_current = min(wireless_charge_level+100, MAX_CHARGE_LEVEL);
+				}
+#endif
 			max77693_read_reg(charger->max77693->i2c,
 				MAX77693_CHG_REG_CHG_CNFG_12, &reg_data);
 			reg_data &= ~(1 << 5);

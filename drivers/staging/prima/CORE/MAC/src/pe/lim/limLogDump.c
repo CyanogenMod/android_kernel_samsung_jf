@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -50,6 +70,13 @@ Qualcomm Confidential and Proprietary
 #include <limFT.h>
 #endif
 #include "smeInside.h"
+#include "wlan_qct_wda.h"
+
+void WDA_TimerTrafficStatsInd(tWDA_CbContext *pWDA);
+#ifdef WLANTL_DEBUG
+extern void WLANTLPrintPktsRcvdPerRssi(v_PVOID_t pAdapter, v_U8_t staId, v_BOOL_t flush);
+extern void WLANTLPrintPktsRcvdPerRateIdx(v_PVOID_t pAdapter, v_U8_t staId, v_BOOL_t flush);
+#endif
 
 static char *getRole( tLimSystemRole role )
 {
@@ -72,15 +99,6 @@ static char *getRole( tLimSystemRole role )
   }
 }
 
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-static char *
-dumpMacAddr(tpAniSirGlobal pMac, char *p, tANI_U8 *addr)
-{
-    p += log_sprintf( pMac,p, "%2x:%2x:%2x:%2x:%2x:%2x",
-                    addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
-    return p;
-}
-#endif
 
 
 char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
@@ -122,7 +140,7 @@ char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
   else if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
   {
       p += log_sprintf( pMac,p, "Num of STAs associated                     = %d\n",
-                      pMac->lim.gLimNumOfCurrentSTAs);
+                      peGetCurrentSTAsCount(pMac));
 
       p += log_sprintf( pMac,p, "Num of Pre-auth contexts                   = %d\n",
                       pMac->lim.gLimNumPreAuthContexts);
@@ -208,7 +226,6 @@ char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
   p += log_sprintf( pMac,p, "\nProbe response disable          = %d\n",
                   pMac->lim.gLimProbeRespDisableFlag);
 
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA)
   p += log_sprintf( pMac,p, "Scan mode enable                = %d\n",
                   pMac->sys.gSysEnableScanMode);
   p += log_sprintf( pMac,p, "BackgroundScanDisable           = %d\n",
@@ -253,12 +270,6 @@ char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
           }
       }
   }
-#else
-  p += log_sprintf( pMac,p, "Measurements enabled            = %d\n",
-                  pMac->sys.gSysEnableLearnMode);
-  p += log_sprintf( pMac,p, "Scan Mode for Learn Mode enable = %d\n",
-                  pMac->lim.gLimUseScanModeForLearnMode);
-#endif
   p += log_sprintf( pMac,p, "System Scan/Learn Mode bit      = %d\n",
                   pMac->lim.gLimSystemInScanLearnMode);
   p += log_sprintf( pMac,p, "Scan override                   = %d\n",
@@ -281,70 +292,6 @@ char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
   p += log_sprintf( pMac,p, "Protection %s\n", pMac->lim.gLimProtectionControl ? "Enabled" : "Disabled");
 
   p += log_sprintf( pMac,p, "OBSS MODE = %d\n", pMac->lim.gHTObssMode);
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-
-    p += log_sprintf( pMac,p, "\nNumber of active OLBC detected = %d\n",
-                    pMac->lim.gLimOlbcParams.numSta);
-    if (pMac->lim.gLimOlbcParams.protectionEnabled)
-        p += log_sprintf( pMac,p, "Protection due to OLBC is ON\n");
-    else
-        p += log_sprintf( pMac,p, "Protection due to OLBC is OFF\n");
-
-    p += log_sprintf( pMac,p, "Content of OLBC cache: \n");
-    for (i=0; i<LIM_PROT_STA_OVERLAP_CACHE_SIZE; i++)
-    {
-        if (pMac->lim.protStaOverlapCache[i].active)
-        {
-            p = dumpMacAddr(pMac, p, pMac->lim.protStaOverlapCache[i].addr);
-            p += log_sprintf( pMac,p, "\n");
-        }
-    }
-
-    p += log_sprintf( pMac,p, "Content of Protection cache: \n");
-    for (i=0; i<LIM_PROT_STA_CACHE_SIZE; i++)
-    {
-        if (pMac->lim.protStaCache[i].active)
-        {
-            p = dumpMacAddr(pMac, p, pMac->lim.protStaCache[i].addr);
-            if(pMac->lim.protStaCache[i].protStaCacheType == eLIM_PROT_STA_CACHE_TYPE_HT20)
-                p += log_sprintf( pMac,p, " Type: HT20\n");
-            else if(pMac->lim.protStaCache[i].protStaCacheType == eLIM_PROT_STA_CACHE_TYPE_llB)
-                p += log_sprintf( pMac,p, " Type: 11B\n");
-             else if(pMac->lim.protStaCache[i].protStaCacheType == eLIM_PROT_STA_CACHE_TYPE_llG)
-                p += log_sprintf( pMac,p, " Type: 11G\n");
-
-            p += log_sprintf( pMac,p, "\n");
-        }
-    }
-    p += log_sprintf( pMac,p, "Count of different type sta associated\n");
-    p += log_sprintf( pMac,p, "11B         = %d, Protection: %d\n", pMac->lim.gLim11bParams.numSta, pMac->lim.gLim11bParams.protectionEnabled);
-    p += log_sprintf( pMac,p, "11G         = %d, Protection: %d\n", pMac->lim.gLim11gParams.numSta, pMac->lim.gLim11gParams.protectionEnabled);
-    p += log_sprintf( pMac,p, "nonGF      = %d, Protection: %d\n", pMac->lim.gLimNonGfParams.numSta, pMac->lim.gLimNonGfParams.protectionEnabled);
-    p += log_sprintf( pMac,p, "!LsigTxop = %d, Protection: %d\n", pMac->lim.gLimLsigTxopParams.numSta, pMac->lim.gLimLsigTxopParams.protectionEnabled);
-    p += log_sprintf( pMac,p, "ht20         = %d Protection:  %d\n", pMac->lim.gLimHt20Params.numSta, pMac->lim.gLimHt20Params.protectionEnabled);
-
-    p += log_sprintf( pMac,p, "\nNumber of STA do not support short preamble = %d\n",
-                  pMac->lim.gLimNoShortParams.numNonShortPreambleSta);
-    for (i=0; i<LIM_PROT_STA_CACHE_SIZE; i++)
-    {
-        if (pMac->lim.gLimNoShortParams.staNoShortCache[i].active)
-        {
-            p = dumpMacAddr(pMac, p, pMac->lim.gLimNoShortParams.staNoShortCache[i].addr);
-            p += log_sprintf( pMac,p, "\n");
-        }
-    }
-
-    p += log_sprintf( pMac,p, "\nNumber of STA do not support short slot time = %d\n",
-                    pMac->lim.gLimNoShortSlotParams.numNonShortSlotSta);
-    for (i=0; i<LIM_PROT_STA_CACHE_SIZE; i++)
-    {
-        if (pMac->lim.gLimNoShortSlotParams.staNoShortSlotCache[i].active)
-        {
-            p = dumpMacAddr(pMac, p, pMac->lim.gLimNoShortSlotParams.staNoShortSlotCache[i].addr);
-            p += log_sprintf( pMac,p, "\n");
-        }
-    }
-#endif
     p += log_sprintf( pMac, p, "HT operating Mode = %d, llbCoexist = %d, llgCoexist = %d, ht20Coexist = %d, nonGfPresent = %d, RifsMode = %d, lsigTxop = %d\n",
                       pMac->lim.gHTOperMode, pMac->lim.llbCoexist, pMac->lim.llgCoexist,
                       pMac->lim.ht20MhzCoexist, pMac->lim.gHTNonGFDevicesPresent,
@@ -503,9 +450,7 @@ static char *sendSmeDisAssocReq(tpAniSirGlobal pMac, char *p,tANI_U32 arg1 ,tANI
         sirCopyMacAddr(pDisAssocReq->peerMacAddr,psessionEntry->bssId);
     }
     if((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
        || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
     )
     {
         sirCopyMacAddr(pDisAssocReq->peerMacAddr,pStaDs->staAddr);
@@ -1052,15 +997,15 @@ dump_lim_add_sta( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 ar
     tpDphHashNode pStaDs;
     tpPESession psessionEntry = &pMac->lim.gpSession[0];  //TBD-RAJESH HOW TO GET sessionEntry?????
     tSirMacAddr staMac = {0};
-    tANI_U16 aid;
+    tANI_U16 peerIdx;
     if(arg2 > 5)
       goto addStaFail;
-    aid = limAssignAID(pMac);
-    pStaDs = dphGetHashEntry(pMac, aid);
+    peerIdx = limAssignPeerIdx(pMac, psessionEntry);
+    pStaDs = dphGetHashEntry(pMac, peerIdx);
     if(NULL == pStaDs)
     {
         staMac[5] = (tANI_U8) arg1;
-        pStaDs = dphAddHashEntry(pMac, staMac, aid, &psessionEntry->dph.dphHashTable);
+        pStaDs = dphAddHashEntry(pMac, staMac, peerIdx, &psessionEntry->dph.dphHashTable);
         if(NULL == pStaDs)
           goto addStaFail;
 
@@ -1183,9 +1128,6 @@ dump_lim_del_sta( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 ar
     palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDisassocInd.peerMacAddr,
                                 (tANI_U8 *) pStaDs->staAddr, sizeof(tSirMacAddr));
     mlmDisassocInd.reasonCode = reasonCode;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    mlmDisassocInd.aid        = pStaDs->assocId;
-#endif
     mlmDisassocInd.disassocTrigger = eLIM_PEER_ENTITY_DISASSOC;
 
     mlmDisassocInd.sessionId = psessionEntry->peSessionId;
@@ -1252,11 +1194,7 @@ static char *
 dump_lim_set_protection_control( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
 {
     dump_cfg_set(pMac, WNI_CFG_FORCE_POLICY_PROTECTION, arg1, arg2, arg3, p);
-#ifdef WLAN_SOFTAP_FEATURE
     limSetCfgProtection(pMac, NULL);
-#else
-    limSetCfgProtection(pMac);
-#endif
     return p;
 }
 
@@ -1268,7 +1206,7 @@ dump_lim_send_SM_Power_Mode( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, 
     tpSirMbMsg  pMBMsg;
         tSirMacHTMIMOPowerSaveState state;
 
-        p += log_sprintf( pMac,p, "%s: Verifying the Arguments\n", __FUNCTION__);
+        p += log_sprintf( pMac,p, "%s: Verifying the Arguments\n", __func__);
     if ((arg1 > 3) || (arg1 == 2))
     {
                 p += log_sprintf( pMac,p, "Invalid Argument , enter one of the valid states\n");
@@ -1323,7 +1261,7 @@ tpDphHashNode pSta;
   {
     p += log_sprintf( pMac, p,
         "\n%s: Could not find entry in DPH table for assocId = %d\n",
-        __FUNCTION__,
+        __func__,
         arg1 );
   }
   else
@@ -1331,7 +1269,7 @@ tpDphHashNode pSta;
     status = limPostMlmAddBAReq( pMac, pSta, (tANI_U8) arg2, (tANI_U16) arg3,psessionEntry);
     p += log_sprintf( pMac, p,
         "\n%s: Attempted to send an ADDBA Req to STA Index %d, for TID %d. Send Status = %s\n",
-        __FUNCTION__,
+        __func__,
         pSta->staIndex,
         arg2,
         limResultCodeStr( status ));
@@ -1353,7 +1291,7 @@ tpDphHashNode pSta;
   {
     p += log_sprintf( pMac, p,
         "\n%s: Could not find entry in DPH table for assocId = %d\n",
-        __FUNCTION__,
+        __func__,
         arg1 );
   }
   else
@@ -1363,7 +1301,7 @@ tpDphHashNode pSta;
         "\n%s: Attempted to send a DELBA Ind to STA Index %d, "
         "as the BA \"%s\" for TID %d, with Reason code %d. "
         "Send Status = %s\n",
-        __FUNCTION__,
+        __func__,
         pSta->staIndex,
         (arg2 == 1)? "Initiator": "Recipient",
         arg3, // TID
@@ -1379,15 +1317,10 @@ dump_lim_ba_timeout( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32
 {
 
 /* FIXME: NO HAL IN UMAC for PRIMA */
-#if !defined( FEATURE_WLAN_INTEGRATED_SOC ) 
-  // Call HAL API to trigger deletion of BA due to timeout
-  (void)halMsg_PostBADeleteInd( pMac, (tANI_U16) arg1, (tANI_U8) arg2, (tANI_U8) arg3,
-         HAL_BA_ERR_TIMEOUT );
-#endif
 
   p += log_sprintf( pMac, p,
       "\n%s: Attempted to trigger a BA Timeout Ind to STA Index %d, for TID %d, Direction %d\n",
-      __FUNCTION__,
+      __func__,
       arg1, // STA index
       arg2, // TID
       arg3 ); // BA Direction
@@ -1413,7 +1346,7 @@ tpPESession psessionEntry = &pMac->lim.gpSession[0];  //TBD-RAJESH
   {
     p += log_sprintf( pMac, p,
         "\n%s: Could not find entry in DPH table for assocId = %d\n",
-        __FUNCTION__,
+        __func__,
         arg1 );
   }
   else
@@ -1448,14 +1381,14 @@ dump_lim_AddBA_DeclineStat( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, t
     tANI_U8 val;
 
     if (arg1 > 1) {
-        log_sprintf( pMac,p, "%s:Invalid Value is entered for Enable/Disable \n", __FUNCTION__ );
+        log_sprintf( pMac,p, "%s:Invalid Value is entered for Enable/Disable \n", __func__ );
         arg1 &= 1;
     }       
     
     val = pMac->lim.gAddBA_Declined;
     
     if (arg2 > 7) {
-        log_sprintf( pMac,p, "%s:Invalid Value is entered for Tid \n", __FUNCTION__ );
+        log_sprintf( pMac,p, "%s:Invalid Value is entered for Tid \n", __func__ );
         Tid = arg2 & 0x7;
     } else
         Tid = arg2;
@@ -1467,9 +1400,9 @@ dump_lim_AddBA_DeclineStat( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, t
         val &=  ~(0x1 << Tid);
 
     if (cfgSetInt(pMac, (tANI_U16)WNI_CFG_ADDBA_REQ_DECLINE, (tANI_U32) val) != eSIR_SUCCESS)
-             log_sprintf( pMac,p, "%s:Config Set for ADDBA REQ Decline has failed \n", __FUNCTION__ );
+             log_sprintf( pMac,p, "%s:Config Set for ADDBA REQ Decline has failed \n", __func__ );
 
-     log_sprintf( pMac,p, "%s:Decline value %d is being set for TID %d ,\n \tAddBA_Decline Cfg value is %d \n", __FUNCTION__ , arg1, Tid, (int) val);
+     log_sprintf( pMac,p, "%s:Decline value %d is being set for TID %d ,\n \tAddBA_Decline Cfg value is %d \n", __func__ , arg1, Tid, (int) val);
 
      return p;
 }
@@ -1710,76 +1643,6 @@ dump_lim_sme_reassoc_req( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tAN
 static char *
 dump_lim_dot11h_stats( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
 {
-#if 0
-    unsigned int i;
-    (void) arg1; (void) arg2; (void) arg3; (void) arg4;
-
-    p += log_sprintf(pMac, p, "11h Enabled = %s\n", pMac->lim.gLim11hEnable? "TRUE": "FALSE");
-
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-    p += log_sprintf(pMac, p, "Measurement request issued by WSM = %s\n",
-                              (pMac->lim.gpLimMeasReq != NULL)? "ISSUED": "NOT ISSUED");
-    p += log_sprintf(pMac, p, "Measurement request details...\n");
-    if (pMac->lim.gpLimMeasReq != NULL)
-    {
-        p += log_sprintf(pMac, p, "numChannels = %d, periodicMeasEnabled = %d, measIndPeriod = %d,"
-            "shortTermPeriod = %d, averagingPeriod = %d, shortChannelScanDuration = %d,"
-            "longChannelScanDuration = %d, SYS_TICK_DUR_MS = %d\n",
-            pMac->lim.gpLimMeasReq->channelList.numChannels, pMac->lim.gpLimMeasReq->measControl.periodicMeasEnabled,
-            pMac->lim.gpLimMeasReq->measIndPeriod, pMac->lim.gpLimMeasReq->measDuration.shortTermPeriod,
-            pMac->lim.gpLimMeasReq->measDuration.averagingPeriod,
-            pMac->lim.gpLimMeasReq->measDuration.shortChannelScanDuration,
-            pMac->lim.gpLimMeasReq->measDuration.longChannelScanDuration, SYS_TICK_DUR_MS );
-
-        p += log_sprintf(pMac, p, "Measurement channels...\n");
-        for (i = 0; i < pMac->lim.gpLimMeasReq->channelList.numChannels; i++)
-        {
-            p += log_sprintf(pMac, p, "%d ", pMac->lim.gpLimMeasReq->channelList.channelNumber[i]);
-        }
-        p += log_sprintf(pMac, p, "\n");
-        p += log_sprintf(pMac, p, "Total Number of BSS learned = %d\n", pMac->lim.gpLimMeasData->numBssWds);
-        p += log_sprintf(pMac, p, "Total Number of Channels learned = %d\n", pMac->lim.gpLimMeasData->numMatrixNodes);
-        p += log_sprintf(pMac, p, "Duration of learning = %d\n", pMac->lim.gpLimMeasData->duration);
-        p += log_sprintf(pMac, p, "Is measurement Indication timer active = %s\n",
-                                  (pMac->lim.gLimMeasParams.isMeasIndTimerActive)?"YES": "NO");
-        p += log_sprintf(pMac, p, "Next learn channel Id = %d\n", pMac->lim.gLimMeasParams.nextLearnChannelId);
-    }
-    p += log_sprintf(pMac, p, "Measurement running = %s\n",
-                              pMac->sys.gSysEnableLearnMode?"TRUE": "FALSE");
-#endif
-    p += log_sprintf(pMac, p, "Is system in learn mode = %s\n",
-                              pMac->lim.gLimSystemInScanLearnMode?"YES": "NO");
-    
-    p += log_sprintf(pMac, p, "Quiet Enabled = %s\n", (pMac->lim.gLimSpecMgmt.fQuietEnabled)?"YES": "NO");
-    p += log_sprintf(pMac, p, "Quiet state = %d\n", pMac->lim.gLimSpecMgmt.quietState);
-    p += log_sprintf(pMac, p, "Quiet Count = %d\n", pMac->lim.gLimSpecMgmt.quietCount);
-    p += log_sprintf(pMac, p, "Quiet Duration in ticks = %d\n", pMac->lim.gLimSpecMgmt.quietDuration);
-    p += log_sprintf(pMac, p, "Quiet Duration in TU = %d\n", pMac->lim.gLimSpecMgmt.quietDuration_TU);
-    
-    p += log_sprintf(pMac, p, "Channel switch state = %d\n", pMac->lim.gLimSpecMgmt.dot11hChanSwState);
-    p += log_sprintf(pMac, p, "Channel switch mode = %s\n",
-            (pMac->lim.gLimChannelSwitch.switchMode == eSIR_CHANSW_MODE_SILENT)?"SILENT": "NORMAL");
-    p += log_sprintf(pMac, p, "Channel switch primary channel = %d\n",
-                              pMac->lim.gLimChannelSwitch.primaryChannel);
-    p += log_sprintf(pMac, p, "Channel switch secondary sub band = %d\n",
-                              pMac->lim.gLimChannelSwitch.secondarySubBand);
-    p += log_sprintf(pMac, p, "Channel switch switch count = %d\n",
-                              pMac->lim.gLimChannelSwitch.switchCount);
-    p += log_sprintf(pMac, p, "Channel switch switch timeout value = %d\n",
-                              pMac->lim.gLimChannelSwitch.switchTimeoutValue);
-
-    p += log_sprintf(pMac, p, "Radar interrupt configured = %s\n",
-                              pMac->lim.gLimSpecMgmt.fRadarIntrConfigured?"YES": "NO");
-    p += log_sprintf(pMac, p, "Radar detected in current operating channel = %s\n",
-                              pMac->lim.gLimSpecMgmt.fRadarDetCurOperChan?"YES": "NO");
-    p += log_sprintf(pMac, p, "Radar detected channels...\n");
-    for (i = 0; i < pMac->sys.radarDetectCount; i++)
-    {
-        p += log_sprintf(pMac, p, "%d ", pMac->sys.detRadarChIds[i]);
-    }
-    p += log_sprintf(pMac, p, "\n");
-    
-#endif
     return p;
 }
 
@@ -1885,19 +1748,6 @@ dump_sch_beacon_trigger( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI
 {
     (void) arg1; (void) arg2; (void) arg3; (void) arg4;
     p = triggerBeaconGen(pMac, p);
-    return p;
-}
-
-
-static char* dump_lim_trace_cfg(tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
-{
-    MTRACE(macTraceCfg(pMac, arg1, arg2, arg3, arg4);)
-    return p;
-}
-
-static char* dump_lim_trace_dump(tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
-{
-    MTRACE(macTraceDumpAll(pMac, (tANI_U8)arg1, (tANI_U8)arg2, arg3);)
     return p;
 }
 
@@ -2187,19 +2037,6 @@ dump_lim_unpack_rrm_action( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, t
       case 5:
          {
 // FIXME.
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-            tDot11fLinkMeasurementRequest frm;
-            tHalBufDesc Bd;
-            pBody[arg2][3] = (tANI_U8)arg3; //TxPower used
-            pBody[arg2][4] = (tANI_U8)arg4; //Max Tx power
-
-            Bd.phyStats0 = 0;
-            Bd.phyStats1 = 0;
-            if( (status = dot11fUnpackLinkMeasurementRequest( pMac, &pBody[arg2][0], size[arg2], &frm )) != 0 )
-               p += log_sprintf( pMac, p, "failed to unpack.....status = %x\n", status);
-            else
-               rrmProcessLinkMeasurementRequest( pMac, (tANI_U8*)&Bd, &frm, psessionEntry );
-#endif
          }
          break;
       case 6:
@@ -2297,18 +2134,18 @@ dump_lim_ft_event( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 a
                    vos_mem_copy(Profile.pBssDesc->bssId, macAddr, 6);
 
                    p += log_sprintf( pMac,p, "\n ----- LIM Debug Information ----- \n");
-                   p += log_sprintf( pMac, p, "%s: length = %d\n", __FUNCTION__, 
+                   p += log_sprintf( pMac, p, "%s: length = %d\n", __func__, 
                             (int)pMac->ft.ftSmeContext.auth_ft_ies_length);
-                   p += log_sprintf( pMac, p, "%s: length = %02x\n", __FUNCTION__, 
+                   p += log_sprintf( pMac, p, "%s: length = %02x\n", __func__, 
                             (int)pMac->ft.ftSmeContext.auth_ft_ies[0]);
                    p += log_sprintf( pMac, p, "%s: Auth Req %02x %02x %02x\n", 
-                            __FUNCTION__, pftPreAuthReq->ft_ies[0],
+                            __func__, pftPreAuthReq->ft_ies[0],
                             pftPreAuthReq->ft_ies[1], pftPreAuthReq->ft_ies[2]);
 
-                   p += log_sprintf( pMac, p, "%s: Session %02x %02x %02x\n", __FUNCTION__, 
+                   p += log_sprintf( pMac, p, "%s: Session %02x %02x %02x\n", __func__, 
                             psessionEntry->bssId[0],
                             psessionEntry->bssId[1], psessionEntry->bssId[2]);
-                   p += log_sprintf( pMac, p, "%s: Session %02x %02x %02x %p\n", __FUNCTION__, 
+                   p += log_sprintf( pMac, p, "%s: Session %02x %02x %02x %p\n", __func__, 
                             pftPreAuthReq->currbssId[0],
                             pftPreAuthReq->currbssId[1], 
                             pftPreAuthReq->currbssId[2], pftPreAuthReq);
@@ -2345,7 +2182,7 @@ dump_lim_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U
     {
         p += log_sprintf( pMac,
             p,"Session does not exist usage: 363 <0> sessionid channel \n");
-        printk("Session Not found!!!!\n");
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN,"Session Not found!!!!");
         return p;
     }
 
@@ -2362,6 +2199,68 @@ dump_lim_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U
   return p;
 }
 
+#ifdef WLAN_FEATURE_11AC
+static char *
+dump_lim_vht_opmode_notification(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg2,tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    tANI_U8 peer[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    tANI_U8 nMode = arg2;
+    tpPESession psessionEntry;
+
+    if((psessionEntry = peFindSessionBySessionId(pMac,(tANI_U8)arg1) )== NULL)
+    {
+        p += log_sprintf( pMac,
+            p,"Session does not exist usage: 366 <0> sessionid channel \n");
+        return p;
+    }
+    
+    limSendVHTOpmodeNotificationFrame(pMac, peer, nMode,psessionEntry);
+    
+    psessionEntry->gLimOperatingMode.present = 1;
+    psessionEntry->gLimOperatingMode.chanWidth = nMode;
+    psessionEntry->gLimOperatingMode.rxNSS   = 0;
+    psessionEntry->gLimOperatingMode.rxNSSType    = 0;
+
+    schSetFixedBeaconFields(pMac, psessionEntry);
+    limSendBeaconInd(pMac, psessionEntry); 
+
+    return p;
+}
+
+static char *
+dump_lim_vht_channel_switch_notification(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg2,tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    tpPESession psessionEntry;
+    tANI_U8 nChanWidth = arg2;
+    tANI_U8 nNewChannel = arg3;
+    tANI_U8 ncbMode = arg4;
+    tANI_U8 peer[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+    if((psessionEntry = peFindSessionBySessionId(pMac,(tANI_U8)arg1) )== NULL)
+    {
+        p += log_sprintf( pMac,
+            p,"Session does not exist usage: 367 <0> sessionid channel \n");
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN,"Session Not found!!!!");
+        return p;
+    }
+
+    limSendVHTChannelSwitchMgmtFrame( pMac, peer, nChanWidth, nNewChannel, (ncbMode+1), psessionEntry );
+
+    psessionEntry->gLimChannelSwitch.switchCount = 0;
+    psessionEntry->gLimSpecMgmt.dot11hChanSwState = eLIM_11H_CHANSW_RUNNING;
+    psessionEntry->gLimChannelSwitch.switchMode = 1;
+    psessionEntry->gLimChannelSwitch.primaryChannel = nNewChannel;
+    psessionEntry->gLimWiderBWChannelSwitch.newChanWidth = nChanWidth;
+    psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq0 = limGetCenterChannel(pMac,nNewChannel,(ncbMode+1),nChanWidth);
+    psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq1 = 0;
+    
+    schSetFixedBeaconFields(pMac, psessionEntry);
+    limSendBeaconInd(pMac, psessionEntry);    
+
+    return p;
+}
+
+#endif
 static char *
 dump_lim_cancel_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
 {
@@ -2371,7 +2270,7 @@ dump_lim_cancel_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1,
     {
         p += log_sprintf( pMac,
             p,"Session does not exist usage: 363 <0> sessionid channel \n");
-        printk("Session Not found!!!!\n");
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN,"Session Not found!!!!");
         return p;
     }
     psessionEntry->gLimChannelSwitch.switchCount = 0;
@@ -2384,6 +2283,98 @@ dump_lim_cancel_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1,
 
   return p;
 }
+
+
+static char *
+dump_lim_mcc_policy_maker(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg2,tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+   VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_FATAL, "dump_lim_mcc_policy_maker arg = %d",arg1);
+    
+   if(arg1 == 0) //Disable feature completely
+   {  
+      WDA_TrafficStatsTimerActivate(FALSE);
+      if (ccmCfgSetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, FALSE,
+          NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+      {
+         limLog( pMac, LOGE, FL("Could not get WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED"));
+      }
+   }
+   else if(arg1 == 1) //Enable feature
+   {   
+      if (ccmCfgSetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, TRUE,
+         NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+      {
+        limLog( pMac, LOGE, FL("Could not set WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED"));
+      }    
+   }
+   else if(arg1 == 2) //Enable feature and activate periodic timer
+   {   
+      if (ccmCfgSetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, TRUE,
+          NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+      {
+         limLog( pMac, LOGE, FL("Could not set WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED"));
+      }
+      WDA_TrafficStatsTimerActivate(TRUE);
+   }
+   else if(arg1 == 3) //Enable only stats collection - Used for unit testing
+   {
+      VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_FATAL, "Enabling Traffic Stats in DTS");
+      WDI_DS_ActivateTrafficStats();
+   }
+   else if(arg1 == 4) //Send current stats snapshot to Riva -- Used for unit testing
+   {
+      v_VOID_t * pVosContext = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
+      tWDA_CbContext *pWDA =  vos_get_context(VOS_MODULE_ID_WDA, pVosContext);
+      ccmCfgSetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, TRUE, NULL, eANI_BOOLEAN_FALSE);
+      if(NULL != pWDA)
+      {
+         WDA_TimerTrafficStatsInd(pWDA);
+      }
+      WDA_TrafficStatsTimerActivate(FALSE);
+      ccmCfgSetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, FALSE,NULL, eANI_BOOLEAN_FALSE);
+   }
+   else if (arg1 == 5) //Change the periodicity of TX stats timer
+   {
+      v_VOID_t * pVosContext = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
+      tWDA_CbContext *pWDA =  vos_get_context(VOS_MODULE_ID_WDA, pVosContext);
+      if (tx_timer_change(&pWDA->wdaTimers.trafficStatsTimer, arg2/10, arg2/10) != TX_SUCCESS)
+      {
+          limLog(pMac, LOGP, FL("Disable timer before changing timeout value"));
+      }
+   }
+   return p;
+}
+
+#ifdef WLANTL_DEBUG
+/* API to print number of pkts received based on rate index */
+/* arg1 = station Id */
+/* arg2 = BOOLEAN value to either or not flush the counters */
+static char *
+dump_lim_get_pkts_rcvd_per_rate_idx( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    /* if anything other than 1, then we need not flush the counters */
+    if( arg2 != 1)
+        arg2 = FALSE;
+
+    WLANTLPrintPktsRcvdPerRateIdx(pMac->roam.gVosContext, (tANI_U8)arg1, (v_BOOL_t)arg2);
+    return p;
+}
+
+/* API to print number of pkts received based on rssi */
+/* arg1 = station Id */
+/* arg2 = BOOLEAN value to either or not flush the counters */
+static char *
+dump_lim_get_pkts_rcvd_per_rssi_values( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    /* if anything other than 1, then we need not flush the counters */
+    if( arg2 != 1)
+        arg2 = FALSE;
+
+    WLANTLPrintPktsRcvdPerRssi(pMac->roam.gVosContext, (tANI_U8)arg1, (v_BOOL_t)arg2);
+    return p;
+}
+#endif
+
 static tDumpFuncEntry limMenuDumpTable[] = {
     {0,     "PE (300-499)",                                          NULL},
     {300,   "LIM: Dump state(s)/statistics <session id>",            dump_lim_info},
@@ -2406,8 +2397,6 @@ static tDumpFuncEntry limMenuDumpTable[] = {
      * be moved to logDump.c
      */
     {321,   "PE:LIM: Set Log Level <VOS Module> <VOS Log Level>",    dump_lim_update_log_level},
-    {322,   "PE.LIM: Enable/Disable PE Tracing",                     dump_lim_trace_cfg},
-    {323,   "PE.LIM: Trace Dump if enabled",                           dump_lim_trace_dump},
     {331,   "PE.LIM: Send finish scan to LIM",                       dump_lim_finishscan_send},
     {332,   "PE.LIM: force probe rsp send from LIM",                 dump_lim_prb_rsp_send},
     {333,   "PE.SCH: Trigger to generate a beacon",                  dump_sch_beacon_trigger},
@@ -2450,7 +2439,15 @@ static tDumpFuncEntry limMenuDumpTable[] = {
 #endif
     {364,   "PE.LIM: Send a channel switch announcement",            dump_lim_channel_switch_announcement},
     {365,   "PE.LIM: Cancel channel switch announcement",            dump_lim_cancel_channel_switch_announcement},
-
+#ifdef WLAN_FEATURE_11AC
+    {366,   "PE.LIM: Send a VHT OPMode Action Frame",                dump_lim_vht_opmode_notification},
+    {367,   "PE.LIM: Send a VHT Channel Switch Announcement",        dump_lim_vht_channel_switch_notification},
+    {368,   "PE.LIM: MCC Policy Maker",                              dump_lim_mcc_policy_maker},
+#endif
+#ifdef WLANTL_DEBUG
+    {369,   "PE.LIM: pkts/rateIdx: iwpriv wlan0 dump 368 <staId> <boolean to flush counter>",    dump_lim_get_pkts_rcvd_per_rate_idx},
+    {370,   "PE.LIM: pkts/rssi: : iwpriv wlan0 dump 369 <staId> <boolean to flush counter>",    dump_lim_get_pkts_rcvd_per_rssi_values},
+#endif
 };
 
 

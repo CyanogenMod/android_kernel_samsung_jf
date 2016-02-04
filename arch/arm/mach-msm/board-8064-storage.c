@@ -239,11 +239,19 @@ static struct msm_mmc_pad_pull sdc2_pad_pull_off_cfg[] = {
 #endif
 
 /* SDC3 pad data */
+#if defined(CONFIG_MACH_JFVE_EUR)
+static struct msm_mmc_pad_drv sdc3_pad_drv_on_cfg[] = {
+	{TLMM_HDRV_SDC3_CLK, GPIO_CFG_8MA},
+	{TLMM_HDRV_SDC3_CMD, GPIO_CFG_6MA},
+	{TLMM_HDRV_SDC3_DATA, GPIO_CFG_8MA}
+};
+#else
 static struct msm_mmc_pad_drv sdc3_pad_drv_on_cfg[] = {
 	{TLMM_HDRV_SDC3_CLK, GPIO_CFG_10MA},
 	{TLMM_HDRV_SDC3_CMD, GPIO_CFG_6MA},
 	{TLMM_HDRV_SDC3_DATA, GPIO_CFG_6MA}
 };
+#endif
 
 static struct msm_mmc_pad_drv sdc3_pad_drv_off_cfg[] = {
 	{TLMM_HDRV_SDC3_CLK, GPIO_CFG_2MA},

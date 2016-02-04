@@ -1,3 +1,23 @@
+ *
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ *
 * Copyright (c) 2012, The Linux Foundation. All rights reserved.
 *
 * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -475,7 +495,7 @@ LIM
 WNI_CFG_REASSOCIATION_FAILURE_TIMEOUT    I    4    7
 V    RW    NP
 NONE
-0    65535    2000
+0    65535    1000
 V    RW    NP
 NONE
 0    65535    3000
@@ -671,10 +691,10 @@ NONE
 *
 
 WNI_CFG_BSSID    S    6    7
-V    RO    NP RESTART
+V    RW    NP RESTART
 NONE
 6    0x22 0x22 0x11 0x11 0x33 0x33
-V    RO    NP RESTART
+V    RW    NP RESTART
 NONE
 6    0x22 0x22 0x11 0x11 0x33 0x33
 
@@ -769,10 +789,10 @@ SCH
 WNI_CFG_FIXED_RATE  I   4   0
 V    RW    NP
 HAL
-0    31     0
+0    44     0
 V    RW    NP
 HAL
-0    31     0
+0    44     0
 
 #ENUM AUTO 	                                0
 
@@ -812,6 +832,19 @@ HAL
 #ENUM 0_5MBPS_SLR_20MHZ_SIMO                30
 
 #ENUM 68_25MBPS_QC_PROP_20MHZ_SIMO          31
+#ENUM 54MBPS_MCS3_40MHZ_SIMO                32
+#ENUM 81MBPS_MCS4_40MHZ_SIMO                33
+#ENUM 108MBPS_MCS5_40MHZ_SIMO               34
+#ENUM 121_5MBPS_MCS6_40MHZ_SIMO             35
+#ENUM 135MBPS_MCS7_40MHZ_SIMO               36
+#ENUM 15MBPS_MCS0_40MHZ_SIMO_SGI            37
+#ENUM 30MBPS_MCS1_40MHZ_SIMO_SGI            38
+#ENUM 45MBPS_MCS2_40MHZ_SIMO_SGI            39
+#ENUM 60MBPS_MCS3_40MHZ_SIMO_SGI            40
+#ENUM 90MBPS_MCS4_40MHZ_SIMO_SGI            41
+#ENUM 120MBPS_MCS5_40MHZ_SIMO_SGI           42
+#ENUM 135MBPS_MCS6_40MHZ_SIMO_SGI           43
+#ENUM 150MBPS_MCS7_40MHZ_SIMO_SGI           44
 
 * *********************************************************
 *
@@ -1222,10 +1255,10 @@ NONE
 WNI_CFG_MAX_TX_POWER_5    S    128    8
 V    RW    NP
 NONE
-3 36 126 14
+3 36 126 20
 V    RW    NP
 NONE
-3 36 126 14
+3 36 126 20
 
 *
 * Cell size configurations. These are canned configurations for a specified
@@ -2813,22 +2846,22 @@ LIM
 WNI_CFG_VHT_SU_BEAMFORMEE_CAP  I    4    19
 V    RW    NP    
 LIM
-0    1    1
+0    1    0
 V    RW    NP    
 LIM
-0    1    1
+0    1    0
 
 *
 * Compressed Steering Number of Beamformer Antennas Supported
-* Riva/Pronto does not support, default set to 0
+* Riva does not support,Pronto supports, default set to 0
 *
 WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED  I    4    19
 V    RW    NP    
 LIM
-0    1    0
+0    3    0
 V    RW    NP    
 LIM
-0    1    0
+0    3    0
 
 *
 * Number of Sounding Dimensions indicates Number
@@ -2838,10 +2871,10 @@ LIM
 WNI_CFG_VHT_NUM_SOUNDING_DIMENSIONS  I    4    19
 V    RW    NP    
 LIM
-0    1    1
+0    3    0
 V    RW    NP    
 LIM
-0    1    1
+0    3    0
 
 *
 * MU Beamformer Capable
@@ -2968,10 +3001,10 @@ LIM
 WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE  I    4    19
 V    RW    NP    
 LIM
-1    434   434
+0    390   0
 V    RW    NP    
 LIM
-1    434   434
+0    390   0
 
 *
 * Tx Highest supported data rate.
@@ -2979,10 +3012,10 @@ LIM
 WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE  I    4    19
 V    RW    NP    
 LIM
-1    434    434
+0    390    0
 V    RW    NP    
 LIM
-1    434    434
+0    390    0
 
 *
 * VHT Operation Information
@@ -3029,10 +3062,10 @@ LIM
 WNI_CFG_VHT_BASIC_MCS_SET  I    4    19
 V    RW    NP    
 LIM
-0    3     0 
+0    0xFFFF    0xFFFE
 V    RW    NP    
 LIM
-0    3     0
+0    0xFFFF    0xFFFE
 
 *
 * MU-MIMO Capable STA Count
@@ -3125,6 +3158,17 @@ V    RW    NP    RESTART
 LIM
 0    7    0
 
+*
+* NUM BUFFERS ADVERTISED
+* Defines number of buffers advertised in ADDBA
+*
+WNI_CFG_NUM_BUFF_ADVERT  I    4    7
+V    RW    NP    
+LIM
+0    128    64
+V    RW    NP    
+LIM
+0    128    64
 
 *
 * Maximum Rx AMPDU Factor
@@ -3222,21 +3266,6 @@ LIM
 * the num_beacon_per_rssi_average.
 *
 WNI_CFG_RSSI_FILTER_PERIOD    I    4    5
-V    RW    NP
-LIM
-0    255    20
-NV    RW    NP
-LIM
-0    255    20
-
-*
-* Period for which Firmware will collect the 
-* RSSI stats. Its in units of beacon interval. 
-* Rssi Filter period should always be >=
-* the num_beacon_per_rssi_average.
-* This value is used ONLY for CCX and 11r Fasttransition
-*
-WNI_CFG_FT_RSSI_FILTER_PERIOD    I    4    5
 V    RW    NP
 LIM
 0    255    5
@@ -3442,6 +3471,19 @@ LIM
 V    RW    NP  RESTART
 LIM
 0    0xff    0
+
+*
+* Delete all Rx BA sessions in 2.4 GHz
+* when BTC requests to disable agg.
+*
+WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC I    4    7
+V    RW    NP
+LIM
+0    1    0
+V    RW    NP
+LIM
+0    1    0
+
 
 *
 * Valid Channel List
@@ -4294,10 +4336,10 @@ HAL
 WNI_CFG_ASSOC_STA_LIMIT    I   4   8
 V    RW    NP
 LIM
-1    10    10
+1    32    10
 V    RW    NP
 LIM
-1    10    10
+1    32    10
 
 *
 *  SAP channel select start channel number
@@ -4407,3 +4449,119 @@ HAL
 V    RW    NP
 HAL
 0    1     0
+
+*
+* UC Filter will be enabled if value is set to 1
+*
+*
+*
+WNI_CFG_ENABLE_UC_FILTER  I   4   0
+V    RW    NP
+HAL
+0    1     0
+V    RW    NP
+HAL
+0    1     0
+
+*
+* Low Power Image Transition will be enabled if value is set to 1
+* 
+*
+*
+WNI_CFG_ENABLE_LPWR_IMG_TRANSITION  I   4   0
+V    RW    NP
+NONE
+0    1     0
+V    RW    NP
+NONE
+0    1     0
+
+*
+* MCC Adaptive Scheduler will be enabled if value is set to 1
+* 
+*
+*
+WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED  I   4   0
+V    RW    NP
+NONE
+0    1     0
+V    RW    NP
+NONE
+0    1     0
+*
+*Disable LDPC in STA mode when AP is TXBF capable
+*
+*
+*
+WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP  I   4   0
+V    RW    NP
+NONE
+0    1     0
+V    RW    NP
+NONE
+0    1     0
+
+*
+* AP Link Monitor Timeout (TU)
+*
+WNI_CFG_AP_LINK_MONITOR_TIMEOUT    I    4    7
+V    RW    NP
+HAL
+1    255    3
+V    RW    NP
+HAL
+1    255    3
+
+*
+* BTC Active WLAN Len
+*
+WNI_CFG_BTC_ACTIVE_WLAN_LEN    I    4    7
+V    RW    NP
+HAL
+0    250000    60000
+V    RW    NP
+HAL
+0    250000    60000
+
+*
+* BTC Active BT Len
+*
+WNI_CFG_BTC_ACTIVE_BT_LEN    I    4    7
+V    RW    NP
+HAL
+0    250000    90000
+V    RW    NP
+HAL
+0    250000    90000
+
+*
+* BTC SAP Active WLAN Len
+*
+WNI_CFG_BTC_SAP_ACTIVE_WLAN_LEN    I    4    7
+V    RW    NP
+HAL
+0    250000    60000
+V    RW    NP
+HAL
+0    250000    60000
+
+*
+* BTC SAP Active BT Len
+*
+WNI_CFG_BTC_SAP_ACTIVE_BT_LEN    I    4    7
+V    RW    NP
+HAL
+0    250000    90000
+V    RW    NP
+HAL
+0    250000    90000
+
+* Debug p2p remain on channel
+*
+WNI_CFG_DEBUG_P2P_REMAIN_ON_CHANNEL    I    4    7
+V    RW    NP
+NONE
+0    1    0
+V    RW    NP
+NONE
+0    1    0

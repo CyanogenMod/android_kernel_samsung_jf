@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -22,9 +42,6 @@
 #include "palTypes.h"
 #include "wniApi.h"     /* WNI_CFG_SET_REQ */
 #include "sirParams.h"  /* tSirMbMsg */
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halHddApis.h" /* palAllocateMemory */
-#endif
 #include "smsDebug.h"   /* smsLog */
 #include "cfgApi.h"
 #include "ccmApi.h"
@@ -124,14 +141,14 @@ static eHalStatus sendCfg(tpAniSirGlobal pMac, tHddHandle hHdd, tCfgReq *req, tA
         status = palSendMBMessage(hHdd, msg) ;
         if (status != eHAL_STATUS_SUCCESS)
         {
-            smsLog( pMac, LOGW, FL("palSendMBMessage() failed\n"));
+            smsLog( pMac, LOGW, FL("palSendMBMessage() failed"));
             //No need to free msg. palSendMBMessage frees it.
             status = eHAL_STATUS_FAILURE ;
         }
     }
     else
     {
-        smsLog( pMac, LOGW, FL("palAllocateMemory(len=%d)\n"), msgLen );
+        smsLog( pMac, LOGW, FL("palAllocateMemory(len=%d)"), msgLen );
     }
 
     return status ;
@@ -194,7 +211,7 @@ static void purgeReqQ(tHalHandle hHal)
     for (req = pMac->ccm.reqQ.head; req; req = tmp)
     {
         /* loop thru reqQ and invoke callback to return failure */
-        smsLog(pMac, LOGW, FL("deleting cfgReq, cfgid=%d\n"), (int)req->cfgId);
+        smsLog(pMac, LOGW, FL("deleting cfgReq, cfgid=%d"), (int)req->cfgId);
 
         tmp = req->next ;
 
@@ -224,7 +241,7 @@ static void sendQueuedReqToMacSw(tpAniSirGlobal pMac, tHddHandle hHdd)
             req->state = eCCM_REQ_SENT;
             if (sendCfg(pMac, hHdd, req, eANI_BOOLEAN_TRUE) != eHAL_STATUS_SUCCESS)
             {
-                smsLog( pMac, LOGW, FL("sendCfg() failed\n"));
+                smsLog( pMac, LOGW, FL("sendCfg() failed"));
                 palSpinLockTake(hHdd, pMac->ccm.lock);
                 del_req(req, &pMac->ccm.reqQ) ;
                 palSpinLockGive(hHdd, pMac->ccm.lock);
@@ -234,7 +251,7 @@ static void sendQueuedReqToMacSw(tpAniSirGlobal pMac, tHddHandle hHdd)
                 }
 
 #ifdef CCM_DEBUG
-                smsLog(pMac, LOGW, FL("ccmComplete(%p)\n"), req->done);
+                smsLog(pMac, LOGW, FL("ccmComplete(%p)"), req->done);
 #endif
                 ccmComplete(hHdd, req->done);
 
@@ -243,7 +260,7 @@ static void sendQueuedReqToMacSw(tpAniSirGlobal pMac, tHddHandle hHdd)
         }
         else
         {
-            smsLog( pMac, LOGW, FL("reqState is not eCCM_REQ_QUEUED, is %d\n"), req->state );
+            smsLog( pMac, LOGW, FL("reqState is not eCCM_REQ_QUEUED, is %d"), req->state );
         }
     }
 
@@ -303,7 +320,7 @@ static eHalStatus cfgSetSub(tpAniSirGlobal pMac, tHddHandle hHdd, tANI_U32 cfgId
             status = sendCfg(pMac, hHdd, req, eANI_BOOLEAN_TRUE) ;
             if (status != eHAL_STATUS_SUCCESS)
             {
-                smsLog( pMac, LOGW, FL("sendCfg() failed\n"));
+                smsLog( pMac, LOGW, FL("sendCfg() failed"));
                 palSpinLockTake(hHdd, pMac->ccm.lock);
                 del_req(req, &pMac->ccm.reqQ);
                 palSpinLockGive(hHdd, pMac->ccm.lock);
@@ -358,7 +375,7 @@ static eHalStatus cfgSet(tHalHandle hHal, tANI_U32 cfgId, tANI_U32 type, tANI_S3
         status = palMutexAllocLocked( hHdd, &sem ) ;
         if (status != eHAL_STATUS_SUCCESS)
         {
-            smsLog(pMac, LOGE, FL("mutex alloc failed\n"));
+            smsLog(pMac, LOGE, FL("mutex alloc failed"));
             sem = NULL;
         }
         else
@@ -467,7 +484,7 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
 
             /* Wake up the sleeping process */
 #ifdef CCM_DEBUG
-            smsLog(pMac, LOGW, FL("ccmComplete(%p)\n"), pMac->ccm.replay.done);
+            smsLog(pMac, LOGW, FL("ccmComplete(%p)"), pMac->ccm.replay.done);
 #endif
             ccmComplete(hHdd, pMac->ccm.replay.done);
             //Let go with the rest of the set CFGs waiting.
@@ -495,7 +512,7 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
                     result == WNI_CFG_NEED_RELOAD)
                 {
 #ifdef CCM_DEBUG
-                    smsLog(pMac, LOGW, FL("need restart/reload, cfgId=%d\n"), req->cfgId) ;
+                    smsLog(pMac, LOGW, FL("need restart/reload, cfgId=%d"), req->cfgId) ;
 #endif
                     //purgeReqQ(hHal);
                 }
@@ -512,18 +529,21 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
 
                 /* Wake up the sleeping process */
 #ifdef CCM_DEBUG
-                smsLog(pMac, LOGW, FL("cfgId=%ld, calling ccmComplete(%p)\n"), cfgId, req->done);
+                smsLog(pMac, LOGW, FL("cfgId=%ld, calling ccmComplete(%p)"), cfgId, req->done);
 #endif
                 ccmComplete(hHdd, req->done);
 
                 /* move the completed req from reqQ to comp[] */
                 if (req->toBeSaved && (CCM_IS_RESULT_SUCCESS(result)))
                 {
-                    if ((old = pMac->ccm.comp[cfgId]) != NULL)
+                    if (cfgId < CFG_PARAM_MAX_NUM)
                     {
-                        freeCfgReq(hHdd, old) ;
+                        if ((old = pMac->ccm.comp[cfgId]) != NULL)
+                        {
+                            freeCfgReq(hHdd, old) ;
+                        }
+                        pMac->ccm.comp[cfgId] = req ;
                     }
-                    pMac->ccm.comp[cfgId] = req ;
                 }
                 else
                 {
@@ -533,11 +553,11 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
             }
             else
             {
-                smsLog( pMac, LOGW, FL("can not match RSP with REQ, rspcfgid=%d result=%d reqcfgid=%d reqstate=%d\n"),
+                smsLog( pMac, LOGW, FL("can not match RSP with REQ, rspcfgid=%d result=%d reqcfgid=%d reqstate=%d"),
                         (int)cfgId, (int)result, req->cfgId, req->state);
 
 #ifdef CCM_DEBUG
-                smsLog(pMac, LOGW, FL("ccmComplete(%p)\n"), req->done);
+                smsLog(pMac, LOGW, FL("ccmComplete(%p)"), req->done);
 #endif
             }
 
@@ -649,9 +669,15 @@ eHalStatus ccmCfgGetInt(tHalHandle hHal, tANI_U32 cfgId, tANI_U32 *pValue)
 eHalStatus ccmCfgGetStr(tHalHandle hHal, tANI_U32 cfgId, tANI_U8 *pBuf, tANI_U32 *pLength)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    tHddHandle hHdd = halHandle2HddHandle(hHal);
+    tHddHandle hHdd;
     eHalStatus status = eHAL_STATUS_SUCCESS ;
-    tCfgReq *req = pMac->ccm.comp[cfgId] ;
+    tCfgReq *req;
+
+    if (!pMac)
+        return eHAL_STATUS_FAILURE;
+
+    hHdd = halHandle2HddHandle(hHal);
+    req = pMac->ccm.comp[cfgId] ;
 
     if (req && req->state == eCCM_REQ_DONE && (tANI_U32)req->length <= *pLength)
     {
@@ -705,7 +731,7 @@ static eHalStatus cfgUpdate(tpAniSirGlobal pMac, tHddHandle hHdd, tCcmCfgSetCall
             msgLen += (tANI_S16)(CFGOBJ_ID_SIZE + CFGOBJ_LEN_SIZE + CFGOBJ_ALIGN(req->length)) ;
             pMac->ccm.replay.nr_param += 1 ;
 #ifdef CCM_DEBUG
-            smsLog(pMac, LOGW, FL("cfgId=%d\n"), req->cfgId);
+            smsLog(pMac, LOGW, FL("cfgId=%d"), req->cfgId);
 #endif
         }
     }
@@ -750,7 +776,7 @@ static eHalStatus cfgUpdate(tpAniSirGlobal pMac, tHddHandle hHdd, tCcmCfgSetCall
     status = palSendMBMessage(hHdd, msg) ;
     if (status != eHAL_STATUS_SUCCESS)
     {
-        smsLog(pMac, LOGW, FL("palSendMBMessage() failed. status=%d\n"), status);
+        smsLog(pMac, LOGW, FL("palSendMBMessage() failed. status=%d"), status);
         pMac->ccm.replay.started = 0 ;
         //No need to free msg. palSendMBMessage frees it.
         goto end ;
@@ -784,7 +810,7 @@ eHalStatus ccmCfgUpdate(tHalHandle hHal, tCcmCfgSetCallback callback)
             status = palMutexAllocLocked( hHdd, &sem ) ;
             if (status != eHAL_STATUS_SUCCESS)
             {
-                smsLog(pMac, LOGE, FL("mutex alloc failed\n"));
+                smsLog(pMac, LOGE, FL("mutex alloc failed"));
                 pMac->ccm.replay.started = 0 ;
             }
             else
@@ -800,12 +826,12 @@ eHalStatus ccmCfgUpdate(tHalHandle hHal, tCcmCfgSetCallback callback)
     if (status == eHAL_STATUS_SUCCESS && pMac->ccm.replay.done)
     {
 #ifdef CCM_DEBUG
-        smsLog(pMac, LOGW, FL("ccmWaitForCompletion(%p)\n"), pMac->ccm.replay.done);
+        smsLog(pMac, LOGW, FL("ccmWaitForCompletion(%p)"), pMac->ccm.replay.done);
 #endif
         ccmWaitForCompletion(hHdd, pMac->ccm.replay.done);
 
 #ifdef CCM_DEBUG
-        smsLog(pMac, LOGW, FL("free(%p)\n"), pMac->ccm.replay.done);
+        smsLog(pMac, LOGW, FL("free(%p)"), pMac->ccm.replay.done);
 #endif
         palSemaphoreFree( hHdd, pMac->ccm.replay.done) ;
     }
@@ -813,312 +839,3 @@ eHalStatus ccmCfgUpdate(tHalHandle hHal, tCcmCfgSetCallback callback)
     return status ;
 }
 
-#if 0
-///////////////////////////////////////////////////////////////////
-#include <linux/netdevice.h>
-#include <linux/delay.h>
-extern struct net_device * hdd_dev[];
-
-typedef struct pal_netdev_priv_s
-{
-    // pointer to the PCI device structure for this device
-    struct pci_dev  *pci_dev;
-
-    // TAURUS has three BAR registers
-
-    // BAR0 is a fixed window for the PIF registers
-    volatile void *win0_addr;
-    tANI_U32 win0_size;
-
-    // BAR1 is a movable window for all other registers
-    volatile void *win1_addr;
-    tANI_U32 win1_size;
-    tANI_U32 win1_current;
-
-    // BAR2 is a movable window for all other memory
-    volatile void *win2_addr;
-    tANI_U32 win2_size;
-    tANI_U32 win2_current;
-
-
-} pal_netdev_priv_t;
-
-typedef struct hdd_stats_s {
-    /* Stats on the MAC SW messages sent to applications */
-    ulong stats_mac_rx_mbx_tot_cnt;
-    ulong stats_mac_rx_mbx_success_cnt;
-    ulong stats_mac_rx_mbx_drop_cnt;
-
-    /* Stats on messages sent to the MAC SW messages from applications */
-    ulong stats_mac_tx_mbx_tot_cnt;
-    ulong stats_mac_tx_mbx_success_cnt;
-    ulong stats_mac_tx_mbx_drop_cnt;
-} hdd_stats_t;
-
-/* HDD Driver Private Data structure */
-typedef struct hdd_netdev_priv_s
-{
-    tANI_U32 magic_head;
-
-    // chipset-specific private data
-    pal_netdev_priv_t ANI_CHIPSET;
-
-    tHalHandle halHandle;
-
-#ifdef ANI_BUS_TYPE_PCI
-    struct pci_dev  *pci_dev;
-    struct pci_device_id * pPciDevId;
-#endif // ANI_BUS_TYPE_PCI
-
-    // Queued EAPOL frame destination.
-    tANI_U32 eapol_pid;
-
-    unsigned int num_xmit;
-
-    /*
-     * Various frequently used variables that pertain to this
-     * instance of the driver
-     */
-    tANI_U32 rx_buf_sz;           /* Based on MTU+extra headroom needed.*/
-    tANI_U32 td_enqueue_nested;
-
-    /*
-     * Flag set by MAC SW to indicate a TD ring is desired
-     */
-    int td_flush;
-
-    int selectiveFlush;
-
-    spinlock_t lock;
-
-    /* Stats */
-    struct net_device_stats stats;
-    int curr_acc_cat;
-#ifdef LX5280
-    unsigned short rtl_pvid; //VLAN id this Interface belongs to
-    int rtl_extPortNum; //ext port used in RTL865x driver
-    int rtl_linkId[16];//link ID of each interface for RTL865x driver
-    int rtl_wdsActive;
-#endif
-    tANI_U16 lport; /* switch logical port */
-
-    /* management and control */
-    tANI_U32 status;
-    tANI_U32 msg_enable;
-    tANI_U32 radio_id;                  /* Unit # of this device */
-
-    int ap_flag;                        /* 
-                                         * indicates if the Radio is in AP
-                                         *  or BP mode.
-                                         */
-
-    /* NAPI Polling suport */
-    struct timer_list oom_timer;    /* Out of memory timer.    */
-
-    struct timer_list reset_req_timer;/* 
-                                       * Timer started when a Reset
-                                       * request is sent to WSM. Cleared
-                                       * when a subsequent Radio Disable
-                                       * Request is received.
-                                       */
-
-    struct tasklet_struct *rx_tasklet;
-    struct tasklet_struct *tx_tasklet;
-       
-    tANI_U32 learn_mode_frame_cnt;      /*
-                                         * Data Frames forwarded to MAC SW
-                                         * when Polaris is in learn mode 
-                                         */
-
-    tANI_U32 mgmt_ctl_frames;           /* MGMT/CTL Frames forwarded to MAC SW */
-
-    tANI_U32 nir;                       /* total number of times the ISR has
-                                         * been invoked.*/
-    tANI_U32 stats_dummy_pkt_requeue_cnt;
-    tANI_U32 stats_rx_td_dummy_pkt_cnt;/* TD Dummy pkts that were after HIF loopback */
-    tANI_U32 stats_rx_tm_dummy_pkt_cnt;/* TM Dummy pkts that were after HIF loopback */
-    tANI_U32 stats_td_dummy_pkt_cnt;    /* Dummy pkts that were succesfully
-                                         * put on the TD ring and that
-                                         * were picked up by the HIF
-                                         */
-
-    tANI_U32 stats_mac_dummy_pkt_drop_cnt;/* Number of dummy pkts dropped by the HDD
-                                           * due to any reason
-                                           */
-    tANI_U32 stats_wns_l2update_cnt; 
-    tANI_U32 stats_app_hif_wr_pkt_cnt;
-    hdd_stats_t hdd_stats;
-
-    tANI_U32 stats_reset_req_timer_cnt; /*
-                                         * Number of times the 
-                                         * Reset Req Timer expired
-                                         */
-
-#ifdef TCP_PROFILE
-    unsigned int pv_current_ip_proto;
-    unsigned int pv_current_ip_byte;
-    unsigned int pv_current_ack_seq;
-    unsigned int pv_current_seq;
-    unsigned int pv_rtt;
-    unsigned int pv_sent_seq;
-    unsigned int pv_p_ts;
-    unsigned int pv_tfpl_ts;
-#endif
-    tANI_U32 stats_mac_reset_cnt;         /* MAC SW Reset Requests */
-    tANI_U32 stats_mac_reset_eof_sof;
-    tANI_U32 stats_mac_reset_bmu;
-    tANI_U32 stats_mac_reset_pdu_low;
-    tANI_U32 stats_mac_reset_user;
-    tANI_U32 stats_mac_reset_wd_timeout;
-    tANI_U32 stats_mac_reset_unspecified;
-
-    tANI_U32 stats_wd_timeout_cnt;
-    tANI_U32 stats_radio_enable_cnt;
-    tANI_U32 stats_radio_disable_cnt;
-
-#ifdef PLM_EXTRA_STATS
-    tANI_U32 stats_tx_xmit_refilled;         /* Pkts xmit-filled */
-    tANI_U32 stats_tx_queue_stop;
-    tANI_U32 stats_tx_queue_start;
-
-    tANI_U32 stats_alloc_fail;
-    tANI_U32 stats_poll_starts;
-    tANI_U32 stats_poll_pkts;
-    tANI_U32 stats_poll_exit_done;
-    tANI_U32 stats_poll_exit_not_done;
-    tANI_U32 stats_poll_exit_oom;
-    tANI_U32 stats_poll_exit_done_rx_pending;
-    tANI_U32 stats_poll_zero_rx;
-
-#ifdef CONFIG_PROC_FS
-#ifdef ANI_USE_TASKLET
-    struct proc_dir_entry *proc_driver_dir; // for /proc/net/drivers
-#endif
-    struct proc_dir_entry *proc_ent_dir;    // for the directory itself
-
-    struct proc_dir_entry *proc_ent_stats;
-    struct proc_dir_entry *proc_ent_np_dump;
-    struct proc_dir_entry *proc_ent_ring;
-    char proc_fname_stats[32];
-    char proc_fname_np_dump[32];
-    char proc_fname_ring[32];
-
-    /* Setting Debug levels */
-    struct proc_dir_entry * proc_ent_dbg;
-    char proc_fname_dbg[32];
-
-    /* For bypass flags */
-    struct proc_dir_entry * proc_ent_bypass;
-    char proc_fname_bypass[32];
-
-    int sir_dump_cmd;   // Dump SIR command
-    int sir_dump_arg1;  // Dump SIR argument 1
-    int sir_dump_arg2;  // Dump SIR argument 2
-    int sir_dump_arg3;  // Dump SIR argument 3
-    int sir_dump_arg4;  // Dump SIR argument 4
-    struct proc_dir_entry * proc_ent_sir_dump;
-    char proc_fname_sir_dump[32];
-
-    eHalStatus status ;
-    struct proc_dir_entry * proc_ent_eeprom_info;
-    char proc_fname_eeprom_info[32];
-
-#endif  /* ifdef CONFIG_PROC_FS */
-
-    tANI_U32 rx_small_skb_failure;
-
-    unsigned long open_time; /* jiffies for last open */
-#endif /* PLM_EXTRA_STATS */
-
-    int mac_down;
-    tANI_U32 rx_mac_msg_cnt;
-    tANI_U32 tx_mac_msg_cnt;
-
-    int mbx_sent;
-
-    tANI_U32 bypass;                    // Used to various types of bypasses
-                                        // in the driver
-
-    /* 
-     * this table is initialized once for all by poldrv and so is not in 
-     * mac_param struct 
-     */
-    t_mac_block_table * mac_block_table;
-    struct sk_buff_head mac_list;
-#if  defined(ASICDXE_PROFILE) && defined(LX5280)
-    tANI_U32 num_of_reg_switches;
-#endif
-    tANI_U32 magic_tail;
-} hdd_netdev_priv_t;
-
-static void ccm_callback(tHalHandle hHal, tANI_S32 cfgId)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    smsLog(pMac, LOGW, FL("cfgId = %d\n"), cfgId);
-}
-
-static void ccm_callback2(tHalHandle hHal, tANI_S32 result)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    smsLog(pMac, LOGW, FL("result = %d\n"), result);
-}
-
-void ccm_test(void)
-{
-    tHalHandle hHal ;
-    tpAniSirGlobal pMac;
-    eHalStatus status ;
-    struct net_device *dev;
-    hdd_netdev_priv_t *np;
-    char str[80] = {1} ;
-
-    dev  = hdd_dev[0];
-    np = (hdd_netdev_priv_t *)dev->priv;
-    hHal = np->halHandle ;
-    pMac = PMAC_STRUCT( hHal );
-
-    smsLog(pMac, LOGW, "ccmStart()\n");
-    ccmStart(hHal) ;
-
-    status = ccmCfgUpdate(hHal, ccm_callback2) ;
-    smsLog(pMac, LOGW, "ccmCfgUpdate(): status=%d\n", status);
-
-    status = ccmCfgSetInt(hHal, WNI_CFG_FRAGMENTATION_THRESHOLD, 100, ccm_callback, 1) ;
-    smsLog(pMac, LOGW, "ccmCfgSetInt(WNI_CFG_FRAGMENTATION_THRESHOLD = %d): status=%d\n",
-           WNI_CFG_FRAGMENTATION_THRESHOLD, status);
-
-    status = ccmCfgSetInt(hHal, WNI_CFG_RTS_THRESHOLD, 100, ccm_callback, 1) ;
-    smsLog(pMac, LOGW, "ccmCfgSetInt(WNI_CFG_RTS_THRESHOLD = %d): status=%d\n",
-           WNI_CFG_RTS_THRESHOLD, status);
-
-    /* this cfgid causes reload */
-    status = ccmCfgSetInt(hHal, WNI_CFG_MIMO_ENABLED, 1, ccm_callback, 1) ;
-    smsLog(pMac, LOGW, "ccmCfgSetInt(WNI_CFG_MIMO_ENABLED = %d): status=%d\n",
-           WNI_CFG_MIMO_ENABLED, status);
-
-    status = ccmCfgSetInt(hHal, WNI_CFG_SHORT_RETRY_LIMIT, 100, ccm_callback, 1) ;
-    smsLog(pMac, LOGW, "ccmCfgSetInt(WNI_CFG_SHORT_RETRY_LIMIT = %d): status=%d\n",
-           WNI_CFG_SHORT_RETRY_LIMIT, status);
-
-    status = ccmCfgSetInt(hHal, WNI_CFG_LONG_RETRY_LIMIT, 100, ccm_callback, 1) ;
-    smsLog(pMac, LOGW, "ccmCfgSetInt(WNI_CFG_LONG_RETRY_LIMIT = %d): status=%d\n",
-           WNI_CFG_LONG_RETRY_LIMIT, status);
-
-    /* this cfgid causes restart */
-    status = ccmCfgSetStr(hHal, WNI_CFG_EDCA_WME_ACVI, str, sizeof(str), ccm_callback, 1) ;
-    smsLog(pMac, LOGW, "ccmCfgSetStr(WNI_CFG_EDCA_WME_ACVI = %d): status=%d\n",
-           WNI_CFG_EDCA_WME_ACVI, status);
-
-    mdelay(100);
-
-    smsLog(pMac, LOGW, "ccmStop()\n");
-    ccmStop(hHal);
-    status = ccmCfgUpdate(hHal, ccm_callback2) ;
-    smsLog(pMac, LOGW, "ccmCfgUpdate(): status=%d\n", status);
-
-    smsLog(pMac, LOGW, "ccmStart()\n");
-    ccmStart(hHal) ;
-    status = ccmCfgUpdate(hHal, ccm_callback2) ;
-    smsLog(pMac, LOGW, "ccmCfgUpdate(): status=%d\n", status);
-}
-#endif

@@ -34,7 +34,6 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/timer.h>
-#include <linux/android_alarm.h>
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #undef CONFIG_HAS_EARLYSUSPEND
@@ -84,22 +83,6 @@
 #define DEFAULT_RETRIES		3
 
 extern int poweroff_charging;
-
-enum {
-	SGH_I337,
-	SPH_L720,
-	SGH_M919,
-	SCH_R970,
-	SCH_I545,
-	GT_I9505,
-	GT_I9295,
-	SHV_E300,
-	SGH_N045,
-	XXX_XXXX,
-};
-
-extern int samsung_hardware;
-
 /* SSP Binary Type */
 enum {
 	KERNEL_BINARY = 0,
@@ -111,7 +94,7 @@ enum {
 enum {
 	SENSOR_NS_DELAY_FASTEST = 10000000,	/* 10msec */
 	SENSOR_NS_DELAY_GAME = 20000000,	/* 20msec */
-	SENSOR_NS_DELAY_UI = 66667000,		/* 66.667msec */
+	SENSOR_NS_DELAY_UI = 66700000,		/* 66.7msec */
 	SENSOR_NS_DELAY_NORMAL = 200000000,	/* 200msec */
 };
 
@@ -229,12 +212,6 @@ enum {
 
 #define MAX_GYRO	32767
 #define MIN_GYRO	-32768
-
-/* report timestamp from kernel (for Android L) */
-#define TIME_LO_MASK 0x00000000FFFFFFFF
-#define TIME_HI_MASK 0xFFFFFFFF00000000
-#define TIME_HI_SHIFT 32
-
 /* SSP_INSTRUCTION_CMD */
 enum {
 	REMOVE_SENSOR = 0,
@@ -284,8 +261,6 @@ enum {
 	SENSOR_FACTORY_MAX,
 };
 
-#define META_DATA_FLUSH_COMPLETE 1
-
 struct sensor_value {
 	union {
 		struct {
@@ -306,7 +281,6 @@ struct sensor_value {
 		u8 step_det;
 		u32 step_diff;
 	};
-	u64 timestamp;
 };
 
 extern struct class *sensors_event_class;
@@ -323,11 +297,6 @@ struct hw_offset_data {
 	char z;
 };
 
-struct ssp_time_diff {
-	u64 time_diff;
-	u64 irq_diff;
-};
-
 struct ssp_data {
 	struct input_dev *acc_input_dev;
 	struct input_dev *gyro_input_dev;
@@ -340,7 +309,6 @@ struct ssp_data {
 	struct input_dev *sig_motion_input_dev;
 	struct input_dev *step_det_input_dev;
 	struct input_dev *step_cnt_input_dev;
-	struct input_dev *meta_input_dev;
 	struct i2c_client *client;
 	struct wake_lock ssp_wake_lock;
 	struct miscdevice akmd_device;
@@ -404,8 +372,6 @@ struct ssp_data {
 	u64 step_count_total;
 	atomic_t aSensorEnable;
 	int64_t adDelayBuf[SENSOR_MAX];
-	u64 lastTimestamp[SENSOR_MAX];
-	u64 timestamp;
 
 	int (*wakeup_mcu)(void);
 	int (*check_mcu_ready)(void);

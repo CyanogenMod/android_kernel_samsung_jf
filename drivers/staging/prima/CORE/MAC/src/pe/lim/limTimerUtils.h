@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -47,11 +67,8 @@ enum
     eLIM_ASSOC_FAIL_TIMER,
     eLIM_REASSOC_FAIL_TIMER,
     eLIM_PRE_AUTH_CLEANUP_TIMER,
-    eLIM_HEART_BEAT_TIMER,    
+    eLIM_HEART_BEAT_TIMER,
     eLIM_BACKGROUND_SCAN_TIMER,
-#ifdef ANI_PRODUCT_TYPE_AP
-    eLIM_LEARN_INTERVAL_TIMER,
-#endif
     eLIM_KEEPALIVE_TIMER,
     eLIM_CNF_WAIT_TIMER,
     eLIM_AUTH_RSP_TIMER,
@@ -62,23 +79,33 @@ enum
     eLIM_LEARN_DURATION_TIMER,
     eLIM_QUIET_TIMER,
     eLIM_QUIET_BSS_TIMER,
-#ifdef WLAN_SOFTAP_FEATURE
-    eLIM_WPS_OVERLAP_TIMER, 
-#endif
+    eLIM_WPS_OVERLAP_TIMER,
 #ifdef WLAN_FEATURE_VOWIFI_11R
     eLIM_FT_PREAUTH_RSP_TIMER,
 #endif
-#ifdef WLAN_FEATURE_P2P
     eLIM_REMAIN_CHN_TIMER,
-#endif
     eLIM_PERIODIC_PROBE_REQ_TIMER,
 #ifdef FEATURE_WLAN_CCX
     eLIM_TSM_TIMER,
 #endif
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+    eLIM_TDLS_DISCOVERY_RSP_WAIT,
+    eLIM_TDLS_LINK_SETUP_RSP_TIMEOUT,
+    eLIM_TDLS_LINK_SETUP_CNF_TIMEOUT,
+#endif
+    eLIM_DISASSOC_ACK_TIMER,
+    eLIM_DEAUTH_ACK_TIMER,
+    eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER,
+    eLIM_INSERT_SINGLESHOT_NOA_TIMER,
+    eLIM_CONVERT_ACTIVE_CHANNEL_TO_PASSIVE
 };
 
+#define LIM_DISASSOC_DEAUTH_ACK_TIMEOUT         500
+#define LIM_INSERT_SINGLESHOTNOA_TIMEOUT_VALUE  500
+
+
 // Timer Handler functions
-void limCreateTimers(tpAniSirGlobal);
+v_UINT_t limCreateTimers(tpAniSirGlobal);
 void limTimerHandler(void *, tANI_U32);
 void limAuthResponseTimerHandler(void *, tANI_U32);
 void limAssocFailureTimerHandler(void *, tANI_U32);
@@ -94,9 +121,7 @@ void limKeepaliveTmerHandler(void *, tANI_U32);
 void limDeactivateAndChangePerStaIdTimer(tpAniSirGlobal, tANI_U32, tANI_U16);
 void limActivateCnfTimer(tpAniSirGlobal, tANI_U16, tpPESession);
 void limActivateAuthRspTimer(tpAniSirGlobal, tLimPreAuthNode *);
-#ifdef WLAN_SOFTAP_FEATURE
 void limUpdateOlbcCacheTimerHandler(void *, tANI_U32);
-#endif
 void limAddtsResponseTimerHandler(void *, tANI_U32);
 void limChannelSwitchTimerHandler(void *, tANI_U32);
 void limQuietTimerHandler(void *, tANI_U32);
@@ -123,9 +148,10 @@ void limCBScanDurationTimerHandler(void *, tANI_U32);
  */
 v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac);
 
-#ifdef WLAN_SOFTAP_FEATURE
 #if 0
 void limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param);
 #endif
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+void limMissedBeaconInActiveMode(void *pMacGlobal, tpPESession psessionEntry);
 #endif
 #endif /* __LIM_TIMER_UTILS_H */

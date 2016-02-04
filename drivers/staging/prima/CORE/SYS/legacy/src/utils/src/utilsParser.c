@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -20,7 +40,6 @@
  */
 
 /*
- *
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file utilsParser.cc contains the code for parsing
  * 802.11 messages.
@@ -146,7 +165,6 @@ tSirRetStatus ConvertWscOpaque( tpAniSirGlobal      pMac,
     return eSIR_SUCCESS;
 }
 
-#ifdef WLAN_FEATURE_P2P
 tSirRetStatus ConvertP2POpaque( tpAniSirGlobal      pMac,
                                 tSirAddie           *pOld,
                                 tDot11fIEP2PIEOpaque *pNew )
@@ -166,7 +184,6 @@ tSirRetStatus ConvertP2POpaque( tpAniSirGlobal      pMac,
 
     return eSIR_SUCCESS;
 }
-#endif
 
 #ifdef WLAN_FEATURE_WFD
 tSirRetStatus ConvertWFDOpaque( tpAniSirGlobal      pMac,
@@ -403,7 +420,7 @@ tSirRetStatus ConvertTCLAS(tpAniSirGlobal  pMac,
                                  tSirTclasInfo  *pOld,
                                  tDot11fIETCLAS *pNew)
 {
-    tANI_U32 length;
+    tANI_U32 length = 0;
 
     if ( DOT11F_FAILED( dot11fGetPackedIETCLAS( pMac, pNew, &length ) ) )
     {
@@ -472,7 +489,7 @@ void ConvertWMMTSPEC(tpAniSirGlobal     pMac,
     pOld->tsinfo.traffic.psb          = (tANI_U16)pNew->psb;
     pOld->tsinfo.traffic.userPrio     = (tANI_U16)pNew->user_priority;
     pOld->tsinfo.traffic.ackPolicy    = (tANI_U16)pNew->tsinfo_ack_pol;
-    pOld->nomMsduSz                   = pNew->size;
+    pOld->nomMsduSz                   = (pNew->fixed << 15) | pNew->size;
     pOld->maxMsduSz                   = pNew->max_msdu_size;
     pOld->minSvcInterval              = pNew->min_service_int;
     pOld->maxSvcInterval              = pNew->max_service_int;
@@ -493,7 +510,7 @@ tSirRetStatus ConvertWMMTCLAS(tpAniSirGlobal    pMac,
                                     tSirTclasInfo     *pOld,
                                     tDot11fIEWMMTCLAS *pNew)
 {
-    tANI_U32 length;
+    tANI_U32 length = 0;
 
     if ( DOT11F_FAILED( dot11fGetPackedIEWMMTCLAS( pMac, pNew, &length ) ) )
     {

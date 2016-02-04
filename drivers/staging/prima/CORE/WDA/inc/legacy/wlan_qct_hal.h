@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -19,12 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Qualcomm, Inc proprietary. All rights reserved.
- *
- * Date            Modified by    Modification Information
- * --------------------------------------------------------------------
- */
 #ifndef WLAN_QCT_HAL_H
 #define WLAN_QCT_HAL_H
 #include "vos_status.h"
@@ -52,9 +66,6 @@
 
 #define eHalStatus    VOS_STATUS
 
-#endif
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halBdDefs.h"
 #endif
 #define QWLAN_HAL_DXE0_MASTERID  5
 
@@ -119,7 +130,6 @@ typedef struct sHalPdu {
 //} __ani_attr_packed __ani_attr_aligned_4 tHalPdu, *tpHalPdu;
 } tHalPdu, *tpHalPdu;
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 /* UAPSD parameters passed per AC to HAL from TL */
 typedef struct sUapsdInfo {
     tANI_U8  staidx;        // STA index
@@ -129,7 +139,6 @@ typedef struct sUapsdInfo {
     tANI_U32 susInterval;   // Suspend Interval
     tANI_U32 delayInterval; // Delay Interval
 } tUapsdInfo, tpUapsdInfo;
-#endif
 
 #define HAL_TXBD_BDRATE_DEFAULT 0
 #define HAL_TXBD_BDRATE_FIRST   1
@@ -160,14 +169,9 @@ typedef struct sUapsdInfo {
     
 #define WLANHAL_RX_BD_ADDR3_SELF_IDX      0
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 // Should not use tHalTxBd nor tHalRxBd. UMAC doesn't know these HAL structure.
 #define WLANHAL_TX_BD_HEADER_SIZE 40
 #define WLANHAL_RX_BD_HEADER_SIZE 76
-#else
-#define WLANHAL_TX_BD_HEADER_SIZE        sizeof(tHalTxBd)
-#define WLANHAL_RX_BD_HEADER_SIZE        sizeof(tHalRxBd)
-#endif
 
 
 #define WLANHAL_RX_BD_HEADER_OFFSET       0
@@ -203,8 +207,7 @@ typedef struct sUapsdInfo {
 
 #define WLANHAL_RX_BD_GET_DPU_SIG( _pvBDHeader )   (((tpHalRxBd)_pvBDHeader)->dpuSignature)
 
-#ifdef WLAN_SOFTAP_FEATURE
-#define WLANHAL_FC_RX_BD_REPORT_CONTENT_SIZE        2*HAL_NUM_STA*sizeof(tANI_U8)   // size of fcSTATxQLen[HAL_NUM_STA]+fcSTACurTxRate[HAL_NUM_STA]
+#define WLANHAL_FC_RX_BD_REPORT_CONTENT_SIZE        (2 * HAL_NUM_STA * sizeof(tANI_U8))   // size of fcSTATxQLen[HAL_NUM_STA]+fcSTACurTxRate[HAL_NUM_STA]
 #define WLANHAL_FC_TX_BD_HEADER_SIZE                sizeof(tHalFcTxBd)
 #define WLANHAL_RX_BD_GET_FC( _pvBDHeader )                      (((tpHalFcRxBd)_pvBDHeader)->fc)
 #define WLANHAL_RX_BD_GET_RX_TIME_STAMP( _pvBDHeader )           (((tpHalFcRxBd)_pvBDHeader)->mclkRxTimestamp)
@@ -235,7 +238,6 @@ typedef struct sUapsdInfo {
 #define tHalFcRxParams   tFcRxParams_type               
 #define tpHalFcTxParams  pFcTxParams_type               
 #define tpHalFcRxParams  pFcRxParams_type             
-#endif
 
 /*------------ RSSI and SNR Information extraction -------------*/
 #define WLANHAL_RX_BD_GET_RSSI0( _pvBDHeader )  \
@@ -284,12 +286,6 @@ typedef struct sUapsdInfo {
 #define WLANHAL_RX_BD_GET_TYPE_SUBTYPE(_pvBDHeader)            (((tpHalRxBd)_pvBDHeader)->frameTypeSubtype)
 #define WLANHAL_RX_BD_SET_TYPE_SUBTYPE( _bd, _typeSubtype )        (((tpHalRxBd)_bd)->frameTypeSubtype = _typeSubtype)
 
-#ifdef  WLAN_HAL_VOLANS 
-/*Macros to extract 48-bit replay counter when replay check is done at host in volans*/
-#define WLANHAL_RX_BD_GET_PMICMD_20TO23(_pvBDHeader)      ((((tpHalRxBd)_pvBDHeader)->pmiCmd4to23[4])) 
-#define WLANHAL_RX_BD_GET_UC_BC( _pvBDHeader )            (((tpHalRxBd)_pvBDHeader)->ub)
-#define WLANHAL_RX_BD_GET_PMICMD_24TO25(_pvBDHeader)      ((((tpHalRxBd)_pvBDHeader)->pmiCmd24to25))
-#endif
 
 #define WLANHAL_RX_BD_ASF_SET                1 /*The value of the field when set and pkt is AMSDU*/
 
@@ -304,23 +300,11 @@ typedef struct sUapsdInfo {
 
 #define WLANHAL_RX_BD_FT_DONE                  1 /* The value of the field when frame xtl was done*/
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC 
-//Check whether a RX frame is unprotected over the air
-#if defined(LIBRA_WAPI_SUPPORT)
-#define WLANHAL_RX_IS_UNPROTECTED_WPI_FRAME(_pvBDHeader)  \
-        (((tpHalRxBd)_pvBDHeader)->uef)
-
-#else
-#define WLANHAL_RX_IS_UNPROTECTED_WPI_FRAME(_pvBDHeader)  \
-        (DPU_FEEDBACK_WPI_UNPROTECTED == ((tpHalRxBd)_pvBDHeader)->dpuFeedback)
-#endif
-#else
 /*DPU_FEEDBACK_WPI_UNPROTECTED macro defined in volansdefs.h which is not available
   for UMAC in prima so declared it here */
 #define DPU_FEEDBACK_WPI_UNPROTECTED 0x20   
 #define WLANHAL_RX_IS_UNPROTECTED_WPI_FRAME(_pvBDHeader)  \
         (DPU_FEEDBACK_WPI_UNPROTECTED == ((WDI_RxBdType *)_pvBDHeader)->dpuFeedback)
-#endif
 
 /*==========================================================================
 
@@ -356,13 +340,15 @@ tANI_U8 WLANHAL_RxBD_GetFrameTypeSubType(v_PVOID_t _pvBDHeader, tANI_U16 usFrmCt
 #define HAL_WAPI_STA_MASK            0x8  //bit 3. If set, this frame is for WAPI station
 #endif
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 #define HAL_TRIGGER_ENABLED_AC_MASK         0x10 //bit 4 for data frames belonging to trigger enabled AC
-#endif
 #define HAL_USE_NO_ACK_REQUESTED_MASK       0x20
 
 #define HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME 0x40 // Bit 6 will be used to control BD rate for Management frames
+#define HAL_USE_PEER_STA_REQUESTED_MASK   0x80 //bit 7 will be used to control frames for p2p interface
 
+#ifdef FEATURE_WLAN_TDLS
+#define HAL_TDLS_PEER_STA_MASK              0x80 //bit 7 set for TDLS peer station 
+#endif
 /*==========================================================================
 
   FUNCTION    WLANHAL_FillTxBd
@@ -404,14 +390,12 @@ tANI_U8 WLANHAL_RxBD_GetFrameTypeSubType(v_PVOID_t _pvBDHeader, tANI_U16 usFrmCt
   SIDE EFFECTS 
   
 ============================================================================*/
-VOS_STATUS WLANHAL_FillTxBd(void *pAdaptor, tANI_U8 typeSubtype, void *pDestMacAddr, void *pAddr2,
+VOS_STATUS WLANHAL_FillTxBd(void *pAdapter, tANI_U8 typeSubtype, void *pDestMacAddr, void *pAddr2,
         tANI_U8* ptid, tANI_U8 disableFrmXtl, void *pTxBd, tANI_U8 txFlag, tANI_U32 timeStamp);
 
-#ifdef WLAN_SOFTAP_FEATURE
 VOS_STATUS WLANHAL_FillFcTxBd(void *pVosGCtx, void *pFcParams, void *pFcTxBd);
 /** To swap the report part of FC RxBD */
 void WLANHAL_SwapFcRxBd(tANI_U8 *pBd);
-#endif
 
 /* To swap the data */
 void WLANHAL_Swap32Bytes(tANI_U8* pData, tANI_U32 size);
@@ -421,13 +405,11 @@ void WLANHAL_SwapRxBd(tANI_U8 *pBd);
 void WLANHAL_RxAmsduBdFix(void *pVosGCtx,v_PVOID_t _pvBDHeader);
 
 #ifdef WLAN_PERF
-tANI_U32 WLANHAL_TxBdFastFwd(void *pAdaptor, tANI_U8 *pDestMac, tANI_U8 tid, tANI_U8 unicastDst,  void *pTxBd, tANI_U16);
+tANI_U32 WLANHAL_TxBdFastFwd(void *pAdapter, tANI_U8 *pDestMac, tANI_U8 tid, tANI_U8 unicastDst,  void *pTxBd, tANI_U16);
 #endif
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 VOS_STATUS WLANHAL_EnableUapsdAcParams(void* pVosGCtx, tANI_U8 staIdx, tUapsdInfo *pUapsdInfo);
 VOS_STATUS WLANHAL_DisableUapsdAcParams(void* pVosGCtx, tANI_U8 staIdx, tANI_U8 ac);
-#endif
 
 VOS_STATUS WLANHAL_EnableIdleBdPduInterrupt(void* pVosGCtx, tANI_U8 idleBdPduThreshold);
 

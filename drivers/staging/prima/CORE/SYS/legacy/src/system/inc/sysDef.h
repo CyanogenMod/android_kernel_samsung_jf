@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -34,34 +54,18 @@
 #ifndef __SYSDEF_H
 #define __SYSDEF_H
 
-/// Sirius system level defitions
+/// Sirius system level definitions
 // NOTE: Do not program system timer tick duration to less than 1msec
 
 /// System timer tick duration in nanoseconds
-#if defined ANI_OS_TYPE_LINUX
-#ifdef ANI_AP_SDK
 #define SYS_TICK_DUR_NS     10000000    // 10ms
 #define SYS_TICK_TO_MICRO_SECOND   10000
-#else
-#define SYS_TICK_DUR_NS     1000000    // 1ms
-#define SYS_TICK_TO_MICRO_SECOND   1000
-#endif
-#elif defined ANI_OS_TYPE_OSX
-#define SYS_TICK_DUR_NS     10000000    // 10ms
-#define SYS_TICK_TO_MICRO_SECOND   10000
-#elif defined ANI_OS_TYPE_WINDOWS
-#define SYS_TICK_DUR_NS     20000000    // 20ms
-#define SYS_TICK_TO_MICRO_SECOND   20000
-#else
-#define SYS_TICK_DUR_NS     10000000    // 10ms
-#define SYS_TICK_TO_MICRO_SECOND   10000
-#endif
 
-/// System timer tick duration in miliseconds
+/// System timer tick duration in milliseconds
 #define SYS_TICK_DUR_MS     (SYS_TICK_DUR_NS/1000000)
 
-/// Clocks in a milisecond
-#define SYS_CLOCKS_PER_MS   120000 // 120 MHz 
+/// Clocks in a millisecond
+#define SYS_CLOCKS_PER_MS   120000 // 120 MHz
 
 // In Milliseconds
 #define SYS_ADD_BA_RSP_DUR   1000
@@ -85,7 +89,7 @@
 #define SYS_MNT_INTERVAL     60
 
 /// MS to Time Units
-#define SYS_MS_TO_TU(x)      (x * 1000) >> 10;
+#define SYS_MS_TO_TU(x)      ((x * 1000) >> 10)
 
 /// TU to MS
 #define SYS_TU_TO_MS(x)      ((x << 10) / 1000)

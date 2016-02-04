@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -32,19 +52,14 @@
  *
  */
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "cfgApi.h"
 #include "limTypes.h"
 #include "limTimerUtils.h"
+#include "limTrace.h"
 
 
 
-
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA) || defined(ANI_AP_CLIENT_SDK)
 /** ----------------------------------------------------------------------
 \fn      limSelectsBackgroundScanMode() 
 \brief   This function is called by limIsBackgroundScanAllowed(). 
@@ -64,7 +79,7 @@ tSirBackgroundScanMode limSelectsBackgroundScanMode(tpAniSirGlobal pMac)
 
     if (wlan_cfgGetInt(pMac, WNI_CFG_MAX_CONSECUTIVE_BACKGROUND_SCAN_FAILURE, &cfgVal) != eSIR_SUCCESS)
     {
-        limLog(pMac, LOGP, FL("Fail to get WNI_CFG_MAX_CONSECUTIVE_BACKGROUND_SCAN_FAILURE value\n"));
+        limLog(pMac, LOGP, FL("Fail to get WNI_CFG_MAX_CONSECUTIVE_BACKGROUND_SCAN_FAILURE value"));
         return eSIR_NORMAL_BACKGROUND_SCAN;
     }
   
@@ -79,7 +94,7 @@ tSirBackgroundScanMode limSelectsBackgroundScanMode(tpAniSirGlobal pMac)
     {
         pMac->lim.gLimNumOfForcedBkgndScan += 1;
         limLog(pMac, LOGE,
-               FL("Had %d consec scan fail(when expect < %d). Trigger AGGRESSIVE bkgnd scan.\n"),
+               FL("Had %d consec scan fail(when expect < %d). Trigger AGGRESSIVE bkgnd scan."),
                pMac->lim.gLimNumOfConsecutiveBkgndScanFailure, cfgVal);
         return eSIR_AGGRESSIVE_BACKGROUND_SCAN;
     }
@@ -152,12 +167,12 @@ void limTriggerBackgroundScan(tpAniSirGlobal pMac)
     tSirMacAddr      bcAddr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     tSirBackgroundScanMode   backgroundScan;
 
-    PELOG1(limLog(pMac, LOG1, FL("Background Scan: %d success, %d consec fail \n"),
+    PELOG1(limLog(pMac, LOG1, FL("Background Scan: %d success, %d consec fail "),
         pMac->lim.gLimNumOfBackgroundScanSuccess,  pMac->lim.gLimNumOfConsecutiveBkgndScanFailure);)
 
     if (! limIsBackgroundScanAllowed(pMac))
     {
-        PELOG1(limLog(pMac, LOG1, FL("Skipping Background Scan \n"));)
+        PELOG1(limLog(pMac, LOG1, FL("Skipping Background Scan "));)
         return;
     }
 
@@ -170,7 +185,7 @@ void limTriggerBackgroundScan(tpAniSirGlobal pMac)
          * Could not get Valid channel list from CFG.
          * Log error.
          */
-        PELOGE(limLog(pMac, LOGE, FL("could not retrieve valid channel list\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("could not retrieve valid channel list"));)
 
         return;
     }
@@ -188,7 +203,7 @@ void limTriggerBackgroundScan(tpAniSirGlobal pMac)
                     (tANI_U32 *) &ssidLen) != eSIR_SUCCESS)
     {
         /// Could not get SSID from CFG. Log error.
-        limLog(pMac, LOGP, FL("could not retrieve SSID\n"));
+        limLog(pMac, LOGP, FL("could not retrieve SSID"));
     }
     smeScanReq.ssId[0].length = (tANI_U8) ssidLen;
     smeScanReq.numSsid = 1;
@@ -200,7 +215,7 @@ void limTriggerBackgroundScan(tpAniSirGlobal pMac)
                   &smeScanReq.minChannelTime) != eSIR_SUCCESS)
     {
         /// Could not get minChlTime value from CFG. Log error.
-        PELOGE(limLog(pMac, LOGE, FL("could not retrieve minChlTime value\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("could not retrieve minChlTime value"));)
 
         return;
     }
@@ -209,7 +224,7 @@ void limTriggerBackgroundScan(tpAniSirGlobal pMac)
                   &smeScanReq.maxChannelTime) != eSIR_SUCCESS)
     {
         /// Could not get maxChlTime value from CFG. Log error.
-        PELOGE(limLog(pMac, LOGE, FL("could not retrieve maxChlTime value\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("could not retrieve maxChlTime value"));)
 
         return;
     }
@@ -233,27 +248,28 @@ void limTriggerBackgroundScan(tpAniSirGlobal pMac)
     {
         pMac->lim.gLimBackgroundScanChannelId = 0;
 
-        PELOGE(limLog(pMac, LOGE, FL("Skipping Background Scan since the channel list is exhausted.\n"));)
-        PELOGE(limLog(pMac, LOGE, FL("SME should send WNI_CFG_BACKGROUND_SCAN_PERIOD indication to start the background scan again.\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("Skipping Background Scan since the channel list is exhausted."));)
+        PELOGE(limLog(pMac, LOGE, FL("SME should send WNI_CFG_BACKGROUND_SCAN_PERIOD indication to start the background scan again."));)
 
         /* Stop the BG scan timer here. SME should send WNI_CFG_BACKGROUND_SCAN_PERIOD 
          * indication to start the background scan again.
          */
         if (TX_TIMER_VALID(pMac->lim.limTimers.gLimBackgroundScanTimer))
         {
+            MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, NO_SESSION, eLIM_BACKGROUND_SCAN_TIMER));
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimBackgroundScanTimer)
                             != TX_SUCCESS)
             {
                 // Could not deactivate BackgroundScanTimer timer.
                 // Log error
                 limLog(pMac, LOGP,
-                   FL("unable to deactivate BackgroundScanTimer timer\n"));
+                   FL("unable to deactivate BackgroundScanTimer timer"));
             }
         }
 
         pMac->lim.gLimBackgroundScanTerminate = TRUE;
 
-        PELOGE(limLog(pMac, LOGE, FL("Send dummy scan with returnFreshResults as 0 to report BG scan results to SME.\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("Send dummy scan with returnFreshResults as 0 to report BG scan results to SME."));)
         return;
     }
     smeScanReq.channelList.channelNumber[0] =
@@ -263,7 +279,7 @@ void limTriggerBackgroundScan(tpAniSirGlobal pMac)
     smeScanReq.uIEFieldOffset = sizeof(tSirSmeScanReq);
     
     backgroundScan = limSelectsBackgroundScanMode(pMac);
-    PELOG1(limLog(pMac, LOG1, FL("Performing (mode %d) Background Scan \n"), backgroundScan);)
+    PELOG1(limLog(pMac, LOG1, FL("Performing (mode %d) Background Scan "), backgroundScan);)
     smeScanReq.backgroundScanMode = backgroundScan;
     
     //determine whether to send the results or not, If so, notify the BG scan results to SME
@@ -291,7 +307,7 @@ void limAbortBackgroundScan(tpAniSirGlobal pMac)
 
     if(pMac->lim.gLimBackgroundScanTerminate == FALSE) 
     {
-        limLog(pMac, LOGE, FL("Abort Background Scan \n"));
+        limLog(pMac, LOGE, FL("Abort Background Scan "));
         if (TX_TIMER_VALID(pMac->lim.limTimers.gLimBackgroundScanTimer))
         {
             limDeactivateAndChangeTimer(pMac, eLIM_BACKGROUND_SCAN_TIMER); 
@@ -316,4 +332,3 @@ void limAbortBackgroundScan(tpAniSirGlobal pMac)
     return;
 }
 
-#endif

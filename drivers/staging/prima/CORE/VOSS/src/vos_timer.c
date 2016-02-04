@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -20,17 +40,25 @@
  */
 
 /**=========================================================================
-  
+
   \file  vos_timer.c
-  
+
   \brief virtual Operating System Servies (vOS)
-               
+
    Definitions for vOSS Timer services
+<<<<<<< HEAD:CORE/VOSS/src/vos_timer.c
   
    Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
    
    Qualcomm Confidential and Proprietary.
   
+=======
+
+   Copyright 2008 (c) Qualcomm Technologies, Inc.  All Rights Reserved.
+
+   Qualcomm Technologies Confidential and Proprietary.
+
+>>>>>>> f7413b6... wlan: voss: remove obsolete "INTEGRATED_SOC" featurization:prima/CORE/VOSS/src/vos_timer.c
   ========================================================================*/
 
 /* $Header$ */
@@ -59,7 +87,7 @@
 /*----------------------------------------------------------------------------
  * Static Variable Definitions
  * -------------------------------------------------------------------------*/
-static unsigned int        persistentTimerCount = 0;
+static unsigned int        persistentTimerCount;
 static vos_lock_t          persistentTimerCountLock;
 // static sleep_okts_handle   sleepClientHandle;
 
@@ -127,7 +155,7 @@ static void vos_linux_timer_callback ( v_U32_t data )
 
    if (timer == NULL)
    {
-     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s Null pointer passed in!",__FUNCTION__);
+     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s Null pointer passed in!",__func__);
      return;
    }
 
@@ -179,7 +207,14 @@ static void vos_linux_timer_callback ( v_U32_t data )
 
    tryAllowingSleep( type );
 
-   VOS_ASSERT( callback ); 
+   if (callback == NULL)
+   {
+       VOS_ASSERT(0);
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "%s: No TIMER callback, Could not enqueue timer to any queue",
+                 __func__);
+       return;
+   }
 
    // If timer has expired then call vos_client specific callback 
    if ( vos_sched_is_tx_thread( threadId ) )
@@ -195,7 +230,6 @@ static void vos_linux_timer_callback ( v_U32_t data )
       if(vos_tx_mq_serialize( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
          return;
    }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    else if ( vos_sched_is_rx_thread( threadId ) )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, 
@@ -209,7 +243,6 @@ static void vos_linux_timer_callback ( v_U32_t data )
       if(vos_rx_mq_serialize( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
          return;
    }
-#endif
    else 
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
@@ -308,7 +341,7 @@ static void vos_timer_clean()
        timer_node_t *ptimerNode;
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                  "%s: List is not Empty. listSize %d ",
-                 __FUNCTION__, (int)listSize);
+                 __func__, (int)listSize);
 
        do
        {
@@ -404,7 +437,7 @@ VOS_STATUS vos_timer_init_debug( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
    if ((timer == NULL) || (callback == NULL)) 
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Null params being passed",__FUNCTION__);
+                "%s: Null params being passed",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -414,7 +447,7 @@ VOS_STATUS vos_timer_init_debug( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
    if(timer->ptimerNode == NULL)
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Not able to allocate memory for timeNode",__FUNCTION__);
+                "%s: Not able to allocate memory for timeNode",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -431,7 +464,7 @@ VOS_STATUS vos_timer_init_debug( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
     if(VOS_STATUS_SUCCESS != vosStatus)
     {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-             "%s: Unable to insert node into List vosStatus %d\n", __FUNCTION__, vosStatus);
+             "%s: Unable to insert node into List vosStatus %d\n", __func__, vosStatus);
     }
    
    // set the various members of the timer structure 
@@ -457,7 +490,7 @@ VOS_STATUS vos_timer_init( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
    if ((timer == NULL) || (callback == NULL)) 
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Null params being passed",__FUNCTION__);
+                "%s: Null params being passed",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -522,7 +555,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    if ( NULL == timer )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Null timer pointer being passed",__FUNCTION__);
+                "%s: Null timer pointer being passed",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -531,7 +564,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    if ( LINUX_TIMER_COOKIE != timer->platformInfo.cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Cannot destroy uninitialized timer",__FUNCTION__);
+                "%s: Cannot destroy uninitialized timer",__func__);
       return VOS_STATUS_E_INVAL;
    }
    
@@ -597,7 +630,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    if ( NULL == timer )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Null timer pointer being passed",__FUNCTION__);
+                "%s: Null timer pointer being passed",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -606,7 +639,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    if ( LINUX_TIMER_COOKIE != timer->platformInfo.cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Cannot destroy uninitialized timer",__FUNCTION__);
+                "%s: Cannot destroy uninitialized timer",__func__);
       return VOS_STATUS_E_INVAL;
    }
    spin_lock_irqsave( &timer->platformInfo.spinlock,flags );
@@ -697,9 +730,12 @@ VOS_STATUS vos_timer_start( vos_timer_t *timer, v_U32_t expirationTime )
    // Check if timer refers to an uninitialized object
    if ( LINUX_TIMER_COOKIE != timer->platformInfo.cookie )
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Cannot start uninitialized timer",__FUNCTION__);
-      VOS_ASSERT(0);
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+          "%s: Cannot start uninitialized timer",__func__);
+      if ( LINUX_INVALID_TIMER_COOKIE != timer->platformInfo.cookie )
+      {
+         VOS_ASSERT(0);
+      }
       return VOS_STATUS_E_INVAL;
    }
 
@@ -794,8 +830,11 @@ VOS_STATUS vos_timer_stop ( vos_timer_t *timer )
    if ( LINUX_TIMER_COOKIE != timer->platformInfo.cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Cannot stop uninitialized timer",__FUNCTION__);
-      VOS_ASSERT(0);
+          "%s: Cannot stop uninitialized timer",__func__);
+      if ( LINUX_INVALID_TIMER_COOKIE != timer->platformInfo.cookie )
+      {
+         VOS_ASSERT(0);
+      }
       return VOS_STATUS_E_INVAL;
    }
       

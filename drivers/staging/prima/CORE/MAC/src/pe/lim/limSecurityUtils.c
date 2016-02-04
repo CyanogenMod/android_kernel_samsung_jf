@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -34,17 +54,9 @@
 #include "wniApi.h"
 
 #include "sirCommon.h"
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "cfgApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#include "halCommonApi.h"
-#endif
 
 #include "utilsApi.h"
 #include "limUtils.h"
@@ -78,20 +90,14 @@
  *
  * @return true if passed authType is enabled else false
  */
-#ifdef WLAN_SOFTAP_FEATURE
 tANI_U8
 limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType, tpPESession psessionEntry)
-#else
-tANI_U8
-limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
-#endif
 {
     tANI_U32 algoEnable, privacyOptImp;
 
     if (authType == eSIR_OPEN_SYSTEM)
     {
 
-#ifdef WLAN_SOFTAP_FEATURE
         if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
         {
            if((psessionEntry->authType == eSIR_OPEN_SYSTEM) || (psessionEntry->authType == eSIR_AUTO_SWITCH))
@@ -99,7 +105,6 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
            else
               return false; 
         }
-#endif
 
         if (wlan_cfgGetInt(pMac, WNI_CFG_OPEN_SYSTEM_AUTH_ENABLE,
                       &algoEnable) != eSIR_SUCCESS)
@@ -109,7 +114,7 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
              * from CFG. Log error.
                */
             limLog(pMac, LOGE,
-                   FL("could not retrieve AuthAlgo1 Enable value\n"));
+                   FL("could not retrieve AuthAlgo1 Enable value"));
 
             return false;
         }
@@ -119,7 +124,6 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
     else
     {
 
-#ifdef WLAN_SOFTAP_FEATURE
         if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
         {
             if((psessionEntry->authType == eSIR_SHARED_KEY) || (psessionEntry->authType == eSIR_AUTO_SWITCH))
@@ -129,7 +133,6 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
             
         }
         else
-#endif
 
         if (wlan_cfgGetInt(pMac, WNI_CFG_SHARED_KEY_AUTH_ENABLE,
                       &algoEnable) != eSIR_SUCCESS)
@@ -139,18 +142,16 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
              * from CFG. Log error.
              */
             limLog(pMac, LOGE,
-                   FL("could not retrieve AuthAlgo2 Enable value\n"));
+                   FL("could not retrieve AuthAlgo2 Enable value"));
 
             return false;
         }
 
-#ifdef WLAN_SOFTAP_FEATURE
         if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
         {
             privacyOptImp = psessionEntry->privacy;
         }
         else
-#endif
 
         if (wlan_cfgGetInt(pMac, WNI_CFG_PRIVACY_ENABLED,
                       &privacyOptImp) != eSIR_SUCCESS)
@@ -160,7 +161,7 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
              * from CFG. Log error.
              */
             limLog(pMac, LOGE,
-               FL("could not retrieve PrivacyOptImplemented value\n"));
+               FL("could not retrieve PrivacyOptImplemented value"));
 
             return false;
         }
@@ -194,50 +195,6 @@ limInitPreAuthList(tpAniSirGlobal pMac)
 {
     pMac->lim.pLimPreAuthList = NULL;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE )
-    {
-        tANI_U32 authClnupTimeout;
-        //tANI_U32 cfgValue;
-
-        if (wlan_cfgGetInt(pMac, WNI_CFG_PREAUTH_CLNUP_TIMEOUT,
-                      &authClnupTimeout) != eSIR_SUCCESS)
-        {
-            /**
-             * Could not get PreAuthClnupTimeout value
-             * from CFG. Log error.
-             */
-            limLog(pMac, LOGE,
-               FL("could not retrieve PreAuthClnupTimeout value\n"));
-
-            return;
-        }
-        authClnupTimeout = SYS_MS_TO_TICKS(authClnupTimeout);
-
-        /// Create and start periodic pre-auth context cleanup timeout
-        if (tx_timer_create(&pMac->lim.limTimers.gLimPreAuthClnupTimer,
-                            "preAuthCleanup",
-                            limTimerHandler,
-                            SIR_LIM_PREAUTH_CLNUP_TIMEOUT,
-                            authClnupTimeout, authClnupTimeout,
-                            TX_AUTO_ACTIVATE) != TX_SUCCESS)
-        {
-            /// Could not create PreAuthCleanup timer.
-            // Log error
-            limLog(pMac, LOGP, FL("could not create PreAuthCleanup timer\n"));
-
-            return;
-        }
-
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-        tx_timer_set_expiry_list(&pMac->lim.limTimers.gLimPreAuthClnupTimer,
-                                 LIM_TIMER_EXPIRY_LIST);
-#endif
-        PELOG1(limLog(pMac, LOG1,
-               FL("Created pre-auth cleanup timer\n"));)
-
-    }
-#endif
 } /*** end limInitPreAuthList() ***/
 
 
@@ -269,7 +226,7 @@ limDeletePreAuthList(tpAniSirGlobal pMac)
     {
         pTempNode = pCurrNode->next;
 
-        PELOG1(limLog(pMac, LOG1, FL("=====> limDeletePreAuthList \n"));)
+        PELOG1(limLog(pMac, LOG1, FL("=====> limDeletePreAuthList "));)
         limReleasePreAuthNode(pMac, pCurrNode);
 
         pCurrNode = pTempNode;
@@ -422,17 +379,9 @@ limDeletePreAuthNode(tpAniSirGlobal pMac, tSirMacAddr macAddr)
 
         pMac->lim.pLimPreAuthList = pTempNode->next;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-        // Delete the auth response timer if running
-        if (pTempNode->fTimerStarted)
-            limDeactivateAndChangePerStaIdTimer(pMac,
-                                                eLIM_AUTH_RSP_TIMER,
-                                                pTempNode->authNodeIdx);
 
-#endif
-
-        PELOG1(limLog(pMac, LOG1, FL("=====> limDeletePreAuthNode : first node to delete\n"));)
-        PELOG1(limLog(pMac, LOG1, FL("Release data entry: %x id %d peer \n"),
+        PELOG1(limLog(pMac, LOG1, FL("=====> limDeletePreAuthNode : first node to delete"));)
+        PELOG1(limLog(pMac, LOG1, FL("Release data entry: %x id %d peer "),
                         pTempNode, pTempNode->authNodeIdx);
         limPrintMacAddr(pMac, macAddr, LOG1);)
         limReleasePreAuthNode(pMac, pTempNode);
@@ -452,15 +401,8 @@ limDeletePreAuthNode(tpAniSirGlobal pMac, tSirMacAddr macAddr)
 
             pPrevNode->next = pTempNode->next;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-            // Delete the auth response timer if running
-            if (pTempNode->fTimerStarted)
-                limDeactivateAndChangePerStaIdTimer(pMac,
-                                                    eLIM_AUTH_RSP_TIMER,
-                                                    pTempNode->authNodeIdx);
-#endif
-            PELOG1(limLog(pMac, LOG1, FL("=====> limDeletePreAuthNode : subsequent node to delete\n"));
-            limLog(pMac, LOG1, FL("Release data entry: %x id %d peer \n"),
+            PELOG1(limLog(pMac, LOG1, FL("=====> limDeletePreAuthNode : subsequent node to delete"));
+            limLog(pMac, LOG1, FL("Release data entry: %x id %d peer "),
                          pTempNode, pTempNode->authNodeIdx);
             limPrintMacAddr(pMac, macAddr, LOG1);)
             limReleasePreAuthNode(pMac, pTempNode);
@@ -480,119 +422,6 @@ limDeletePreAuthNode(tpAniSirGlobal pMac, tSirMacAddr macAddr)
 } /*** end limDeletePreAuthNode() ***/
 
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-/**
- * limPreAuthClnupHandler
- *
- *FUNCTION:
- * This function is called on AP upon peridic Pre-authentication
- * context cleanup.
- *
- *LOGIC:
- * A Pre-auth node is marked as seen first time it comes across
- * the list traversal. It'll be deleted if already 'seen' (during
- * next Pre-auth cleanup).
- *
- *ASSUMPTIONS:
- *
- *NOTE:
- *
- * @param  pMac - Pointer to Global MAC structure
- * @return None
- */
-
-void
-limPreAuthClnupHandler(tpAniSirGlobal pMac)
-{
-    tANI_U16              aid;
-    tANI_U8             firstNode=false;
-    tpDphHashNode    pStaDs;
-    struct tLimPreAuthNode  *pPrevNode, *pCurrNode;
-
-#ifdef GEN6_TODO
-    //fetch the sessionEntry based on the sessionId
-    //priority - MEDIUM
-    tpPESession sessionEntry;
-
-    if((sessionEntry = peFindSessionBySessionId(pMac, pMac->lim.limTimers.gLimPreAuthClnupTimer.sessionId))== NULL) 
-    {
-        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID\n"));
-        return;
-    }
-#endif
-
-    pCurrNode = pPrevNode = pMac->lim.pLimPreAuthList;
-
-    while (pCurrNode != NULL)
-    {
-        if (pCurrNode->fSeen)
-        {
-            // Found node to be deleted
-
-            if (pCurrNode == pMac->lim.pLimPreAuthList)
-            {
-                // First node being deleted
-                pMac->lim.pLimPreAuthList = pPrevNode = pCurrNode->next;
-                firstNode = true;
-            }
-            else
-            {
-                pPrevNode->next = pCurrNode->next;
-            }
-
-            // Delete the auth response timer if running
-            if (pCurrNode->fTimerStarted)
-                limDeactivateAndChangePerStaIdTimer(pMac,
-                                                    eLIM_AUTH_RSP_TIMER,
-                                                    pCurrNode->authNodeIdx);
-
-            pStaDs = dphLookupHashEntry(pMac,
-                                        pCurrNode->peerMacAddr,
-                                        &aid);
-
-            if (!pStaDs)
-            {
-                /**
-                 * STA does not have associated context.
-                 * Send advisory Deauthentication frame
-                 * to STA being deleted
-                 */
-                limSendDeauthMgmtFrame(
-                               pMac,
-                               eSIR_MAC_PREV_AUTH_NOT_VALID_REASON, //=2
-                               pCurrNode->peerMacAddr,sessionEntry);
-            }
-
-            limLog(pMac,
-                   LOG3,
-                   FL("Release preAuth node during periodic cleanup\n"));
-            limReleasePreAuthNode(pMac, pCurrNode);
-
-            if (firstNode)
-            {
-                // First node was deleted
-                if (pMac->lim.pLimPreAuthList == NULL)
-                    break;
-
-                pCurrNode = pMac->lim.pLimPreAuthList;
-                firstNode = false;
-            }
-            else
-            {
-                pCurrNode = pPrevNode->next;
-            }
-        }
-        else
-        {
-            // Mark this node as 'seen'. To be deleted next time.
-            pCurrNode->fSeen = 1;
-
-            pPrevNode = pCurrNode;
-            pCurrNode = pCurrNode->next;
-        }
-    }
-} /*** end limPreAuthClnupHandler() ***/
-#endif
 
 
 
@@ -652,7 +481,7 @@ limRestoreFromAuthState(tpAniSirGlobal pMac, tSirResultCodes resultCode, tANI_U1
     if (wlan_cfgGetStr(pMac, WNI_CFG_BSSID, currentBssId, &cfg) != eSIR_SUCCESS)
     {
         /// Could not get BSSID from CFG. Log error.
-        limLog(pMac, LOGP, FL("could not retrieve BSSID\n"));
+        limLog(pMac, LOGP, FL("could not retrieve BSSID"));
     }
     #endif //TO SUPPORT BT-AMP
     sirCopyMacAddr(currentBssId,sessionEntry->bssId);
@@ -853,8 +682,8 @@ limRC4(tANI_U8 *pDest, tANI_U8 *pSrc, tANI_U8 *seed, tANI_U32 keyLength, tANI_U1
         for (i=0; i<256; i++)
         {
             tANI_U8 temp;
-
-            j = (tANI_U8)(j + ctx.sbox[i] + seed[k]);
+            if ( k < LIM_SEED_LENGTH )
+                j = (tANI_U8)(j + ctx.sbox[i] + seed[k]);
             temp = ctx.sbox[i];
             ctx.sbox[i] = ctx.sbox[j];
             ctx.sbox[j] = temp;
@@ -943,7 +772,7 @@ limDecryptAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pKey, tANI_U8 *pEncrBody,
            keyLength,
            frameLen);
 
-    PELOG4(limLog(pMac, LOG4, FL("plainbody is \n"));
+    PELOG4(limLog(pMac, LOG4, FL("plainbody is "));
     sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG4, pPlainBody, frameLen);)
 
     // Compute CRC-32 and place them in last 4 bytes of encrypted body
@@ -954,7 +783,7 @@ limDecryptAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pKey, tANI_U8 *pEncrBody,
     // Compare RX_ICV with computed ICV
     for (i = 0; i < SIR_MAC_WEP_ICV_LENGTH; i++)
     {
-       PELOG4(limLog(pMac, LOG4, FL(" computed ICV%d[%x], rxed ICV%d[%x]\n"),
+       PELOG4(limLog(pMac, LOG4, FL(" computed ICV%d[%x], rxed ICV%d[%x]"),
                i, icv[i], i, pPlainBody[frameLen - SIR_MAC_WEP_ICV_LENGTH + i]);)
         if (icv[i] != pPlainBody[frameLen - SIR_MAC_WEP_ICV_LENGTH + i])
             return LIM_DECRYPT_ICV_FAIL;
@@ -981,9 +810,6 @@ void limPostSmeSetKeysCnf( tpAniSirGlobal pMac,
                 (tANI_U8 *) pMlmSetKeysReq->peerMacAddr,
                 sizeof(tSirMacAddr));
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-  mlmSetKeysCnf->aid = pMlmSetKeysReq->aid;
-#endif
 
   /// Free up buffer allocated for mlmSetKeysReq
   palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmSetKeysReq );
@@ -1054,7 +880,7 @@ tANI_U32 val = 0;
   if(pMlmSetKeysReq->numKeys > SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS)
   {
       limLog( pMac, LOG1,
-          FL( "numKeys = %d is more than SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS\n" ), pMlmSetKeysReq->numKeys);
+          FL( "numKeys = %d is more than SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS" ), pMlmSetKeysReq->numKeys);
       
       // Respond to SME with error code
       mlmSetKeysCnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
@@ -1068,7 +894,7 @@ tANI_U32 val = 0;
          sizeof( tSetBssKeyParams )))     
   {
     limLog( pMac, LOGE,
-        FL( "Unable to PAL allocate memory during SET_BSSKEY\n" ));
+        FL( "Unable to PAL allocate memory during SET_BSSKEY" ));
 
     // Respond to SME with error code
     mlmSetKeysCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
@@ -1086,7 +912,7 @@ tANI_U32 val = 0;
 
   if(eSIR_SUCCESS != wlan_cfgGetInt(pMac, WNI_CFG_SINGLE_TID_RC, &val))
   {
-     limLog( pMac, LOGP, FL( "Unable to read WNI_CFG_SINGLE_TID_RC\n" ));
+     limLog( pMac, LOGP, FL( "Unable to read WNI_CFG_SINGLE_TID_RC" ));
   }
 
   pSetBssKeyParams->singleTidRc = (tANI_U8)val;
@@ -1128,12 +954,12 @@ tANI_U32 val = 0;
   msgQ.bodyval = 0;
 
   limLog( pMac, LOGW,
-      FL( "Sending WDA_SET_BSSKEY_REQ...\n" ));
+      FL( "Sending WDA_SET_BSSKEY_REQ..." ));
   MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
   if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
   {
     limLog( pMac, LOGE,
-        FL("Posting SET_BSSKEY to HAL failed, reason=%X\n"),
+        FL("Posting SET_BSSKEY to HAL failed, reason=%X"),
         retCode );
 
     // Respond to SME with LIM_MLM_SETKEYS_CNF
@@ -1185,7 +1011,7 @@ tANI_U32 val = 0;
   // Package WDA_SET_STAKEY_REQ message parameters
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **) &pSetStaKeyParams,
                                                                                                  sizeof( tSetStaKeyParams ))) {
-        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during SET_BSSKEY\n" ));
+        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during SET_BSSKEY" ));
         return;
     }else
         palZeroMemory( pMac->hHdd, (void *) pSetStaKeyParams, sizeof( tSetStaKeyParams ));
@@ -1197,7 +1023,7 @@ tANI_U32 val = 0;
   
   if(eSIR_SUCCESS != wlan_cfgGetInt(pMac, WNI_CFG_SINGLE_TID_RC, &val))
   {
-     limLog( pMac, LOGP, FL( "Unable to read WNI_CFG_SINGLE_TID_RC\n" ));
+     limLog( pMac, LOGP, FL( "Unable to read WNI_CFG_SINGLE_TID_RC" ));
   }
 
   pSetStaKeyParams->singleTidRc = (tANI_U8)val;
@@ -1238,7 +1064,6 @@ tANI_U32 val = 0;
   case eSIR_ED_WEP104:
       // FIXME! Is this OK?
       if( 0 == pMlmSetKeysReq->numKeys ) {
-#ifdef WLAN_SOFTAP_FEATURE
           tANI_U32 i;
 
           for(i=0; i < SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS ;i++)
@@ -1247,7 +1072,6 @@ tANI_U32 val = 0;
                              (tANI_U8 *) &pSetStaKeyParams->key[i],
                              (tANI_U8 *) &pMlmSetKeysReq->key[i], sizeof( tSirKeys ));
           }
-#endif
           pSetStaKeyParams->wepType = eSIR_WEP_STATIC;
           sessionEntry->limMlmState = eLIM_MLM_WT_SET_STA_KEY_STATE;
           MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, sessionEntry->peSessionId, sessionEntry->limMlmState));
@@ -1284,10 +1108,10 @@ tANI_U32 val = 0;
   msgQ.bodyptr = pSetStaKeyParams;
   msgQ.bodyval = 0;
 
-  limLog( pMac, LOG1, FL( "Sending WDA_SET_STAKEY_REQ...\n" ));
+  limLog( pMac, LOG1, FL( "Sending WDA_SET_STAKEY_REQ..." ));
   MTRACE(macTraceMsgTx(pMac, sessionEntry->peSessionId, msgQ.type));
   if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ ))) {
-      limLog( pMac, LOGE, FL("Posting SET_STAKEY to HAL failed, reason=%X\n"), retCode );
+      limLog( pMac, LOGE, FL("Posting SET_STAKEY to HAL failed, reason=%X"), retCode );
       // Respond to SME with LIM_MLM_SETKEYS_CNF
       mlmSetKeysCnf.resultCode = eSIR_SME_HAL_SEND_MESSAGE_FAIL;
   }else
@@ -1332,7 +1156,7 @@ tSirRetStatus      retCode;
          sizeof( tRemoveBssKeyParams )))     
   {
     limLog( pMac, LOGE,
-        FL( "Unable to PAL allocate memory during REMOVE_BSSKEY\n" ));
+        FL( "Unable to PAL allocate memory during REMOVE_BSSKEY" ));
 
     // Respond to SME with error code
     mlmRemoveKeysCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
@@ -1364,13 +1188,13 @@ tSirRetStatus      retCode;
   msgQ.bodyval = 0;
 
   limLog( pMac, LOGW,
-      FL( "Sending WDA_REMOVE_BSSKEY_REQ...\n" ));
+      FL( "Sending WDA_REMOVE_BSSKEY_REQ..." ));
   MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
 
   if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
   {
     limLog( pMac, LOGE,
-        FL("Posting REMOVE_BSSKEY to HAL failed, reason=%X\n"),
+        FL("Posting REMOVE_BSSKEY to HAL failed, reason=%X"),
         retCode );
 
     // Respond to SME with LIM_MLM_REMOVEKEYS_CNF
@@ -1425,7 +1249,7 @@ tSirRetStatus      retCode;
           sizeof( tRemoveStaKeyParams )))
   {
     limLog( pMac, LOGE,
-        FL( "Unable to PAL allocate memory during REMOVE_STAKEY\n" ));
+        FL( "Unable to PAL allocate memory during REMOVE_STAKEY" ));
 
     // Respond to SME with error code
     mlmRemoveKeyCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
@@ -1439,11 +1263,11 @@ tSirRetStatus      retCode;
   if( (pMlmRemoveKeyReq->edType == eSIR_ED_WEP104 || pMlmRemoveKeyReq->edType == eSIR_ED_WEP40) &&
         pMlmRemoveKeyReq->wepType == eSIR_WEP_STATIC )
   {
-        PELOGE(limLog(pMac, LOGE, FL("Request to remove static WEP keys through station interface\n Should use BSS interface\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("Request to remove static WEP keys through station interface\n Should use BSS interface"));)
         mlmRemoveKeyCnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
         goto end;
   }
- 
+
   // Update the WDA_REMOVEKEY_REQ parameters
   pRemoveStaKeyParams->staIdx = staIdx;
   pRemoveStaKeyParams->encType = pMlmRemoveKeyReq->edType;
@@ -1454,7 +1278,7 @@ tSirRetStatus      retCode;
   pRemoveStaKeyParams->sessionId = psessionEntry->peSessionId;
 
   SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
-  
+
   msgQ.type = WDA_REMOVE_STAKEY_REQ;
   //
   // FIXME_GEN4
@@ -1466,21 +1290,28 @@ tSirRetStatus      retCode;
   msgQ.bodyval = 0;
 
   limLog( pMac, LOGW,
-      FL( "Sending WDA_REMOVE_STAKEY_REQ...\n" ));
+      FL( "Sending WDA_REMOVE_STAKEY_REQ..." ));
   MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
-  if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
+  retCode = wdaPostCtrlMsg( pMac, &msgQ );
+  if (eSIR_SUCCESS != retCode)
   {
     limLog( pMac, LOGE,
-        FL("Posting REMOVE_STAKEY to HAL failed, reason=%X\n"),
+        FL("Posting REMOVE_STAKEY to HAL failed, reason=%X"),
         retCode );
+    palFreeMemory(pMac->hHdd, pRemoveStaKeyParams);
+    pRemoveStaKeyParams = NULL;
 
     // Respond to SME with LIM_MLM_REMOVEKEY_CNF
     mlmRemoveKeyCnf.resultCode = eSIR_SME_HAL_SEND_MESSAGE_FAIL;
   }
   else
-    return; 
+    return;
 
 end:
+  if (pRemoveStaKeyParams)
+  {
+    palFreeMemory(pMac->hHdd, pRemoveStaKeyParams);
+  }
   limPostSmeRemoveKeyCnf( pMac,
       psessionEntry,
       pMlmRemoveKeyReq,

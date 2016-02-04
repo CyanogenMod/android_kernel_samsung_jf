@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -87,9 +107,9 @@ ADD_VNV_ITEM( VNV_MAXIMUM_TX_POWER, 1, 1, NV_WLAN_MAX_TX_POWER_I ) \
 ADD_VNV_ITEM( VNV_RX_SENSITIVITY, 1, MAC_RATE_COUNT, NV_WLAN_RX_SENSITIVITY_I)\
 ADD_VNV_ITEM( VNV_NETWORK_TYPE, 1, 1, NV_WLAN_NETWORK_TYPE_I ) \
 ADD_VNV_ITEM( VNV_CAL_MEMORY, 1, 3460, NV_WLAN_CAL_MEMORY_I ) \
-ADD_VNV_ITEM( VNV_CAL_STATUS, 1, 32, NV_WLAN_CAL_STATUS_I ) \
+ADD_VNV_ITEM( VNV_FW_CONFIG, 1, 32, NV_WLAN_FW_CONFIG_I ) \
 ADD_VNV_ITEM( VNV_RSSI_CHANNEL_OFFSETS, 2, 56, NV_WLAN_RSSI_CHANNEL_OFFSETS_I ) \
-ADD_VNV_ITEM( VNV_RF_CAL_VALUES, 1, 48, NV_WLAN_RF_CAL_VALUES_I ) \
+ADD_VNV_ITEM( VNV_HW_CAL_VALUES, 1, 48, NV_WLAN_HW_CAL_VALUES_I ) \
 ADD_VNV_ITEM( VNV_ANTENNA_PATH_LOSS, 14, 2, NV_WLAN_ANTENNA_PATH_LOSS_I ) \
 ADD_VNV_ITEM( VNV_PACKET_TYPE_POWER_LIMITS, 42, 2, NV_WLAN_PACKET_TYPE_POWER_LIMITS_I ) \
 ADD_VNV_ITEM( VNV_OFDM_CMD_PWR_OFFSET, 1, 2, NV_WLAN_OFDM_CMD_PWR_OFFSET_I ) \
@@ -104,7 +124,7 @@ ADD_VNV_ITEM( VNV_TABLE_VIRTUAL_RATE, 1, 4, VNV_TABLE_VIRTUAL_RATE_I ) \
 #define VOS_NV_FREQUENCY_FOR_1_3V_SUPPLY_1P6MH 1   //1.6 Mhz
 
 
-/*! 
+/*!
  * The path (from the root of the DPP_FOLDER_PATH\QCOM) to the file containing
  * the CLPC provisioning data. This is being temporarily put here. This should go
  * to esp_dpp.h where the WLAN_PROVISION_DATA is present.
@@ -608,27 +628,27 @@ VOS_STATUS vos_nv_open(void);
 VOS_STATUS vos_nv_close(void);
 
 /**------------------------------------------------------------------------
-  \brief vos_nv_getBuffer - 
+  \brief vos_nv_getNVBuffer -
   \param pBuffer  - to return the buffer address
-            pNvBitmap - Nv Bit map
-            pSize     - buffer size.
+         pSize    - buffer size.
   \return status of the NV read operation
   \sa
   -------------------------------------------------------------------------*/
 VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer ,v_SIZE_t *pSize);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /**------------------------------------------------------------------------
-  \brief vos_nv_setRegDomain - 
+  \brief vos_nv_setRegDomain -
   \param clientCtxt  - Client Context, Not used for PRIMA
               regId  - Regulatory Domain ID
+              sendRegHint - send hint to cfg80211
   \return status set REG domain operation
   \sa
   -------------------------------------------------------------------------*/
-VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId);
+VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
+                                                  v_BOOL_t sendRegHint);
 
 /**------------------------------------------------------------------------
-  \brief vos_nv_getChannelEnabledState - 
+  \brief vos_nv_getChannelEnabledState -
   \param rfChannel  - input channel number to know enabled state
   \return eNVChannelEnabledType enabled state for channel
              * enabled
@@ -641,6 +661,5 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
 (
    v_U32_t    rfChannel
 );
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #endif // __VOS_NVITEM_H
