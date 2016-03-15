@@ -40,6 +40,11 @@ config FB_MSM_MDP_HW
 	bool
 	default n
 
+config MDP_DEBUG_FS
+	depends on DEBUG_FS
+	bool "MDP Debug FS"
+	default n
+
 config USE_VFB
 	bool "MSM Virtual Framebuffer support"
 	default n
@@ -1138,10 +1143,10 @@ config FB_MSM_EBI2_PANEL_DETECT
 	---help---
 	  Support for EBI2 panel auto detect
 
-config MIPI_DSI_RESET_LP11	
+config MIPI_DSI_RESET_LP11
 	bool "mipi dsi reset during LP11"
 	default n
-config MDP_SHUTDOWN	
+config MDP_SHUTDOWN
 	bool "use mdp shutdown"
 	default n
 config FB_MDP4_ENHANCE
