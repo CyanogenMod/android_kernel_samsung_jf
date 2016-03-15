@@ -3541,7 +3541,7 @@ static int __init mdp_driver_init(void)
 		return ret;
 	}
 
-#if defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_MDP_DEBUG_FS)
 	mdp_debugfs_init();
 #endif
 
