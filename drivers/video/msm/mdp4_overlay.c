@@ -1009,6 +1009,7 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 	uint32 mask;
 	int pnum, ptype, i;
 	uint32_t block;
+	bool enable_overfetch_fix = FALSE;
 
 	pnum = pipe->pipe_num - OVERLAY_PIPE_VG1; /* start from 0 */
 	vg_base = MDP_BASE + MDP4_VIDEO_BASE;
@@ -1095,12 +1096,20 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 		outpdw(vg_base + 0x0048, frame_size); /* TILE frame size */
 
 	/*
+	 * The original overfetching issue only happens when it's YUV data
+	 * and 270 degree rotation, which is not caused by MDP FIR scalar
+	 * filter, but caused by rotator alignment issue. Should have proper
+	 * fix for rotator output buffer alignment. And the workaround here
+	 * only changes src offset without updating src size, which could
+	 * cause smmu fault.
+	 */
+	/*
 	 * Adjust src X offset to avoid MDP from overfetching pixels
 	 * present before the offset. This is required for video
 	 * frames coming with unused green pixels along the left margin
 	 */
 	/* not RGB use VG pipe, pure VG pipe */
-	if (ptype != OVERLAY_TYPE_RGB) {
+	if (enable_overfetch_fix && ptype != OVERLAY_TYPE_RGB) {
 		mdp4_overlay_vg_get_src_offset(pipe, vg_base, &luma_offset,
 			&chroma_offset);
 	}
