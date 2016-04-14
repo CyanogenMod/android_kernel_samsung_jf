@@ -2083,8 +2083,13 @@ static int msm_fb_pan_display_ex(struct fb_info *info,
 	int ret = 0;
 	if (disp_commit->flags &
 		MDP_DISPLAY_COMMIT_OVERLAY) {
-		if (mdp_fb_is_power_off(mfd)) /* suspended */
+		if (mdp_fb_is_power_off(mfd)) {
+			/* suspended */
+			pr_err("%s,%d fb_%d panel type %d is suspended\n",
+					__func__, __LINE__, mfd->index,
+					mfd->panel.type);
 			return -EPERM;
+		}
 	} else {
 	        /*
                 WFD panel info was not getting updated,
