@@ -5486,7 +5486,6 @@ static void __init apq8064_allocate_memory_regions(void)
 
 static void __init apq8064_gpio_keys_init(void)
 {
-	int ret;
 	struct pm_gpio param = {
 		.direction     = PM_GPIO_DIR_IN,
 		.pull          = PM_GPIO_PULL_UP_31P5,
@@ -5495,6 +5494,8 @@ static void __init apq8064_gpio_keys_init(void)
 		.function      = PM_GPIO_FUNC_NORMAL,
 	};
 #ifdef CONFIG_SENSORS_HALL
+	int ret;
+
 	struct pm_gpio param_hall_ic = {
 		.direction     = PM_GPIO_DIR_IN,
 		.pull          = PM_GPIO_PULL_NO,
