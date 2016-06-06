@@ -864,6 +864,8 @@ static int msm_fb_ext_suspend(struct device *dev)
 		}
 	}
 
+	mdp_footswitch_ctrl(FALSE);
+
 	return ret;
 }
 
@@ -881,6 +883,9 @@ static int msm_fb_ext_resume(struct device *dev)
 
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
+
+	mdp_footswitch_ctrl(TRUE);
+
 	msm_fb_pan_idle(mfd);
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 	if (mfd->panel_info.type == HDMI_PANEL ||

@@ -616,7 +616,6 @@ int mdp4_dtv_on(struct platform_device *pdev)
 	vctrl->dev = mfd->fbi->dev;
 	vctrl->vsync_irq_enabled = 0;
 
-	mdp_footswitch_ctrl(TRUE);
 	/* Mdp clock enable */
 	mdp_clk_ctrl(1);
 
@@ -714,7 +713,6 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	}
 
 	ret = panel_next_off(pdev);
-	mdp_footswitch_ctrl(FALSE);
 
 	/*
 	 * clean up ion freelist

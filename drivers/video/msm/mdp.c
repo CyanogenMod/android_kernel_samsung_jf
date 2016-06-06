@@ -3387,22 +3387,10 @@ static int mdp_probe(struct platform_device *pdev)
 void mdp_footswitch_ctrl(boolean on)
 {
 	mutex_lock(&mdp_suspend_mutex);
-	if (!mdp_suspended || mdp4_extn_disp || !footswitch ||
-		mdp_rev <= MDP_REV_41) {
+	if (!footswitch || mdp_rev <= MDP_REV_41) {
 		mutex_unlock(&mdp_suspend_mutex);
 		return;
 	}
-
-	if (dsi_pll_vddio)
-		regulator_enable(dsi_pll_vddio);
-
-	if (dsi_pll_vdda)
-		regulator_enable(dsi_pll_vdda);
-
-	mipi_dsi_prepare_ahb_clocks();
-	mipi_dsi_ahb_ctrl(1);
-	mipi_dsi_phy_ctrl(1);
-	mipi_dsi_clk_enable();
 
 	if (on && !mdp_footswitch_on) {
 		pr_debug("Enable MDP FS\n");
@@ -3413,18 +3401,6 @@ void mdp_footswitch_ctrl(boolean on)
 		regulator_disable(footswitch);
 		mdp_footswitch_on = 0;
 	}
-
-	mipi_dsi_clk_disable();
-	mipi_dsi_unprepare_clocks();
-	mipi_dsi_phy_ctrl(0);
-	mipi_dsi_ahb_ctrl(0);
-	mipi_dsi_unprepare_ahb_clocks();
-
-	if (dsi_pll_vdda)
-		regulator_disable(dsi_pll_vdda);
-
-	if (dsi_pll_vddio)
-		regulator_disable(dsi_pll_vddio);
 
 	mutex_unlock(&mdp_suspend_mutex);
 }
