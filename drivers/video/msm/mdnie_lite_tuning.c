@@ -92,13 +92,6 @@ struct mdnie_lite_tun_type mdnie_tun_state = {
 	.blind = ACCESSIBILITY_OFF,
 };
 
-const char background_name[MAX_BACKGROUND_MODE][16] = {
-	"STANDARD",
-	"DYNAMIC",
-	"MOVIE",
-	"NATURAL",
-};
-
 const char scenario_name[MAX_mDNIe_MODE][16] = {
 	"UI_MODE",
 	"VIDEO_MODE",
@@ -618,8 +611,7 @@ void is_play_speed_1_5(int enable)
 static ssize_t mode_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, 256, "Current Background Mode : %s\n",
-		background_name[mdnie_tun_state.background]);
+	return snprintf(buf, 256, "%d\n", mdnie_tun_state.background);
 }
 
 static ssize_t mode_store(struct device *dev,
@@ -836,8 +828,7 @@ static ssize_t outdoor_show(struct device *dev,
 					      char *buf)
 {
 	DPRINT("called %s\n", __func__);
-	return snprintf(buf, 256, "Current outdoor Value : %s\n",
-		(mdnie_tun_state.outdoor == 0) ? "Disabled" : "Enabled");
+	return snprintf(buf, 256, "%d\n", mdnie_tun_state.outdoor);
 }
 
 static ssize_t outdoor_store(struct device *dev,
