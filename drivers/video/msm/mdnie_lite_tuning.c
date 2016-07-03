@@ -259,28 +259,34 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 	switch (mode) {
 	case mDNIe_UI_MODE:
 		DPRINT(" = UI MODE =\n");
-		if (mdnie_tun_state.background == STANDARD_MODE) {
-			DPRINT(" = STANDARD MODE =\n");
-			INPUT_PAYLOAD1(STANDARD_UI_1);
-			INPUT_PAYLOAD2(STANDARD_UI_2);
+		if (mdnie_tun_state.outdoor == OUTDOOR_ON_MODE) {
+			DPRINT(" = OUTDOOR ON MODE =\n");
+			INPUT_PAYLOAD1(OUTDOOR_UI_1);
+			INPUT_PAYLOAD2(OUTDOOR_UI_2);
+		} else if (mdnie_tun_state.outdoor == OUTDOOR_OFF_MODE) {
+			if (mdnie_tun_state.background == STANDARD_MODE) {
+				DPRINT(" = STANDARD MODE =\n");
+				INPUT_PAYLOAD1(STANDARD_UI_1);
+				INPUT_PAYLOAD2(STANDARD_UI_2);
 #if !defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
-		} else if (mdnie_tun_state.background == NATURAL_MODE) {
-			DPRINT(" = NATURAL MODE =\n");
-			INPUT_PAYLOAD1(NATURAL_UI_1);
-			INPUT_PAYLOAD2(NATURAL_UI_2);
+			} else if (mdnie_tun_state.background == NATURAL_MODE) {
+				DPRINT(" = NATURAL MODE =\n");
+				INPUT_PAYLOAD1(NATURAL_UI_1);
+				INPUT_PAYLOAD2(NATURAL_UI_2);
 #endif
-		} else if (mdnie_tun_state.background == DYNAMIC_MODE) {
-			DPRINT(" = DYNAMIC MODE =\n");
-			INPUT_PAYLOAD1(DYNAMIC_UI_1);
-			INPUT_PAYLOAD2(DYNAMIC_UI_2);
-		} else if (mdnie_tun_state.background == MOVIE_MODE) {
-			DPRINT(" = MOVIE MODE =\n");
-			INPUT_PAYLOAD1(MOVIE_UI_1);
-			INPUT_PAYLOAD2(MOVIE_UI_2);
-		} else if (mdnie_tun_state.background == AUTO_MODE) {
-			DPRINT(" = AUTO MODE =\n");
-			INPUT_PAYLOAD1(AUTO_UI_1);
-			INPUT_PAYLOAD2(AUTO_UI_2);
+			} else if (mdnie_tun_state.background == DYNAMIC_MODE) {
+				DPRINT(" = DYNAMIC MODE =\n");
+				INPUT_PAYLOAD1(DYNAMIC_UI_1);
+				INPUT_PAYLOAD2(DYNAMIC_UI_2);
+			} else if (mdnie_tun_state.background == MOVIE_MODE) {
+				DPRINT(" = MOVIE MODE =\n");
+				INPUT_PAYLOAD1(MOVIE_UI_1);
+				INPUT_PAYLOAD2(MOVIE_UI_2);
+			} else if (mdnie_tun_state.background == AUTO_MODE) {
+				DPRINT(" = AUTO MODE =\n");
+				INPUT_PAYLOAD1(AUTO_UI_1);
+				INPUT_PAYLOAD2(AUTO_UI_2);
+			}
 		}
 		break;
 
@@ -1203,4 +1209,3 @@ void coordinate_tunning(int x, int y)
 	memcpy(&CAMERA_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 
 }
-
