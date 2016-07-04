@@ -347,13 +347,13 @@ EXPORT_SYMBOL(fscrypt_zeroout_range);
  * potentially caching stale data after a key has been added or
  * removed.
  */
-static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+static int fscrypt_d_revalidate(struct dentry *dentry, struct nameidata *nd)
 {
 	struct dentry *dir;
 	struct fscrypt_info *ci;
 	int dir_has_key, cached_with_key;
 
-	if (flags & LOOKUP_RCU)
+	if (nd && nd->flags & LOOKUP_RCU)
 		return -ECHILD;
 
 	dir = dget_parent(dentry);

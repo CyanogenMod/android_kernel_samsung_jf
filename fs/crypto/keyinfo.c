@@ -10,9 +10,10 @@
 
 #include <keys/encrypted-type.h>
 #include <keys/user-type.h>
+#include <linux/module.h>
 #include <linux/random.h>
 #include <linux/scatterlist.h>
-#include <uapi/linux/keyctl.h>
+#include <linux/keyctl.h>
 #include <crypto/hash.h>
 #include <linux/fscrypto.h>
 
