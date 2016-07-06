@@ -729,6 +729,19 @@ lookup:
 	if (tmpres) {
 		spin_unlock(&dlm->spinlock);
 		spin_lock(&tmpres->spinlock);
+
+		/*
+		 * Right after dlm spinlock was released, dlm_thread could have
+		 * purged the lockres. Check if lockres got unhashed. If so
+		 * start over.
+		 */
+		if (hlist_unhashed(&tmpres->hash_node)) {
+			spin_unlock(&tmpres->spinlock);
+			dlm_lockres_put(tmpres);
+			tmpres = NULL;
+			goto lookup;
+		}
+
 		/* Wait on the thread that is mastering the resource */
 		if (tmpres->owner == DLM_LOCK_RES_OWNER_UNKNOWN) {
 			__dlm_wait_on_lockres(tmpres);
@@ -1398,6 +1411,7 @@ int dlm_master_request_handler(struct o2net_msg *msg, u32 len, void *data,
 	int found, ret;
 	int set_maybe;
 	int dispatch_assert = 0;
+	int dispatched = 0;
 
 	if (!dlm_grab(dlm))
 		return DLM_MASTER_RESP_NO;
@@ -1604,13 +1618,16 @@ send_response:
 			mlog(ML_ERROR, "failed to dispatch assert master work\n");
 			response = DLM_MASTER_RESP_ERROR;
 			dlm_lockres_put(res);
+		} else {
+			dispatched = 1;
 		}
 	} else {
 		if (res)
 			dlm_lockres_put(res);
 	}
 
-	dlm_put(dlm);
+	if (!dispatched)
+		dlm_put(dlm);
 	return response;
 }
 
@@ -2028,7 +2045,6 @@ int dlm_dispatch_assert_master(struct dlm_ctxt *dlm,
 
 
 	/* queue up work for dlm_assert_master_worker */
-	dlm_grab(dlm);  /* get an extra ref for the work item */
 	dlm_init_work_item(dlm, item, dlm_assert_master_worker, NULL);
 	item->u.am.lockres = res; /* already have a ref */
 	/* can optionally ignore node numbers higher than this node */
