@@ -652,6 +652,14 @@ static ssize_t mode_store(struct device *dev,
 
 static DEVICE_ATTR(mode, 0664, mode_show, mode_store);
 
+static ssize_t mode_max_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", MAX_BACKGROUND_MODE);
+}
+
+static DEVICE_ATTR(mode_max, S_IRUGO, mode_max_show, NULL);
+
 static ssize_t scenario_show(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
