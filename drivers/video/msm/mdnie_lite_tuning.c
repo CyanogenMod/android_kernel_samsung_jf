@@ -652,6 +652,14 @@ static ssize_t mode_store(struct device *dev,
 
 static DEVICE_ATTR(mode, 0664, mode_show, mode_store);
 
+static ssize_t mode_max_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", MAX_BACKGROUND_MODE);
+}
+
+static DEVICE_ATTR(mode_max, S_IRUGO, mode_max_show, NULL);
+
 static ssize_t scenario_show(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
@@ -1084,6 +1092,11 @@ void init_mdnie_class(void)
 		(tune_mdnie_dev, &dev_attr_mode) < 0)
 		pr_err("Failed to create device file(%s)!\n",
 			dev_attr_mode.attr.name);
+
+	if (device_create_file
+		(tune_mdnie_dev, &dev_attr_mode_max) < 0)
+		pr_err("Failed to create device file(%s)!\n",
+			dev_attr_mode_max.attr.name);
 
 	if (device_create_file
 		(tune_mdnie_dev, &dev_attr_outdoor) < 0)
