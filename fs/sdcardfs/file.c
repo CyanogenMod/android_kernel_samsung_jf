@@ -2,11 +2,11 @@
  * fs/sdcardfs/file.c
  *
  * Copyright (c) 2013 Samsung Electronics Co. Ltd
- *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun, 
+ *   Authors: Daeho Jeong, Woojoong Lee, Seunghwan Hyun,
  *               Sunghwan Yun, Sungjong Seo
- *                      
+ *
  * This program has been developed as a stackable file system based on
- * the WrapFS which written by 
+ * the WrapFS which written by
  *
  * Copyright (c) 1998-2011 Erez Zadok
  * Copyright (c) 2009     Shrikar Archak
@@ -143,7 +143,6 @@ static int sdcardfs_mmap(struct file *file, struct vm_area_struct *vma)
 	bool willwrite;
 	struct file *lower_file;
 	const struct vm_operations_struct *saved_vm_ops = NULL;
-
 	/* this might be deferred to mmap's writepage */
 	willwrite = ((vma->vm_flags | VM_SHARED | VM_WRITE) == vma->vm_flags);
 
@@ -208,22 +207,17 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	struct path lower_path;
 	struct dentry *dentry = file->f_path.dentry;
 	struct dentry *parent = dget_parent(dentry);
-	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb); 
+	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 	const struct cred *saved_cred = NULL;
-	int has_rw;
 
 	/* don't open unhashed/deleted files */
 	if (d_unhashed(dentry)) {
 		err = -ENOENT;
 		goto out_err;
 	}
-	
-	has_rw = get_caller_has_rw_locked(sbi->pkgl_id, sbi->options.derive);
 
-	if(!check_caller_access_to_name(parent->d_inode, dentry->d_name.name, 
-				sbi->options.derive, 
-				open_flags_to_access_mode(file->f_flags), has_rw)) {
-		printk(KERN_INFO "%s: need to check the caller's gid in packages.list\n" 
+	if(!check_caller_access_to_name(parent->d_inode, dentry->d_name.name)) {
+		printk(KERN_INFO "%s: need to check the caller's gid in packages.list\n"
                          "	dentry: %s, task:%s\n",
 						 __func__, dentry->d_name.name, current->comm);
 		err = -EACCES;
@@ -233,6 +227,7 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	/* save current_cred and override it */
 	OVERRIDE_CRED(sbi, saved_cred);
 
+	file->f_mode |= FMODE_NONMAPPABLE;
 	file->private_data =
 		kzalloc(sizeof(struct sdcardfs_file_info), GFP_KERNEL);
 	if (!SDCARDFS_F(file)) {
@@ -258,8 +253,10 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	if (err)
 		kfree(SDCARDFS_F(file));
 	else {
-		fsstack_copy_attr_all(inode, sdcardfs_lower_inode(inode));
-		fix_derived_permission(inode); 
+		mutex_lock(&inode->i_mutex);
+		sdcardfs_copy_inode_attr(inode, sdcardfs_lower_inode(inode));
+		fix_derived_permission(inode);
+		mutex_unlock(&inode->i_mutex);
 	}
 
 out_revert_cred:
@@ -324,6 +321,11 @@ static int sdcardfs_fasync(int fd, struct file *file, int flag)
 	return err;
 }
 
+static struct file *sdcardfs_get_lower_file(struct file *f)
+{
+	return sdcardfs_lower_file(f);
+}
+
 const struct file_operations sdcardfs_main_fops = {
 	.llseek		= generic_file_llseek,
 	.read		= sdcardfs_read,
@@ -338,6 +340,7 @@ const struct file_operations sdcardfs_main_fops = {
 	.release	= sdcardfs_file_release,
 	.fsync		= sdcardfs_fsync,
 	.fasync		= sdcardfs_fasync,
+	.get_lower_file = sdcardfs_get_lower_file,
 };
 
 /* trimmed directory options */
@@ -354,4 +357,5 @@ const struct file_operations sdcardfs_dir_fops = {
 	.flush		= sdcardfs_flush,
 	.fsync		= sdcardfs_fsync,
 	.fasync		= sdcardfs_fasync,
+	.get_lower_file = sdcardfs_get_lower_file,
 };
