@@ -37,17 +37,6 @@
 /*#define dev_dbg(dev, fmt, arg...) dev_info(dev, fmt, ##arg)*/
 
 #define PROXIMITY
-/* DVFS feature : TOUCH BOOSTER */
-/*#define TSP_BOOSTER*/
-#ifdef TSP_BOOSTER
-#define DVFS_STAGE_DUAL		2
-#define DVFS_STAGE_SINGLE	1
-#define DVFS_STAGE_NONE		0
-#include <linux/cpufreq.h>
-
-#define TOUCH_BOOSTER_OFF_TIME	300
-#define TOUCH_BOOSTER_CHG_TIME	200
-#endif
 #define SYNAPTICS_HW_RESET_TIME_B0	100
 
 #define SYNAPTICS_PRODUCT_ID_B0	"SY 01"
@@ -348,16 +337,6 @@ struct synaptics_rmi4_data {
 	bool force_update;
 	bool esd_reset;
 	bool is_inputmethod;
-
-#ifdef TSP_BOOSTER
-	struct delayed_work	work_dvfs_off;
-	struct delayed_work	work_dvfs_chg;
-	struct mutex		dvfs_lock;
-	bool dvfs_lock_status;
-	int dvfs_old_stauts;
-	int dvfs_boost_mode;
-	int dvfs_freq;
-#endif
 
 	struct delayed_work work_init_power_on;
 #ifdef CONFIG_LEDS_CLASS
