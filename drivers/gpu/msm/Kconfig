@@ -103,9 +103,3 @@ config MSM_KGSL_FPS_NODE_ENABLE
 	---help---
 	  The fps node will control by SurfaceFlinger.
 	  SurfaceFlinger update fps and max_fps node and use it.
-
-config MSM_KGSL_KERNEL_API_ENABLE
-	bool "Enable kernel API for KGSL"
-	default n
-	---help---
-	  This API will use by device driver for performance.
