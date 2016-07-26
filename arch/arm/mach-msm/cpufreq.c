@@ -81,57 +81,6 @@ struct cpu_freq {
 
 static DEFINE_PER_CPU(struct cpu_freq, cpu_freq_info);
 
-#ifdef CONFIG_SEC_DVFS
-#ifdef CONFIG_SEC_DVFS_BOOSTER
-static unsigned int upper_limit_freq = 1566000;
-#else
-static unsigned int upper_limit_freq = 1890000;
-#endif
-static unsigned int lower_limit_freq;
-static unsigned int cpuinfo_max_freq;
-static unsigned int cpuinfo_min_freq;
-
-unsigned int get_min_lock(void)
-{
-	return lower_limit_freq;
-}
-
-unsigned int get_max_lock(void)
-{
-	return upper_limit_freq;
-}
-
-void set_min_lock(int freq)
-{
-	if (freq <= MIN_FREQ_LIMIT)
-		lower_limit_freq = 0;
-	else if (freq > MAX_FREQ_LIMIT)
-		lower_limit_freq = 0;
-	else
-		lower_limit_freq = freq;
-}
-
-void set_max_lock(int freq)
-{
-	if (freq < MIN_FREQ_LIMIT)
-		upper_limit_freq = 0;
-	else if (freq >= MAX_FREQ_LIMIT)
-		upper_limit_freq = 0;
-	else
-		upper_limit_freq = freq;
-}
-
-int get_max_freq(void)
-{
-	return cpuinfo_max_freq;
-}
-
-int get_min_freq(void)
-{
-	return cpuinfo_min_freq;
-}
-#endif
-
 static void update_l2_bw(int *also_cpu)
 {
 	int rc = 0, cpu;
@@ -184,28 +133,6 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 			pr_debug("min: limiting freq to %d\n", new_freq);
 		}
 	}
-
-#ifdef CONFIG_SEC_DVFS
-	if (lower_limit_freq || upper_limit_freq) {
-		unsigned int t_freq = new_freq;
-
-		if (lower_limit_freq && new_freq < lower_limit_freq)
-			t_freq = lower_limit_freq;
-
-		if (upper_limit_freq && new_freq > upper_limit_freq)
-			t_freq = upper_limit_freq;
-
-		new_freq = t_freq;
-
-		if (new_freq < policy->min)
-			new_freq = policy->min;
-		if (new_freq > policy->max)
-			new_freq = policy->max;
-
-		if (new_freq == policy->cur)
-			return 0;
-	}
-#endif
 
 	/* limits applied above must be in cpufreq table */
 	table = cpufreq_frequency_get_table(policy->cpu);
@@ -416,11 +343,6 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 #ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
 	policy->min = CONFIG_MSM_CPU_FREQ_MIN;
 	policy->max = CONFIG_MSM_CPU_FREQ_MAX;
-#endif
-
-#ifdef CONFIG_SEC_DVFS
-	cpuinfo_max_freq = policy->cpuinfo.max_freq;
-	cpuinfo_min_freq = policy->cpuinfo.min_freq;
 #endif
 
 	if (is_clk)
