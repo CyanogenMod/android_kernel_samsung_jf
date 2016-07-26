@@ -24,23 +24,6 @@
 
 /*#define dev_dbg(dev, fmt, arg...) dev_info(dev, fmt, ##arg)*/
 
-/* DVFS feature : TOUCH BOOSTER */
-#ifdef CONFIG_SEC_DVFS_BOOSTER
-#define TSP_BOOSTER
-#endif
-#ifdef TSP_BOOSTER
-#define DVFS_STAGE_NINTH		9
-#define DVFS_STAGE_DUAL		2
-#define DVFS_STAGE_SINGLE	1
-#define DVFS_STAGE_NONE		0
-#include <linux/cpufreq.h>
-
-#define TOUCH_BOOSTER_OFF_TIME	300
-#define TOUCH_BOOSTER_CHG_TIME	200
-#define TOUCH_BOOSTER_HIGH_OFF_TIME	1000
-#define TOUCH_BOOSTER_HIGH_CHG_TIME	500
-#endif
-
 /* To support suface touch, firmware should support data
  * which is required related app ex) MT_ANGLE, MT_PALM ...
  * Synpatics IC report those data through F51's edge swipe
@@ -323,16 +306,6 @@ struct synaptics_rmi4_data {
 	unsigned char glove_mode_feature;
 	unsigned char glove_mode_enables;
 	unsigned short glove_mode_enables_addr;
-#endif
-
-#ifdef TSP_BOOSTER
-	struct delayed_work	work_dvfs_off;
-	struct delayed_work	work_dvfs_chg;
-	struct mutex		dvfs_lock;
-	bool dvfs_lock_status;
-	int dvfs_old_stauts;
-	int dvfs_boost_mode;
-	int dvfs_freq;
 #endif
 
 	struct delayed_work work_init_power_on;
