@@ -1,16 +1,6 @@
 #ifndef _GPIO_KEYS_H
 #define _GPIO_KEYS_H
 
-#ifdef CONFIG_SEC_DVFS
-/* DVFS feature : HOME_KEY BOOSTER */
-#define KEY_BOOSTER
-#endif
-#ifdef KEY_BOOSTER
-#include <linux/cpufreq.h>
-#define KEY_BOOSTER_OFF_TIME	300
-#define KEY_BOOSTER_CHG_TIME	200
-#endif
-
 struct device;
 
 struct gpio_keys_button {
