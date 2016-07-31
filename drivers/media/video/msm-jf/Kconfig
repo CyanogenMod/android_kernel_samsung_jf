@@ -105,23 +105,6 @@ config MT9P012
 	---help---
 	  MICRON 5M Bayer Sensor with Autofocus
 
-choice
-	prompt "AF module"
-	depends on MT9P012 && !ARCH_MSM8X60 && !MSM_CAMERA_V4L2
-	default MSM_CAMERA_AF_FOXCONN
-
-config MSM_CAMERA_AF_FOXCONN
-	bool "FOXCONN Module"
-	help
-	  This driver supports FOXCONN AF module for 5M Bayer sensor
-
-config MSM_CAMERA_AF_BAM
-	bool "BAM Module"
-	help
-	  This driver supports BAM AF module for 5M Bayer sensor
-
-endchoice
-
 config MT9P012_KM
 	bool "Sensor mt9p012 KM module (BAYER 5M)"
 	depends on MSM_CAMERA && !ARCH_MSM8X60 && !MSM_CAMERA_V4L2
