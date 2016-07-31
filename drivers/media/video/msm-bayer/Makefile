@@ -33,8 +33,6 @@ obj-$(CONFIG_ARCH_MSM8960) += msm_vpe.o
 obj-$(CONFIG_MT9T013) += mt9t013.o mt9t013_reg.o
 obj-$(CONFIG_SN12M0PZ) += sn12m0pz.o sn12m0pz_reg.o
 obj-$(CONFIG_MT9P012) += mt9p012_reg.o
-obj-$(CONFIG_MSM_CAMERA_AF_FOXCONN) += mt9p012_fox.o
-obj-$(CONFIG_MSM_CAMERA_AF_BAM) += mt9p012_bam.o
 obj-$(CONFIG_MT9P012_KM) += mt9p012_km.o mt9p012_km_reg.o
 obj-$(CONFIG_S5K3E2FX) += s5k3e2fx.o
 #FIXME: Merge the two ifeq causes VX6953 preview not coming up.
