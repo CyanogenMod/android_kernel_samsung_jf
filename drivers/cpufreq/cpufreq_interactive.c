@@ -109,7 +109,7 @@ static int boost_val;
 static int boostpulse_duration_val = DEFAULT_MIN_SAMPLE_TIME;
 /* End time of boost pulse in ktime converted to usecs */
 static u64 boostpulse_endtime;
-bool boosted;
+static bool boosted;
 
 /*
  * Max additional time to wait in idle, beyond timer_rate, at speeds above
@@ -124,7 +124,7 @@ static bool io_is_busy;
  * Stay at max freq for at least max_freq_hysteresis before dropping
  * frequency.
  */
-unsigned int max_freq_hysteresis;
+static unsigned int max_freq_hysteresis;
 
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event);
