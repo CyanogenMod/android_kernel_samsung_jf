@@ -1,14 +1,59 @@
-#
-# NOTE! Don't add files that are generated in specific
-# subdirectories here. Add them in the ".gitignore" file
-# in that subdirectory instead.
-#
-# NOTE! Please use 'git ls-files -i --exclude-standard'
-# command after changing this file, to see if there are
-# any tracked files which get ignored after the change.
-#
-# Normal rules
-#
+/arch/arm/boot/compressed/piggy.gzip
+/scripts/basic/fixdep
+/scripts/bin2c
+/scripts/conmakehash
+/scripts/genksyms/genksyms
+/scripts/genksyms/keywords.hash.c
+/scripts/genksyms/lex.lex.c
+/scripts/genksyms/parse.tab.c
+/scripts/genksyms/parse.tab.h
+/scripts/kallsyms
+/scripts/kconfig/conf
+/scripts/kconfig/zconf.hash.c
+/scripts/kconfig/zconf.lex.c
+/scripts/kconfig/zconf.tab.c
+/scripts/mod/elfconfig.h
+/scripts/mod/mk_elfconfig
+/scripts/mod/modpost
+/scripts/selinux/genheaders/genheaders
+/scripts/selinux/mdp/mdp
+/security/selinux/av_permissions.h
+/security/selinux/flask.h
+/lib/crc32table.h
+/lib/gen_crc32table
+/firmware/audience-es325-fw-eur.bin.gen.S
+/firmware/ssp.fw
+/firmware/ssp.fw.gen.S
+/firmware/ssp_crashed.fw
+/firmware/ssp_crashed.fw.gen.S
+/firmware/ssp_rev03.fw
+/firmware/ssp_rev03.fw.gen.S
+/firmware/tsp_atmel/mXT540S.fw
+/firmware/tsp_atmel/mXT540S.fw.gen.S
+/firmware/tsp_atmel/mXT540Si.fw
+/firmware/tsp_atmel/mXT540Si.fw.gen.S
+/firmware/tsp_synaptics/synaptics_a1.fw
+/firmware/tsp_synaptics/synaptics_a1.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_3_4.fw
+/firmware/tsp_synaptics/synaptics_b0_3_4.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_4_0.fw
+/firmware/tsp_synaptics/synaptics_b0_4_0.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_4_3.fw
+/firmware/tsp_synaptics/synaptics_b0_4_3.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_5_1.fw
+/firmware/tsp_synaptics/synaptics_b0_5_1.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_5_1_fac.fw
+/firmware/tsp_synaptics/synaptics_b0_5_1_fac.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_fac.fw
+/firmware/tsp_synaptics/synaptics_b0_fac.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_nep_13.fw
+/firmware/tsp_synaptics/synaptics_b0_nep_13.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_nep_14.fw
+/firmware/tsp_synaptics/synaptics_b0_nep_14.fw.gen.S
+/firmware/tsp_synaptics/synaptics_b0_nep_19.fw
+/firmware/tsp_synaptics/synaptics_b0_nep_19.fw.gen.S
+..*
+...*
 .*
 *.o
 *.o.*
@@ -32,10 +77,22 @@ modules.builtin
 *.lzo
 *.patch
 *.gcno
-
-#
-# Top-level generic files
-#
+.*.cmd
+*.builtin
+*.order
+/arch/arm/kernel/vmlinux.lds
+/boot.img.pre
+/arch/arm/boot/Image
+/arch/arm/boot/*.gz
+/arch/arm/boot/compressed/vmlinux
+/arch/arm/boot/zImage
+/arch/arm64/boot/Image
+/arch/arm64/boot/*.gz
+/arch/arm64/boot/*gz-dtb
+/arch/arm64/boot/compressed/vmlinux
+/arch/arm64/boot/zImage
+/usr/gen_init_cpio
+/usr/initramfs_data.cpio
 /tags
 /TAGS
 /linux
@@ -44,43 +101,63 @@ modules.builtin
 /System.map
 /Module.markers
 /Module.symvers
-
-#
-# Debian directory (make deb-pkg)
-#
-/debian/
-
-#
-# git files that we don't want to ignore even it they are dot-files
-#
 !.gitignore
 !.mailmap
-
-#
-# Generated include files
-#
 include/config
 include/linux/version.h
 include/generated
 arch/*/include/generated
-
-# stgit generated dirs
+kernel/config_data.h
+kernel/relocate_kernel_64.S
+drivers/tty/vt/defkeymap.c
+drivers/tty/vt/consolemap_deftbl.c
+kernel/timeconst.h
 patches-*
-
-# quilt's files
 patches
 series
-
-# cscope files
 cscope.*
 ncscope.*
-
-# gnu global files
 GPATH
 GRTAGS
 GSYMS
 GTAGS
-
 *.orig
 *~
 \#*#
+/arch/arm/boot/compressed/ashldi3.S
+/arch/arm/boot/compressed/lib1funcs.S
+/arch/arm/boot/compressed/vmlinux.lds
+/arch/arm/boot/dt.img
+/arch/arm/boot/zImage-dtb
+/arch/arm64/boot/compressed/ashldi3.S
+/arch/arm64/boot/compressed/lib1funcs.S
+/arch/arm64/boot/compressed/vmlinux.lds
+/arch/arm64/boot/dt.img
+/arch/arm64/boot/Image-dtb
+/scripts/dtc/dtc
+/scripts/dtc/dtc-lexer.lex.c
+/scripts/dtc/dtc-parser.tab.c
+/scripts/dtc/dtc-parser.tab.h
+/tools/dt.img
+/build_image/output/*.zip
+/build_image/output/*.tar
+/build_image/zip_files/*.zip
+/build_image/zip_files/*.tar
+/build_image/zip_files/*.img
+/build_image/zip_files/hybridmax/*.zip
+/build_image/zip_files/hybridmax/*.tar
+/build_image/zip_files/hybridmax/*.img
+/build_image/*.gz
+/build_image/*.img
+/build_image/Image
+/build_image/*/Image
+/build_image/*/kernel
+/build_image/*/*.img
+/build_image/*/*.gz
+/build_image/zip_files/system/lib/modules/*
+/build.log
+/repack.log
+/fips_fmp_utils
+/fmp_hmac.bin
+/BUILD_OUTPUT
+kernel/hz.bc
