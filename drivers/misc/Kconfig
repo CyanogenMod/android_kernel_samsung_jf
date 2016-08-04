@@ -753,18 +753,6 @@ config SEC_TORCH_FLASH
 	help
 	  This driver provides torch flash function.	  
 
-config TIMA_LOG
-	tristate "Support for dumping TIMA log"
-	default m
-	help
-	  This option enables support for dumping TIMA log
-
-config TIMA_TEST
-	tristate "Tima Test Suite"
-	default n
-	help
-	  This option enables kernel component of tima test suite
-
 config UID_CPUTIME
 	tristate "Per-UID cpu time statistics"
 	depends on PROFILING
