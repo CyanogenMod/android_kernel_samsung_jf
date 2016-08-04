@@ -161,3 +161,4 @@ GTAGS
 /fmp_hmac.bin
 /BUILD_OUTPUT
 kernel/hz.bc
+ktm.sh
