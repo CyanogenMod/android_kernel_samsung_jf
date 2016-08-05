@@ -278,6 +278,8 @@ core-y				+= $(machdirs) $(platdirs)
 drivers-$(CONFIG_OPROFILE)      += arch/arm/oprofile/
 core-y				+= arch/arm/perfmon/
 
+core-$(CONFIG_INTELLI_PLUG)	+= arch/arm/hotplug/
+
 libs-y				:= arch/arm/lib/ $(libs-y)
 
 # Default target when executing plain make

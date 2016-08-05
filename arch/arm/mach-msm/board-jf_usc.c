@@ -212,6 +212,9 @@ static void sensor_power_on_vdd(int, int);
 #define PCIE_PWR_EN_PMIC_GPIO 13
 #define PCIE_RST_N_PMIC_MPP 1
 
+#ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND  
+int id_set_two_phase_freq(int cpufreq); 
+#endif 
 
 static int sec_tsp_synaptics_mode;
 static int lcd_tsp_panel_version;
@@ -5551,6 +5554,10 @@ static void __init samsung_jf_init(void)
 	sensor_power_on_vdd(SNS_PWR_ON, SNS_PWR_ON);
 	initialize_ssp_gpio();
 #endif
+#ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND
+	id_set_two_phase_freq(1566000);
+#endif
+
 #ifdef CONFIG_MACH_JF
 	platform_device_register(&gpio_kp_pdev);
 #else
