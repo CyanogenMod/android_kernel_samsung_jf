@@ -34,10 +34,9 @@
 #include <linux/gpio.h>
 #include "tspdrv.h"
 
-#define LEVEL_MAX           100
-#define LEVEL_MIN           0
-#define LEVEL_DEFAULT       50
-#define LEVEL_THRESHOLD     75
+#define PWM_MAX           100
+#define PWM_MIN           0
+#define PWM_DEFAULT       100
 
 /*
 ** This SPI supports only one actuator.
@@ -60,7 +59,7 @@ struct pm_gpio vib_pwm = {
 			};
 
 
-unsigned long pwm_val = 100;
+unsigned int pwm_level = 100;
 
 static int32_t vibe_set_pwm_freq(int nForce)
 {
@@ -277,7 +276,7 @@ static int32_t ImmVibeSPI_ForceOut_SetSamples(u_int8_t nActuatorIndex,
 		return VIBE_E_FAIL;
 	}
 
-	nforce = nforce * pwm_val / 100;
+	nforce = nforce * pwm_level / 100;
 
 	if (nforce == 0) {
 		/* Set 50% duty cycle or disable amp */
@@ -299,92 +298,66 @@ static int32_t ImmVibeSPI_ForceOut_SetSamples(u_int8_t nActuatorIndex,
 	}
 	return VIBE_S_SUCCESS;
 }
-static ssize_t pwm_max_show(struct device *dev,
-                            struct device_attribute *attr, char *buf)
-{
-	int count;
-    
-	count = sprintf(buf, "%d\n", LEVEL_MAX);
-	pr_info("vibrator: pwm max value: %d\n", LEVEL_MAX);
-    
-	return count;
-}
 
-static DEVICE_ATTR(pwm_max, S_IRUGO | S_IWUSR,
-                   pwm_max_show, NULL);
+static ssize_t pwm_max_show(struct device *dev,
+							struct device_attribute *attr,
+							char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", PWM_MAX);
+}
 
 static ssize_t pwm_min_show(struct device *dev,
-                            struct device_attribute *attr, char *buf)
+							struct device_attribute *attr,
+							char *buf)
 {
-	int count;
-    
-	count = sprintf(buf, "%d\n", LEVEL_MIN);
-	pr_info("vibrator: pwm min value: %d\n", LEVEL_MIN);
-    
-	return count;
+	return scnprintf(buf, PAGE_SIZE, "%u\n", PWM_MIN);
 }
-
-static DEVICE_ATTR(pwm_min, S_IRUGO | S_IWUSR,
-                   pwm_min_show, NULL);
 
 static ssize_t pwm_default_show(struct device *dev,
-                                struct device_attribute *attr, char *buf)
+							struct device_attribute *attr,
+							char *buf)
 {
-	int count;
-    
-	count = sprintf(buf, "%d\n", LEVEL_DEFAULT);
-	pr_info("vibrator: pwm default value: %d\n", LEVEL_DEFAULT);
-    
-	return count;
+	return scnprintf(buf, PAGE_SIZE, "%u\n", PWM_DEFAULT);
 }
 
-static DEVICE_ATTR(pwm_default, S_IRUGO | S_IWUSR,
-                   pwm_default_show, NULL);
-
-static ssize_t pwm_threshold_show(struct device *dev,
-                                  struct device_attribute *attr, char *buf)
+static ssize_t pwm_level_show(struct device *dev,
+							struct device_attribute *attr,
+							char *buf)
 {
-	int count;
-    
-	count = sprintf(buf, "%d\n", LEVEL_THRESHOLD);
-	pr_info("vibrator: pwm threshold value: %d\n", LEVEL_THRESHOLD);
-    
-	return count;
+	return scnprintf(buf, PAGE_SIZE, "%u\n", pwm_level);
 }
 
-static DEVICE_ATTR(pwm_threshold, S_IRUGO | S_IWUSR,
-                   pwm_threshold_show, NULL);
-
-static ssize_t pwm_value_show(struct device *dev, struct device_attribute *attr,
-                              char *buf)
+ssize_t pwm_level_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
-	int count;
+	int rc, val;
 
-	count = sprintf(buf, "%lu\n", pwm_val);
-	pr_debug("[VIB] pwm_val: %lu\n", pwm_val);
+	rc = kstrtoint(buf, 0, &val);
+	if (rc) {
+		pr_err("%s: Error getting level\n", __func__);
+		return -EINVAL;
+	}
 
-	return count;
+	if (val < PWM_MIN) {
+		pr_err("%s: Level %u not in range (%u - %u), using min.",
+			__func__, val, PWM_MIN, PWM_MAX);
+		val = PWM_MIN;
+	} else if (val > PWM_MAX) {
+		pr_err("%s: Level %u not in range (%u - %u), using max.",
+			__func__, val, PWM_MIN, PWM_MAX);
+		val = PWM_MAX;
+	}
+
+	pwm_level = val;
+
+	return strnlen(buf, count);
 }
 
-ssize_t pwm_value_store(struct device *dev, struct device_attribute *attr,
-                        const char *buf, size_t size)
-{
-	if (kstrtoul(buf, 0, &pwm_val))
-
-	pr_err("[VIB] %s: error on storing pwm_val\n", __func__);
-	pr_info("[VIB] %s: pwm_val=%lu\n", __func__, pwm_val);
-
-	/* make sure new pwm duty is in range */
-	if(pwm_val > 100)
-		pwm_val = 100;
-	else if (pwm_val < 0)
-		pwm_val = 0;
-
-	return size;
-}
-
-static DEVICE_ATTR(pwm_value, S_IRUGO | S_IWUSR,
-    pwm_value_show, pwm_value_store);
+static DEVICE_ATTR(vtg_max, S_IRUGO, pwm_max_show, NULL);
+static DEVICE_ATTR(vtg_min, S_IRUGO, pwm_min_show, NULL);
+static DEVICE_ATTR(vtg_default, S_IRUGO, pwm_default_show, NULL);
+static DEVICE_ATTR(vtg_level, S_IRUGO | S_IWUSR, pwm_level_show, pwm_level_store);
 
 /*
 ** Called to get the device name (device name must be returned as ANSI char)

@@ -214,33 +214,34 @@ static void vibetonz_start(void)
 
 	ret = timed_output_dev_register(&timed_output_vt);
 	if (ret < 0)
-		DbgOut((KERN_ERR
-		"tspdrv: timed_output_dev_register fail\n"));
+		return;
 
-    ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_value);
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_vtg_level);
 	if (ret < 0)
-		DbgOut((KERN_ERR
-		"tspdrv: device_create_file fail: pwm_value\n"));
-    
-    ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_max);
-	if (ret < 0) {
-		pr_err("vibrator_init(): create sysfs fail: pwm_max\n");
-	}
-    
-	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_min);
-	if (ret < 0) {
-		pr_err("vibrator_init(): create sysfs fail: pwm_min\n");
-	}
-    
-	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_default);
-	if (ret < 0) {
-		pr_err("vibrator_init(): create sysfs fail: pwm_default\n");
-	}
-    
-	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_threshold);
-	if (ret < 0) {
-		pr_err("vibrator_init(): create sysfs fail: pwm_threshold\n");
-	}
+		goto error_create_level;
+
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_vtg_max);
+	if (ret < 0)
+		goto error_create_max;
+
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_vtg_min);
+	if (ret < 0)
+		goto error_create_min;
+
+	ret = device_create_file(timed_output_vt.dev, &dev_attr_vtg_default);
+	if (ret < 0)
+		goto error_create_default;
+
+	return;
+
+error_create_default:
+	device_remove_file(timed_output_vt.dev, &dev_attr_vtg_min);
+error_create_min:
+	device_remove_file(timed_output_vt.dev, &dev_attr_vtg_max);
+error_create_max:
+	device_remove_file(timed_output_vt.dev, &dev_attr_vtg_level);
+error_create_level:
+	timed_output_dev_unregister(&timed_output_vt);
 }
 
 /* File IO */
@@ -402,6 +403,12 @@ static int __devexit tspdrv_remove(struct platform_device *pdev)
 	ImmVibeSPI_ForceOut_Terminate();
 
 	wake_lock_destroy(&vib_wake_lock);
+
+	device_remove_file(timed_output_vt.dev, &dev_attr_vtg_min);
+	device_remove_file(timed_output_vt.dev, &dev_attr_vtg_max);
+	device_remove_file(timed_output_vt.dev, &dev_attr_vtg_default);
+	device_remove_file(timed_output_vt.dev, &dev_attr_vtg_level);
+	timed_output_dev_unregister(&timed_output_vt);
 
 	return 0;
 }
