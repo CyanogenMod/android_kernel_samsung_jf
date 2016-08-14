@@ -758,6 +758,13 @@ config UID_CPUTIME
 	depends on PROFILING
 	help
 	  Per UID based cpu time statistics exported to /proc/uid_cputime
+  
+config GAMMA_CONTROL
+       bool "Gamma Control for OLED"
+       depends on FB_MSM_MIPI_DSI_SAMSUNG_OCTA
+       default y
+       help
+       This adds full support for shifting RGB panel colors.
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
