@@ -3584,7 +3584,11 @@ CONFIG_PID_IN_CONTEXTIDR=y
 CONFIG_KEYS=y
 # CONFIG_ENCRYPTED_KEYS is not set
 CONFIG_KEYS_DEBUG_PROC_KEYS=y
+<<<<<<< HEAD:arch/arm/configs/cyanogen_jf_defconfig
 # CONFIG_SECURITY_DMESG_RESTRICT is not set
+=======
+CONFIG_SECURITY_PERF_EVENTS_RESTRICT=y
+>>>>>>> 319c8ad2ccbdd5c07311e0d20daef89b042acf73:arch/arm/configs/cyanogenmod_jf_defconfig
 CONFIG_SECURITY=y
 # CONFIG_SECURITYFS is not set
 CONFIG_SECURITY_NETWORK=y
