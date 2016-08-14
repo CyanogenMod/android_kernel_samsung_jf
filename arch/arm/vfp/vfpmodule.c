@@ -742,6 +742,7 @@ EXPORT_SYMBOL(kernel_neon_end);
 
 #endif /* CONFIG_KERNEL_MODE_NEON */
 
+
 /*
  * VFP support code initialisation.
  */
