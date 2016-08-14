@@ -9,9 +9,12 @@
  */
 
 #include <linux/raid/xor.h>
+#include <linux/module.h>
+
+MODULE_LICENSE("GPL");
 
 #ifndef __ARM_NEON__
-#error You should compile this file with '-mfloat-abi=softfp -mfpu=neon'
+#error You should compile this file with '-mfloat-abi=hard -mfpu=neon-vfpv4 '
 #endif
 
 /*
@@ -40,3 +43,5 @@ struct xor_block_template const xor_block_neon_inner = {
 	.do_4	= xor_8regs_4,
 	.do_5	= xor_8regs_5,
 };
+EXPORT_SYMBOL(xor_block_neon_inner);
+
