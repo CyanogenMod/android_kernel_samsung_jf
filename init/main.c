@@ -69,6 +69,7 @@
 #include <linux/slab.h>
 #include <linux/perf_event.h>
 #include <linux/random.h>
+#include <s_funcs.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -621,6 +622,7 @@ asmlinkage void __init start_kernel(void)
 	boot_init_stack_canary();
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
+replace_str((char*)&boot_command_line,"androidboot.bootchg=true","androidboot.mode=charger");
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
 	setup_per_cpu_areas();
