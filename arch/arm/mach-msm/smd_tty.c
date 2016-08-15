@@ -375,7 +375,7 @@ out:
 
 static void smd_tty_close(struct tty_struct *tty, struct file *f)
 {
-	struct smd_tty_info *info = tty->driver_data;
+	struct smd_tty_info *info = smd_tty + tty->index;
 	unsigned long flags;
 
 	if (info == 0)
