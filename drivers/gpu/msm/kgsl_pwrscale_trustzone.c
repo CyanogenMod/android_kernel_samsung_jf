@@ -96,24 +96,18 @@ static ssize_t tz_governor_store(struct kgsl_device *device,
 				struct kgsl_pwrscale *pwrscale,
 				 const char *buf, size_t count)
 {
-	char str[20];
 	struct tz_priv *priv = pwrscale->priv;
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
-	int ret;
-
-	ret = sscanf(buf, "%20s", str);
-	if (ret != 1)
-		return -EINVAL;
 
 	mutex_lock(&device->mutex);
 
-	if (!strncmp(str, "ondemand", 8))
+	if (!strncmp(buf, "ondemand", 8))
 		priv->governor = TZ_GOVERNOR_ONDEMAND;
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
-	else if (!strncmp(str, "simple", 6))
+	else if (!strncmp(buf, "simple", 6))
 		priv->governor = TZ_GOVERNOR_SIMPLE;
 #endif
-	else if (!strncmp(str, "performance", 11))
+	else if (!strncmp(buf, "performance", 11))
 		priv->governor = TZ_GOVERNOR_PERFORMANCE;
 
 	if (priv->governor == TZ_GOVERNOR_PERFORMANCE)
@@ -247,13 +241,11 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 		val = simple_governor(device, idle);
 	else
 		val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
-		kgsl_trace_kgsl_tz_params(device, priv->bin.total_time, priv->bin.busy_time,
-				idle, val);
 #else
 		val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
+#endif
 		kgsl_trace_kgsl_tz_params(device, priv->bin.total_time, priv->bin.busy_time,
 				idle, val);
-#endif
 	}
 	priv->bin.total_time = 0;
 	priv->bin.busy_time = 0;
