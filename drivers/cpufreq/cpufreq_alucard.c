@@ -444,7 +444,7 @@ static void alucard_check_cpu(struct cpufreq_alucard_cpuinfo *this_alucard_cpuin
 			CPUFREQ_RELATION_H, &index);
 		if (this_alucard_cpuinfo->freq_table[index].frequency != cpu_policy->cur) {
 			cpufreq_frequency_table_target(cpu_policy, this_alucard_cpuinfo->freq_table, tmp_freq,
-				CPUFREQ_RELATION_C, &index);
+				CPUFREQ_RELATION_L, &index);
 		}
 	 	next_freq = this_alucard_cpuinfo->freq_table[index].frequency;
 #endif
@@ -558,7 +558,7 @@ static int cpufreq_governor_alucard(struct cpufreq_policy *policy,
 				policy->max, CPUFREQ_RELATION_H);
 		else if (policy->min > this_alucard_cpuinfo->cur_policy->cur)
 			__cpufreq_driver_target(this_alucard_cpuinfo->cur_policy,
-				policy->min, CPUFREQ_RELATION_C);
+				policy->min, CPUFREQ_RELATION_L);
 		mutex_unlock(&this_alucard_cpuinfo->timer_mutex);
 
 		break;

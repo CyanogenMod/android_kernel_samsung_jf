@@ -52,7 +52,7 @@
  * lowering the frequency towards the ideal frequency is faster than below it.
  */
 
-#define GOV_IDLE_FREQ 475000
+#define GOV_IDLE_FREQ 486000
 
 #define DEFAULT_SUSPEND_IDEAL_FREQ GOV_IDLE_FREQ
 static unsigned int suspend_ideal_freq;
@@ -110,7 +110,7 @@ static unsigned int sampling_rate;
 #define DEFAULT_INPUT_BOOST_DURATION 50000000
 static unsigned int input_boost_duration;
 
-static unsigned int touch_poke_freq = 760000;
+static unsigned int touch_poke_freq = 702000;
 static bool touch_poke = true;
 
 /*
@@ -122,7 +122,7 @@ static bool ramp_up_during_boost = true;
  * external boost interface - boost if duration is written
  * to sysfs for boost_duration
  */
-static unsigned int boost_freq = 760000;
+static unsigned int boost_freq = 702000;
 static bool boost = true;
 
 /* in nsecs */
@@ -338,7 +338,7 @@ inline static void target_freq(struct cpufreq_policy *policy,
 			// to ramp up to *at least* current + ramp_up_step.
 			if (new_freq > old_freq && prefered_relation == CPUFREQ_RELATION_H
 					&& !cpufreq_frequency_table_target(policy, table, new_freq,
-							CPUFREQ_RELATION_C, &index))
+							CPUFREQ_RELATION_L, &index))
 				target = table[index].frequency;
 			// simlarly for ramping down:
 			else if (new_freq < old_freq
@@ -1201,7 +1201,7 @@ static int cpufreq_governor_smartmax(struct cpufreq_policy *new_policy,
 		else if (this_smartmax->cur_policy->cur < new_policy->min) {
 			dprintk(SMARTMAX_DEBUG_JUMPS,"jumping to new min freq: %d\n",new_policy->min);
 			__cpufreq_driver_target(this_smartmax->cur_policy,
-					new_policy->min, CPUFREQ_RELATION_C);
+					new_policy->min, CPUFREQ_RELATION_L);
 		}
 		mutex_unlock(&this_smartmax->timer_mutex);
 		break;

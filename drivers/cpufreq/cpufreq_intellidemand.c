@@ -44,12 +44,12 @@
  */
 
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(10)
-#define DEF_FREQUENCY_UP_THRESHOLD		(70)
+#define DEF_FREQUENCY_UP_THRESHOLD		(75)
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
 #define BOOSTED_SAMPLING_DOWN_FACTOR		(10)
 #define MAX_SAMPLING_DOWN_FACTOR		(100000)
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL	(3)
-#define MICRO_FREQUENCY_UP_THRESHOLD		(80)
+#define MICRO_FREQUENCY_UP_THRESHOLD		(75)
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(15000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
@@ -274,7 +274,7 @@ static unsigned int powersave_bias_target(struct cpufreq_policy *policy,
 	freq_lo = dbs_info->freq_table[index].frequency;
 	index = 0;
 	cpufreq_frequency_table_target(policy, dbs_info->freq_table, freq_avg,
-			CPUFREQ_RELATION_C, &index);
+			CPUFREQ_RELATION_L, &index);
 	freq_hi = dbs_info->freq_table[index].frequency;
 
 	/* Find out how long we have to be in hi and lo freqs */
@@ -302,7 +302,7 @@ static int intellidemand_powersave_bias_setspeed(struct cpufreq_policy *policy,
 		/* maximum powersave; set to lowest frequency */
 		__cpufreq_driver_target(policy,
 			(altpolicy) ? altpolicy->min : policy->min,
-			CPUFREQ_RELATION_C);
+			CPUFREQ_RELATION_L);
 		return 1;
 	} else if (level == POWERSAVE_BIAS_MINLEVEL) {
 		/* minimum powersave; set to highest frequency */
@@ -479,8 +479,7 @@ static void update_sampling_rate(unsigned int new_rate)
 {
 	int cpu;
 
-	dbs_tuners_ins.sampling_rate = new_rate
-				     = max(new_rate, min_sampling_rate);
+	dbs_tuners_ins.sampling_rate = max(new_rate, min_sampling_rate);
 
 	for_each_online_cpu(cpu) {
 		struct cpufreq_policy *policy;
@@ -527,6 +526,7 @@ static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
 	if (ret != 1)
 		return -EINVAL;
 	update_sampling_rate(input);
+	pr_alert("STORE SAMPLING RATE %d-%d", input, dbs_tuners_ins.sampling_rate);
 	current_sampling_rate = dbs_tuners_ins.sampling_rate;
 	return count;
 }
@@ -959,7 +959,7 @@ static void dbs_freq_increase(struct cpufreq_policy *p, unsigned int freq)
 		return;
 
 	__cpufreq_driver_target(p, freq, dbs_tuners_ins.powersave_bias ?
-			CPUFREQ_RELATION_C : CPUFREQ_RELATION_H);
+			CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
 }
 
 int id_set_two_phase_freq(int cpufreq)
@@ -1237,7 +1237,7 @@ enum {
 };
 
 enum {	
-	BOOT_CPU0,	
+	BOOT_CPU = 0,	
 	NON_BOOT_CPU1,
 	NON_BOOT_CPU2,
 	NON_BOOT_CPU3,
@@ -1916,7 +1916,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 				policy->max, CPUFREQ_RELATION_H);
 		else if (policy->min > this_dbs_info->cur_policy->cur)
 			__cpufreq_driver_target(this_dbs_info->cur_policy,
-				policy->min, CPUFREQ_RELATION_C);
+				policy->min, CPUFREQ_RELATION_L);
 		else if (dbs_tuners_ins.powersave_bias != 0)
 			intellidemand_powersave_bias_setspeed(
 				this_dbs_info->cur_policy,

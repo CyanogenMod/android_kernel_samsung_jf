@@ -220,3 +220,4 @@ fs_initcall(cpufreq_gov_userspace_init);
 module_init(cpufreq_gov_userspace_init);
 #endif
 module_exit(cpufreq_gov_userspace_exit);
+

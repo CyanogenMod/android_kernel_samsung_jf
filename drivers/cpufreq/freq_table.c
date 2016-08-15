@@ -105,14 +105,13 @@ int cpufreq_frequency_table_target(struct cpufreq_policy *policy,
 		.index = ~0,
 		.frequency = 0,
 	};
-	unsigned int i, diff;
+	unsigned int i;
 
 	pr_debug("request for target %u kHz (relation: %u) for cpu %u\n",
 					target_freq, relation, policy->cpu);
 
 	switch (relation) {
 	case CPUFREQ_RELATION_H:
-	case CPUFREQ_RELATION_C:
 		suboptimal.frequency = ~0;
 		break;
 	case CPUFREQ_RELATION_L:
@@ -156,7 +155,7 @@ int cpufreq_frequency_table_target(struct cpufreq_policy *policy,
 				}
 			}
 			break;
-				}
+		}
 	}
 	if (optimal.index > i) {
 		if (suboptimal.index > i)
@@ -235,3 +234,4 @@ EXPORT_SYMBOL_GPL(cpufreq_frequency_get_table);
 MODULE_AUTHOR("Dominik Brodowski <linux@brodo.de>");
 MODULE_DESCRIPTION("CPUfreq frequency table helpers");
 MODULE_LICENSE("GPL");
+

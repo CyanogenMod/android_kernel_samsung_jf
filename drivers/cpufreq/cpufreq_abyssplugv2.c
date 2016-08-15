@@ -214,7 +214,7 @@ static unsigned int powersave_bias_target(struct cpufreq_policy *policy,
 	freq_lo = bds_info->freq_table[index].frequency;
 	index = 0;
 	cpufreq_frequency_table_target(policy, bds_info->freq_table, freq_avg,
-			CPUFREQ_RELATION_C, &index);
+			CPUFREQ_RELATION_L, &index);
 	freq_hi = bds_info->freq_table[index].frequency;
 
 	/* Find out how long we have to be in hi and lo freqs */
@@ -976,7 +976,7 @@ static int cpufreq_governor_bds(struct cpufreq_policy *policy,
 				policy->max, CPUFREQ_RELATION_H);
 		else if (policy->min > this_bds_info->cur_policy->cur)
 			__cpufreq_driver_target(this_bds_info->cur_policy,
-				policy->min, CPUFREQ_RELATION_C);
+				policy->min, CPUFREQ_RELATION_L);
 		else if (bds_tuners_ins.powersave_bias != 0)
 			abyssplug_powersave_bias_setspeed(
 				this_bds_info->cur_policy,

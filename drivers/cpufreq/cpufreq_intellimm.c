@@ -248,7 +248,7 @@ static unsigned int powersave_bias_target(struct cpufreq_policy *policy,
 	freq_lo = dbs_info->freq_table[index].frequency;
 	index = 0;
 	cpufreq_frequency_table_target(policy, dbs_info->freq_table, freq_avg,
-			CPUFREQ_RELATION_C, &index);
+			CPUFREQ_RELATION_L, &index);
 	freq_hi = dbs_info->freq_table[index].frequency;
 
 	
@@ -276,7 +276,7 @@ static int intellimm_powersave_bias_setspeed(struct cpufreq_policy *policy,
 		
 		__cpufreq_driver_target(policy,
 			(altpolicy) ? altpolicy->min : policy->min,
-			CPUFREQ_RELATION_C);
+			CPUFREQ_RELATION_L);
 		return 1;
 	} else if (level == POWERSAVE_BIAS_MINLEVEL) {
 		
@@ -1464,7 +1464,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			else if (policy->min > this_dbs_info->cur_policy->cur)
 				__cpufreq_driver_target(this_dbs_info->
 							cur_policy,
-					policy->min, CPUFREQ_RELATION_C);
+					policy->min, CPUFREQ_RELATION_L);
 			else if (dbs_tuners_ins.powersave_bias != 0)
 				intellimm_powersave_bias_setspeed(
 					this_dbs_info->cur_policy,

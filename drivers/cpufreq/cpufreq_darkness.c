@@ -318,7 +318,7 @@ static void darkness_check_cpu(struct cpufreq_darkness_cpuinfo *this_darkness_cp
 			CPUFREQ_RELATION_H, &index);
 		if (this_darkness_cpuinfo->freq_table[index].frequency != cpu_policy->cur) {
 			cpufreq_frequency_table_target(cpu_policy, this_darkness_cpuinfo->freq_table, next_freq,
-				CPUFREQ_RELATION_C, &index);
+				CPUFREQ_RELATION_L, &index);
 		} else {
 			return;
 		}
@@ -438,7 +438,7 @@ static int cpufreq_governor_darkness(struct cpufreq_policy *policy,
 				policy->max, CPUFREQ_RELATION_H);
 		else if (policy->min > this_darkness_cpuinfo->cur_policy->cur)
 			__cpufreq_driver_target(this_darkness_cpuinfo->cur_policy,
-				policy->min, CPUFREQ_RELATION_C);
+				policy->min, CPUFREQ_RELATION_L);
 		mutex_unlock(&this_darkness_cpuinfo->timer_mutex);
 
 		break;
