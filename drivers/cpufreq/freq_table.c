@@ -156,15 +156,7 @@ int cpufreq_frequency_table_target(struct cpufreq_policy *policy,
 				}
 			}
 			break;
-		case CPUFREQ_RELATION_C:
-			diff = abs(freq - target_freq);
-			if (diff < optimal.frequency ||
-			    (diff == optimal.frequency &&
-			     freq > table[optimal.index].frequency)) {
-				optimal.frequency = diff;
-				optimal.index = i;
-			}
-			break;		}
+				}
 	}
 	if (optimal.index > i) {
 		if (suboptimal.index > i)
