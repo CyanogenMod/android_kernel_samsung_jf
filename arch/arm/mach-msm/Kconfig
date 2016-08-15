@@ -169,6 +169,7 @@ config ARCH_MSM8960
 	select MSM_KRAIT_WFE_FIXUP
 	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
+	select HAS_MACH_MEMUTILS
 	select GENERIC_TIME_VSYSCALL
 	select USE_USER_ACCESSIBLE_TIMERS
 	select ARM_USE_USER_ACCESSIBLE_TIMERS
@@ -205,6 +206,7 @@ config ARCH_MSM8930
 	select MSM_KRAIT_WFE_FIXUP
 	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
+	select HAS_MACH_MEMUTILS
 	select GENERIC_TIME_VSYSCALL
 	select ENABLE_VMALLOC_SAVINGS
 	select USE_USER_ACCESSIBLE_TIMERS
@@ -239,6 +241,7 @@ config ARCH_APQ8064
 	select SPARSEMEM_ALLOC_MEM_MAP_TOGETHER if SPARSEMEM
 	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
+	select HAS_MACH_MEMUTILS
 	select GENERIC_TIME_VSYSCALL
     select ENABLE_VMALLOC_SAVINGS
 	select USE_USER_ACCESSIBLE_TIMERS
@@ -269,6 +272,7 @@ config ARCH_MSM8974
 	select MSM_RPM_REGULATOR_SMD
 	select ARM_HAS_SG_CHAIN
 	select MSM_RUN_QUEUE_STATS
+	select HAS_MACH_MEMUTILS
 
 config ARCH_MPQ8092
 	bool "MPQ8092"
@@ -3020,6 +3024,13 @@ config SAMSUNG_PRODUCT_SHIP
 	bool "set up for product shipping"
 	default n
 
+config HAS_MACH_MEMUTILS
+	default n
+	bool "Motorola MSM memcpy enhancements"
+	help
+	Faster memcpy performance for Krait
+
+	  
 config HAS_MACH_MEMUTILS
 	default n
 	bool "Motorola MSM memcpy enhancements"
