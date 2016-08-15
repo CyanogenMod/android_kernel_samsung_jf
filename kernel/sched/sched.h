@@ -1026,7 +1026,7 @@ static inline unsigned int do_avg_nr_running(struct rq *rq)
 
 static inline void inc_nr_running(struct rq *rq)
 {
-	+#ifdef CONFIG_INTELLI_PLUG
+	#ifdef CONFIG_INTELLI_PLUG
 	struct nr_stats_s *nr_stats = &per_cpu(runqueue_stats, rq->cpu);
 #endif
 
@@ -1044,7 +1044,7 @@ static inline void inc_nr_running(struct rq *rq)
 
 static inline void dec_nr_running(struct rq *rq)
 {
-	+#ifdef CONFIG_INTELLI_PLUG
+	#ifdef CONFIG_INTELLI_PLUG
 	struct nr_stats_s *nr_stats = &per_cpu(runqueue_stats, rq->cpu);
 #endif
 
