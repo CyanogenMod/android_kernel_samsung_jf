@@ -38,9 +38,6 @@
 #include <asm/mmu_context.h>
 
 #include "internal.h"
-#ifdef CONFIG_SDCARD_FS
-#include "../fs/sdcardfs/sdcardfs.h"
-#endif
 
 #ifndef arch_mmap_check
 #define arch_mmap_check(addr, len, flags)	(0)
@@ -1015,10 +1012,6 @@ static unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 	vm_flags_t vm_flags;
 	int error;
 	unsigned long reqprot = prot;
-#ifdef CONFIG_SDCARD_FS
-	if (file && (file->f_path.mnt->mnt_sb->s_magic == SDCARDFS_SUPER_MAGIC))
-		file = sdcardfs_lower_file(file);
-#endif
 
 	/*
 	 * Does the application expect PROT_READ to imply PROT_EXEC?
