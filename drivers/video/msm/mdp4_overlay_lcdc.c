@@ -640,10 +640,12 @@ int mdp4_lcdc_on(struct platform_device *pdev)
 	pipe->dst_h = fbi->var.yres;
 	pipe->dst_w = fbi->var.xres;
 
-	if (mfd->display_iova)
+	if (mfd->display_iova) {
 		pipe->srcp0_addr = mfd->display_iova + buf_offset;
-	else
+		mdp4_iommu_attach();
+	} else {
 		pipe->srcp0_addr = (uint32)(buf + buf_offset);
+	}
 
 	pipe->srcp0_ystride = fbi->fix.line_length;
 	pipe->bpp = bpp;
