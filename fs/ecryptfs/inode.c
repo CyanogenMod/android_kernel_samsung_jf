@@ -173,7 +173,6 @@ out_unlock:
  * @directory_inode: inode of the new file's dentry's parent in ecryptfs
  * @ecryptfs_dentry: New file's dentry in ecryptfs
  * @mode: The mode of the new file
- * @nd: nameidata of ecryptfs' parent's dentry & vfsmount
  *
  * Creates the underlying file and the eCryptfs inode which will link to
  * it. It will also update the eCryptfs directory inode to mimic the
@@ -207,75 +206,6 @@ ecryptfs_do_create(struct inode *directory_inode,
 	}
 	inode = __ecryptfs_get_inode(lower_dentry->d_inode,
 			directory_inode->i_sb);
-	if (IS_ERR(inode)) {
-		vfs_unlink(lower_dir_dentry->d_inode, lower_dentry);
-		goto out_lock;
-	}
-	fsstack_copy_attr_times(directory_inode, lower_dir_dentry->d_inode);
-	fsstack_copy_inode_size(directory_inode, lower_dir_dentry->d_inode);
-out_lock:
-	unlock_dir(lower_dir_dentry);
-out:
-	return inode;
-}
-
-/**
- * ecryptfs_do_create2
- * @directory_inode: inode of the new file's dentry's parent in ecryptfs
- * @ecryptfs_dentry: New file's dentry in ecryptfs
- * @mode: The mode of the new file
- * @nd: nameidata of ecryptfs' parent's dentry & vfsmount
- *
- * Creates the underlying file and the eCryptfs inode which will link to
- * it. It will also update the eCryptfs directory inode to mimic the
- * stat of the lower directory inode.
- *
- * Returns the new eCryptfs inode on success; an ERR_PTR on error condition
- */
-static struct inode *
-ecryptfs_do_create2(struct inode *directory_inode,
-		   struct dentry *ecryptfs_dentry, umode_t mode, struct nameidata *nd)
-{
-	int rc;
-	struct dentry *lower_dentry;
-	struct dentry *lower_dir_dentry;
-	struct vfsmount *lower_mnt = NULL;
-	struct inode *inode = NULL;
-
-	struct dentry *dentry_save = NULL;
-	struct vfsmount *vfsmount_save = NULL;
-
-	lower_dentry = ecryptfs_dentry_to_lower(ecryptfs_dentry);
-	lower_mnt = ecryptfs_dentry_to_lower_mnt(ecryptfs_dentry);
-	if (!lower_dentry->d_op || !lower_dentry->d_op->d_revalidate)
-		goto out;
-
-	lower_dir_dentry = lock_parent(lower_dentry);
-	if (IS_ERR(lower_dir_dentry)) {
-		ecryptfs_printk(KERN_ERR, "Error locking directory of "
-				"dentry\n");
-		inode = ERR_CAST(lower_dir_dentry);
-		goto out;
-	}
-	if (nd) {
-		dentry_save = nd->path.dentry;
-		vfsmount_save = nd->path.mnt;
-		nd->path.dentry = lower_dentry;
-		nd->path.mnt = lower_mnt;
-	}
-	rc = vfs_create(lower_dir_dentry->d_inode, lower_dentry, mode, nd);
-	if (nd) {
-		nd->path.dentry = dentry_save;
-		nd->path.mnt = vfsmount_save;
-	}
-	if (rc) {
-		printk(KERN_ERR "%s: Failure to create dentry in lower fs; "
-		       "rc = [%d]\n", __func__, rc);
-		inode = ERR_PTR(rc);
-		goto out_lock;
-	}
-	inode = __ecryptfs_get_inode(lower_dentry->d_inode,
-				     directory_inode->i_sb);
 	if (IS_ERR(inode)) {
 		vfs_unlink(lower_dir_dentry->d_inode, lower_dentry);
 		goto out_lock;
@@ -365,24 +295,6 @@ out:
 	return rc;
 }
 
-int ecryptfs_check_subfs(struct dentry *de, struct nameidata *nd, char *fs)
-{
-	struct dentry *lower_dentry = NULL;
-
-	lower_dentry = ecryptfs_dentry_to_lower(de);
-	if (!lower_dentry->d_op || !lower_dentry->d_op->d_revalidate)
-	{
-		return -1;
-	}
-
-	if(!strcmp(lower_dentry->d_sb->s_type->name, fs))
-	{
-		return 1;
-	}
-
-	return 0;
-}
-
 /**
  * ecryptfs_create
  * @dir: The inode of the directory in which to create the file.
@@ -401,11 +313,7 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 	struct inode *ecryptfs_inode;
 	int rc;
 
-	if(ecryptfs_check_subfs(ecryptfs_dentry, nd, "sdcardfs") == 1)
-		ecryptfs_inode = ecryptfs_do_create2(directory_inode, ecryptfs_dentry,
-				mode, nd);
-	else
-		ecryptfs_inode = ecryptfs_do_create(directory_inode, ecryptfs_dentry, mode);
+	ecryptfs_inode = ecryptfs_do_create(directory_inode, ecryptfs_dentry, mode);
 
 	if (unlikely(IS_ERR(ecryptfs_inode))) {
 		ecryptfs_printk(KERN_WARNING, "Failed to create file in"
