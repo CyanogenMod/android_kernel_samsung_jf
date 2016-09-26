@@ -3432,6 +3432,14 @@ static int msmfb_overlay_set(struct fb_info *info, void __user *p)
 static int msmfb_overlay_unset(struct fb_info *info, unsigned long *argp)
 {
 	int ret, ndx;
+	struct msm_fb_data_type *mfd;
+
+	if (info == NULL || info->par == NULL) {
+		pr_err("%s info=%p or par is NULL\n", __func__, info);
+		return -ENODEV;
+	}
+
+	mfd = (struct msm_fb_data_type *)info->par;
 
 	ret = copy_from_user(&ndx, argp, sizeof(ndx));
 	if (ret) {
@@ -3439,6 +3447,12 @@ static int msmfb_overlay_unset(struct fb_info *info, unsigned long *argp)
 			__func__);
 		return ret;
 	}
+
+	/*
+	 * If previous commit hasn't finished yet, unset cannot be started
+	 * otherwise, previous scene will be corrupted.
+	 */
+	msm_fb_pan_idle(mfd);
 
 	return mdp4_overlay_unset(info, ndx);
 }
