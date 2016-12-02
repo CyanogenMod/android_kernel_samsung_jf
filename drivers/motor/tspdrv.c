@@ -236,11 +236,6 @@ static void vibetonz_start(void)
 	if (ret < 0) {
 		pr_err("vibrator_init(): create sysfs fail: pwm_default\n");
 	}
-    
-	ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_threshold);
-	if (ret < 0) {
-		pr_err("vibrator_init(): create sysfs fail: pwm_threshold\n");
-	}
 }
 
 /* File IO */

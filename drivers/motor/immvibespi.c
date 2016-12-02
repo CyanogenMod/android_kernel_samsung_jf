@@ -37,7 +37,6 @@
 #define LEVEL_MAX           100
 #define LEVEL_MIN           0
 #define LEVEL_DEFAULT       50
-#define LEVEL_THRESHOLD     75
 
 /*
 ** This SPI supports only one actuator.
@@ -340,20 +339,6 @@ static ssize_t pwm_default_show(struct device *dev,
 
 static DEVICE_ATTR(pwm_default, S_IRUGO | S_IWUSR,
                    pwm_default_show, NULL);
-
-static ssize_t pwm_threshold_show(struct device *dev,
-                                  struct device_attribute *attr, char *buf)
-{
-	int count;
-    
-	count = sprintf(buf, "%d\n", LEVEL_THRESHOLD);
-	pr_info("vibrator: pwm threshold value: %d\n", LEVEL_THRESHOLD);
-    
-	return count;
-}
-
-static DEVICE_ATTR(pwm_threshold, S_IRUGO | S_IWUSR,
-                   pwm_threshold_show, NULL);
 
 static ssize_t pwm_value_show(struct device *dev, struct device_attribute *attr,
                               char *buf)
