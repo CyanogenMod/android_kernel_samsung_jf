@@ -1,9 +1,11 @@
 #ifndef _GPIO_KEYS_H
 #define _GPIO_KEYS_H
 /* DVFS feature : HOME_KEY BOOSTER */
-#ifdef CONFIG_SEC_DVFS_BOOSTER
+// Not a requirement in offical kernel source. 
+// Also, drivers/input/keyboard/gpio_keys.c will otherwise have issues compiling.
+//#ifdef CONFIG_SEC_DVFS_BOOSTER 
 #define KEY_BOOSTER
-#endif
+//#endif
 #ifdef KEY_BOOSTER
 #include <linux/cpufreq.h>
 #define KEY_BOOSTER_OFF_TIME	300

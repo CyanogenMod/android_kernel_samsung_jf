@@ -17,5 +17,7 @@ CONFIG_IMX175_EEPROM=y
 # CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL is not set
 # CONFIG_LCD_VDD3_BY_PMGPIO is not set
 
+
+# Official kernel source code has this set to yes. Also, it wont compile without it.
 # HALL IC is not supported
-CONFIG_SENSORS_HALL=n
+# CONFIG_SENSORS_HALL=n
